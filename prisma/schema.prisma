@@ -1,0 +1,1294 @@
+// ─────────────────────────────────────────────────────────────
+//  Zino One — Unified Prisma Schema
+//  Combines: BillStacks · Builders · Spark · Apartments · Galaxy · Visitors
+//  All money fields are Int (kobo, NOT Decimal/Float)
+// ─────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ENUMS
+// ═══════════════════════════════════════════════════════════════
+
+enum ServiceSlug {
+  BILLSTACKS
+  BUILDERS
+  SPARK
+  APARTMENTS
+  GALAXY
+  VISITORS
+}
+
+enum Role {
+  SUPER_ADMIN
+  SERVICE_MANAGER
+  ACCOUNTANT
+  CASHIER
+  RECEPTION
+  STOREKEEPER
+  EMPLOYEE
+  CUSTOMER
+}
+
+enum ContactType {
+  CUSTOMER
+  SUPPLIER
+  GUEST
+  VISITOR
+  EMPLOYEE
+  AFFILIATE
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum SaleStatus {
+  PAID
+  PART_PAID
+  UNPAID
+  RETURNED
+  VOID
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  PART_PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum BookingStatus {
+  REQUESTED
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  NO_SHOW
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatusEnum {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  PARTIAL
+}
+
+enum VisitStatus {
+  EXPECTED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  EXPIRED
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  CLEANING
+  MAINTENANCE
+  OUT_OF_ORDER
+}
+
+enum FulfilmentType {
+  SELF_COLLECTION
+  DELIVERED
+  TO_DELIVER
+}
+
+enum EstimateStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  RECEIVED
+  PARTIALLY_RECEIVED
+  CANCELLED
+}
+
+enum TransferStatus {
+  REQUESTED
+  IN_TRANSIT
+  RECEIVED
+}
+
+enum LocationType {
+  SHOP
+  WAREHOUSE
+  PROPERTY
+  YARD
+  OFFICE
+  ONLINE
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PLATFORM SPINE
+// ═══════════════════════════════════════════════════════════════
+
+/// Service — represents each of the 6 Zino businesses
+model Service {
+  id        String      @id @default(cuid())
+  slug      ServiceSlug @unique
+  name      String
+  shortName String
+  color     String
+  isEnabled Boolean     @default(true)
+  sortOrder Int
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+/// Location — physical or virtual location (shops, warehouses, properties, etc.)
+model Location {
+  id        String       @id @default(cuid())
+  name      String
+  type      LocationType
+  address   String?
+  phone     String?
+  managerId String?
+  isActive  Boolean      @default(true)
+  services  ServiceSlug[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  // Relations
+  manager          User?             @relation("ManagedLocations", fields: [managerId], references: [id])
+  stockLevels      StockLevel[]
+  sales            Sale[]
+  expenses         Expense[]
+  purchaseOrders   PurchaseOrder[]
+  stockTransfersFrom StockTransfer[] @relation("TransferFrom")
+  stockTransfersTo   StockTransfer[] @relation("TransferTo")
+  stockAdjustments StockAdjustment[]
+  stockSheets      StockSheet[]
+  stockIns         StockIn[]
+  cashDrawerSessions CashDrawerSession[]
+  activityLogs     ActivityLog[]
+
+  @@index([type])
+  @@index([managerId])
+}
+
+/// User — platform-wide user account
+model User {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  password       String        // bcrypt hash
+  firstName      String
+  lastName       String
+  phone          String?
+  avatar         String?
+  roles          Role[]
+  serviceAccess  ServiceSlug[]
+  locationIds    String[]
+  emailVerified  DateTime?
+  phoneVerified  DateTime?
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Relations
+  activities        ActivityLog[]        @relation("ActivityActor")
+  notifications     Notification[]
+  managedLocations  Location[]           @relation("ManagedLocations")
+  salesMade         Sale[]               @relation("SoldBy")
+  paymentsReceived  Payment[]            @relation("ReceivedBy")
+  expensesCreated   Expense[]            @relation("ExpenseCreator")
+  purchaseOrdersCreated PurchaseOrder[]  @relation("POCreator")
+  transfersCreated  StockTransfer[]      @relation("TransferCreator")
+  transfersApproved StockTransfer[]      @relation("TransferApprover")
+  adjustmentsMade   StockAdjustment[]    @relation("AdjustedBy")
+  blogPosts         BlogPost[]           @relation("BlogAuthor")
+  wishlistItems     WishlistItem[]
+  cartItems         CartItem[]
+  cashDrawerOpened  CashDrawerSession[]  @relation("DrawerOpenedBy")
+  cashDrawerClosed  CashDrawerSession[]  @relation("DrawerClosedBy")
+  employee          Employee?            @relation("UserEmployee")
+
+  @@index([email])
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SHARED ENGINES
+// ═══════════════════════════════════════════════════════════════
+
+/// Contact — unified contact (customer, supplier, guest, visitor, employee, affiliate)
+model Contact {
+  id        String        @id @default(cuid())
+  firstName String
+  lastName  String
+  phone     String?       @unique
+  email     String?
+  address   String?
+  city      String?
+  state     String?
+  types     ContactType[]
+  sources   ServiceSlug[]
+  avatar    String?
+  notes     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  // Relations
+  invoices           Invoice[]
+  payments           Payment[]
+  sales              Sale[]
+  bookings           Booking[]
+  orders             Order[]
+  visits             Visit[]
+  employee           Employee?
+  reviews            Review[]
+  estimates          Estimate[]
+  recurringInvoices  RecurringInvoice[]
+  purchaseOrders     PurchaseOrder[]
+
+  @@index([email])
+  @@index([phone])
+}
+
+/// Product — unified product catalogue
+model Product {
+  id              String        @id @default(cuid())
+  sku             String        @unique
+  slug            String        @unique
+  name            String
+  description     String?       @db.Text
+  categoryId      String?
+  brandId         String?
+  source          ServiceSlug
+  unit            String
+  costKobo        Int           @default(0)
+  priceKobo       Int
+  salePriceKobo   Int?
+  saleStart       DateTime?
+  saleEnd         DateTime?
+  taxRatePct      Decimal       @db.Decimal(5, 2) @default(0)
+  lowStockAt      Int           @default(5)
+  images          String[]
+  specifications  Json?
+  status          ProductStatus @default(ACTIVE)
+  isFeatured      Boolean       @default(false)
+  isNew           Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  category          Category?          @relation(fields: [categoryId], references: [id])
+  brand             Brand?             @relation(fields: [brandId], references: [id])
+  stockLevels       StockLevel[]
+  variants          ProductVariant[]
+  saleItems         SaleItem[]
+  invoiceItems      InvoiceItem[]
+  orderItems        OrderItem[]
+  reviews           Review[]
+  estimateItems     EstimateItem[]
+  purchaseOrderItems PurchaseOrderItem[]
+  stockTransferItems StockTransferItem[]
+  stockAdjustments  StockAdjustment[]
+  stockSheetItems   StockSheetItem[]
+  stockInItems      StockInItem[]
+  wishlistItems     WishlistItem[]
+  cartItems         CartItem[]
+
+  @@index([source])
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([status])
+}
+
+/// Category — product category with self-referencing parent
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  parentId    String?
+  description String?
+  image       String?
+  sortOrder   Int        @default(0)
+  isActive    Boolean    @default(true)
+
+  // Relations
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+  products Product[]
+
+  @@index([parentId])
+}
+
+/// Brand — product brand
+model Brand {
+  id       String    @id @default(cuid())
+  name     String
+  slug     String    @unique
+  logo     String?
+  isActive Boolean   @default(true)
+
+  // Relations
+  products Product[]
+}
+
+/// ProductVariant — size, color, etc. variations of a Product
+model ProductVariant {
+  id        String   @id @default(cuid())
+  productId String
+  name      String
+  sku       String   @unique
+  priceKobo Int
+  costKobo  Int      @default(0)
+  images    String[]
+  attributes Json
+  isActive  Boolean  @default(true)
+
+  // Relations
+  product    Product     @relation(fields: [productId], references: [id])
+  saleItems  SaleItem[]
+  orderItems OrderItem[]
+  cartItems  CartItem[]
+
+  @@index([productId])
+}
+
+/// StockLevel — per-product, per-location stock quantity
+model StockLevel {
+  id         String   @id @default(cuid())
+  productId  String
+  locationId String
+  qty        Decimal  @db.Decimal(10, 2)
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  product  Product  @relation(fields: [productId], references: [id])
+  location Location @relation(fields: [locationId], references: [id])
+
+  @@unique([productId, locationId])
+  @@index([locationId])
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SALES (POS / Counter — Spark + Builders)
+// ═══════════════════════════════════════════════════════════════
+
+/// Sale — point-of-sale transaction
+model Sale {
+  id            String          @id @default(cuid())
+  source        ServiceSlug
+  locationId    String
+  receiptNo     String
+  contactId     String?
+  subtotalKobo  Int
+  discountKobo  Int             @default(0)
+  taxKobo       Int             @default(0)
+  totalKobo     Int
+  paidKobo      Int
+  status        SaleStatus      @default(PAID)
+  fulfilment    FulfilmentType?
+  paymentMethod String?
+  soldById      String
+  remarks       String?
+  createdAt     DateTime        @default(now())
+
+  // Relations
+  contact  Contact?  @relation(fields: [contactId], references: [id])
+  items    SaleItem[]
+  location Location  @relation(fields: [locationId], references: [id])
+  soldBy   User      @relation("SoldBy", fields: [soldById], references: [id])
+
+  @@unique([source, locationId, receiptNo])
+  @@index([source, createdAt])
+  @@index([contactId])
+  @@index([locationId])
+}
+
+/// SaleItem — line item within a Sale
+model SaleItem {
+  id            String  @id @default(cuid())
+  saleId        String
+  productId     String
+  variantId     String?
+  qty           Decimal @db.Decimal(10, 2)
+  unitPriceKobo Int
+  discountKobo  Int     @default(0)
+  totalKobo     Int
+
+  // Relations
+  sale    Sale            @relation(fields: [saleId], references: [id])
+  product Product         @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INVOICING
+// ═══════════════════════════════════════════════════════════════
+
+/// Invoice — issued to a contact for goods/services
+model Invoice {
+  id            String        @id @default(cuid())
+  source        ServiceSlug
+  invoiceNo     String
+  contactId     String
+  subtotalKobo  Int
+  discountKobo  Int           @default(0)
+  taxKobo       Int           @default(0)
+  totalKobo     Int
+  status        InvoiceStatus @default(DRAFT)
+  dueDate       DateTime?
+  isRecurring   Boolean       @default(false)
+  recurringId   String?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  contact          Contact           @relation(fields: [contactId], references: [id])
+  items            InvoiceItem[]
+  payments         Payment[]
+  recurringInvoice RecurringInvoice? @relation(fields: [recurringId], references: [id])
+
+  @@unique([source, invoiceNo])
+  @@index([contactId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+/// InvoiceItem — line item within an Invoice
+model InvoiceItem {
+  id            String  @id @default(cuid())
+  invoiceId     String
+  productId     String?
+  description   String
+  qty           Decimal @db.Decimal(10, 2)
+  unitPriceKobo Int
+  discountKobo  Int     @default(0)
+  taxKobo       Int     @default(0)
+  totalKobo     Int
+
+  // Relations
+  invoice Invoice  @relation(fields: [invoiceId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@index([invoiceId])
+}
+
+/// RecurringInvoice — template for auto-generating invoices on a schedule
+model RecurringInvoice {
+  id          String      @id @default(cuid())
+  source      ServiceSlug
+  contactId   String
+  items       Json
+  frequency   String      // DAILY, WEEKLY, MONTHLY, YEARLY
+  nextRunDate DateTime
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  contact  Contact   @relation(fields: [contactId], references: [id])
+  invoices Invoice[]
+
+  @@index([nextRunDate, isActive])
+}
+
+/// Estimate — quote / proposal sent to a contact
+model Estimate {
+  id            String         @id @default(cuid())
+  source        ServiceSlug
+  estimateNo    String
+  contactId     String
+  subtotalKobo  Int
+  discountKobo  Int            @default(0)
+  taxKobo       Int            @default(0)
+  totalKobo     Int
+  status        EstimateStatus @default(DRAFT)
+  validUntil    DateTime?
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  // Relations
+  contact Contact        @relation(fields: [contactId], references: [id])
+  items   EstimateItem[]
+
+  @@unique([source, estimateNo])
+  @@index([contactId])
+  @@index([status])
+}
+
+/// EstimateItem — line item within an Estimate
+model EstimateItem {
+  id            String  @id @default(cuid())
+  estimateId    String
+  productId     String?
+  description   String
+  qty           Decimal @db.Decimal(10, 2)
+  unitPriceKobo Int
+  totalKobo     Int
+
+  // Relations
+  estimate Estimate @relation(fields: [estimateId], references: [id])
+  product  Product? @relation(fields: [productId], references: [id])
+
+  @@index([estimateId])
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PAYMENTS & EXPENSES
+// ═══════════════════════════════════════════════════════════════
+
+/// Payment — payment received against invoice, booking, or order
+model Payment {
+  id           String      @id @default(cuid())
+  source       ServiceSlug
+  contactId    String
+  invoiceId    String?
+  bookingId    String?
+  orderId      String?
+  amountKobo   Int
+  method       String
+  reference    String?
+  receivedById String
+  note         String?
+  date         DateTime    @default(now())
+  createdAt    DateTime    @default(now())
+
+  // Relations
+  contact    Contact  @relation(fields: [contactId], references: [id])
+  invoice    Invoice? @relation(fields: [invoiceId], references: [id])
+  booking    Booking? @relation(fields: [bookingId], references: [id])
+  order      Order?   @relation(fields: [orderId], references: [id])
+  receivedBy User     @relation("ReceivedBy", fields: [receivedById], references: [id])
+
+  @@index([source, createdAt])
+  @@index([contactId])
+  @@index([invoiceId])
+  @@index([bookingId])
+  @@index([orderId])
+}
+
+/// Expense — outgoing spend (rent, supplies, etc.)
+model Expense {
+  id          String      @id @default(cuid())
+  source      ServiceSlug
+  locationId  String?
+  category    String
+  amountKobo  Int
+  paidTo      String?
+  receiptUrl  String?
+  note        String?
+  createdById String
+  date        DateTime    @default(now())
+  createdAt   DateTime    @default(now())
+
+  // Relations
+  location  Location? @relation(fields: [locationId], references: [id])
+  createdBy User      @relation("ExpenseCreator", fields: [createdById], references: [id])
+
+  @@index([source, date])
+  @@index([locationId])
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PURCHASE ORDERS
+// ═══════════════════════════════════════════════════════════════
+
+/// PurchaseOrder — order placed with a supplier
+model PurchaseOrder {
+  id            String              @id @default(cuid())
+  source        ServiceSlug
+  poNumber      String
+  contactId     String              // supplier
+  locationId    String?
+  subtotalKobo  Int
+  taxKobo       Int                 @default(0)
+  totalKobo     Int
+  status        PurchaseOrderStatus @default(DRAFT)
+  expectedDate  DateTime?
+  notes         String?
+  createdById   String
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  // Relations
+  contact   Contact             @relation(fields: [contactId], references: [id])
+  location  Location?           @relation(fields: [locationId], references: [id])
+  items     PurchaseOrderItem[]
+  createdBy User                @relation("POCreator", fields: [createdById], references: [id])
+
+  @@unique([source, poNumber])
+  @@index([contactId])
+  @@index([status])
+}
+
+/// PurchaseOrderItem — line item within a PurchaseOrder
+model PurchaseOrderItem {
+  id              String  @id @default(cuid())
+  purchaseOrderId String
+  productId       String
+  qty             Decimal @db.Decimal(10, 2)
+  unitCostKobo    Int
+  totalKobo       Int
+  receivedQty     Decimal @default(0) @db.Decimal(10, 2)
+
+  // Relations
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  product       Product       @relation(fields: [productId], references: [id])
+
+  @@index([purchaseOrderId])
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STOCK OPERATIONS
+// ═══════════════════════════════════════════════════════════════
+
+/// StockTransfer — movement of stock between locations
+model StockTransfer {
+  id             String         @id @default(cuid())
+  source         ServiceSlug
+  fromLocationId String
+  toLocationId   String
+  status         TransferStatus @default(REQUESTED)
+  notes          String?
+  createdById    String
+  approvedById   String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  // Relations
+  fromLocation Location            @relation("TransferFrom", fields: [fromLocationId], references: [id])
+  toLocation   Location            @relation("TransferTo", fields: [toLocationId], references: [id])
+  items        StockTransferItem[]
+  createdBy    User                @relation("TransferCreator", fields: [createdById], references: [id])
+  approvedBy   User?               @relation("TransferApprover", fields: [approvedById], references: [id])
+
+  @@index([status])
+  @@index([fromLocationId])
+  @@index([toLocationId])
+}
+
+/// StockTransferItem — line item within a StockTransfer
+model StockTransferItem {
+  id         String  @id @default(cuid())
+  transferId String
+  productId  String
+  qty        Decimal @db.Decimal(10, 2)
+
+  // Relations
+  transfer StockTransfer @relation(fields: [transferId], references: [id])
+  product  Product       @relation(fields: [productId], references: [id])
+
+  @@index([transferId])
+}
+
+/// StockAdjustment — manual correction to stock levels
+model StockAdjustment {
+  id           String      @id @default(cuid())
+  source       ServiceSlug
+  locationId   String
+  productId    String
+  qtyChange    Decimal     @db.Decimal(10, 2)
+  reason       String
+  adjustedById String
+  createdAt    DateTime    @default(now())
+
+  // Relations
+  location   Location @relation(fields: [locationId], references: [id])
+  product    Product  @relation(fields: [productId], references: [id])
+  adjustedBy User     @relation("AdjustedBy", fields: [adjustedById], references: [id])
+
+  @@index([locationId])
+  @@index([productId])
+}
+
+/// StockSheet — daily/periodic stock count sheet (primarily Builders)
+model StockSheet {
+  id         String      @id @default(cuid())
+  source     ServiceSlug @default(BUILDERS)
+  sheetNo    String      @unique
+  date       DateTime
+  countedBy  String
+  locationId String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  // Relations
+  items    StockSheetItem[]
+  location Location?        @relation(fields: [locationId], references: [id])
+
+  @@index([date])
+}
+
+/// StockSheetItem — individual counted item on a StockSheet
+model StockSheetItem {
+  id           String  @id @default(cuid())
+  stockSheetId String
+  productId    String
+  itemNo       Int
+  openingQty   Decimal @db.Decimal(10, 2)
+  outQty       Decimal @default(0) @db.Decimal(10, 2)
+  inQty        Decimal @default(0) @db.Decimal(10, 2)
+  closingQty   Decimal @db.Decimal(10, 2)
+
+  // Relations
+  stockSheet StockSheet @relation(fields: [stockSheetId], references: [id])
+  product    Product    @relation(fields: [productId], references: [id])
+
+  @@index([stockSheetId])
+}
+
+/// StockIn — goods received from a supplier (primarily Builders)
+model StockIn {
+  id         String      @id @default(cuid())
+  source     ServiceSlug @default(BUILDERS)
+  supplier   String
+  invoiceNo  String?
+  date       DateTime    @default(now())
+  locationId String?
+  note       String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  // Relations
+  items    StockInItem[]
+  location Location?     @relation(fields: [locationId], references: [id])
+
+  @@index([date])
+}
+
+/// StockInItem — line item within a StockIn
+model StockInItem {
+  id            String  @id @default(cuid())
+  stockInId     String
+  productId     String
+  qty           Decimal @db.Decimal(10, 2)
+  unitCostKobo  Int?
+  totalCostKobo Int?
+
+  // Relations
+  stockIn StockIn @relation(fields: [stockInId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([stockInId])
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  APARTMENTS
+// ═══════════════════════════════════════════════════════════════
+
+/// RoomType — category of room (e.g., Deluxe, Standard, Suite)
+model RoomType {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  name           String
+  description    String   @db.Text
+  basePriceKobo  Int
+  taxPct         Decimal  @db.Decimal(5, 2) @default(10)
+  maxAdults      Int
+  maxChildren    Int
+  checkInTime    String   @default("23:00")
+  checkOutTime   String   @default("10:00")
+  cancellation   String   @default("Free Cancellation")
+  images         String[]
+  amenities      String[]
+  facilities     String[]
+  bedType        String   @default("6x6")
+  isActive       Boolean  @default(true)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  rooms    Room[]
+  bookings Booking[]
+}
+
+/// Room — individual room within a RoomType
+model Room {
+  id         String     @id @default(cuid())
+  roomTypeId String
+  number     String     @unique
+  floor      Int?
+  status     RoomStatus @default(AVAILABLE)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  // Relations
+  roomType RoomType  @relation(fields: [roomTypeId], references: [id])
+  bookings Booking[]
+
+  @@index([roomTypeId])
+  @@index([status])
+}
+
+/// Booking — room reservation
+model Booking {
+  id              String        @id @default(cuid())
+  ref             String        @unique // ZINO-XXXXXX
+  source          ServiceSlug   @default(APARTMENTS)
+  contactId       String
+  roomTypeId      String
+  roomId          String?
+  checkIn         DateTime
+  checkOut        DateTime
+  adults          Int
+  children        Int
+  rooms           Int           @default(1)
+  subtotalKobo    Int
+  taxKobo         Int
+  totalKobo       Int
+  status          BookingStatus @default(REQUESTED)
+  specialRequests String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  contact  Contact   @relation(fields: [contactId], references: [id])
+  roomType RoomType  @relation(fields: [roomTypeId], references: [id])
+  room     Room?     @relation(fields: [roomId], references: [id])
+  payments Payment[]
+
+  @@index([source, createdAt])
+  @@index([contactId])
+  @@index([status])
+  @@index([checkIn, checkOut])
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DEVICE GALAXY (E-Commerce)
+// ═══════════════════════════════════════════════════════════════
+
+/// Order — e-commerce order
+model Order {
+  id              String            @id @default(cuid())
+  orderNo         String            @unique // DG-XXXXXX
+  source          ServiceSlug       @default(GALAXY)
+  contactId       String
+  status          OrderStatus       @default(PENDING)
+  paymentStatus   PaymentStatusEnum @default(PENDING)
+  shippingAddress Json
+  billingAddress  Json?
+  subtotalKobo    Int
+  taxKobo         Int
+  shippingKobo    Int               @default(0)
+  discountKobo    Int               @default(0)
+  totalKobo       Int
+  couponId        String?
+  notes           String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  contact  Contact     @relation(fields: [contactId], references: [id])
+  items    OrderItem[]
+  payments Payment[]
+  coupon   Coupon?     @relation(fields: [couponId], references: [id])
+
+  @@index([source, createdAt])
+  @@index([contactId])
+  @@index([status])
+  @@index([paymentStatus])
+}
+
+/// OrderItem — line item within an Order
+model OrderItem {
+  id            String  @id @default(cuid())
+  orderId       String
+  productId     String
+  variantId     String?
+  qty           Int
+  unitPriceKobo Int
+  totalKobo     Int
+
+  // Relations
+  order   Order           @relation(fields: [orderId], references: [id])
+  product Product         @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+/// Review — product review by a contact
+model Review {
+  id         String   @id @default(cuid())
+  productId  String
+  contactId  String
+  rating     Int
+  title      String?
+  comment    String?  @db.Text
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  // Relations
+  product Product @relation(fields: [productId], references: [id])
+  contact Contact @relation(fields: [contactId], references: [id])
+
+  @@index([productId])
+  @@index([contactId])
+}
+
+/// Coupon — discount coupon for e-commerce orders
+model Coupon {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  description   String?
+  discountType  String   // PERCENTAGE or FIXED
+  discountValue Int
+  minOrderKobo  Int?
+  maxUsage      Int?
+  usageCount    Int      @default(0)
+  validFrom     DateTime
+  validUntil    DateTime
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  // Relations
+  orders Order[]
+
+  @@index([code, isActive])
+}
+
+/// WishlistItem — user's saved product
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId])
+  @@index([userId])
+}
+
+/// CartItem — user's shopping cart entry
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  variantId String?
+  qty       Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user    User            @relation(fields: [userId], references: [id])
+  product Product         @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@unique([userId, productId, variantId])
+  @@index([userId])
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  VISITOR MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+
+/// Department — organizational department
+model Department {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  createdAt   DateTime   @default(now())
+
+  // Relations
+  employees Employee[]
+}
+
+/// Designation — job title / designation
+model Designation {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  createdAt   DateTime   @default(now())
+
+  // Relations
+  employees Employee[]
+}
+
+/// Employee — staff member linked to a Contact and optionally a User
+model Employee {
+  id            String   @id @default(cuid())
+  contactId     String   @unique
+  departmentId  String?
+  designationId String?
+  userId        String?  @unique
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  contact      Contact      @relation(fields: [contactId], references: [id])
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  designation  Designation? @relation(fields: [designationId], references: [id])
+  user         User?        @relation("UserEmployee", fields: [userId], references: [id])
+  attendances  Attendance[]
+  hostedVisits Visit[]      @relation("VisitHost")
+  preRegisters PreRegister[] @relation("PreRegisterHost")
+
+  @@index([departmentId])
+  @@index([designationId])
+}
+
+/// Visit — visitor check-in/out record
+model Visit {
+  id            String      @id @default(cuid())
+  source        ServiceSlug @default(VISITORS)
+  contactId     String
+  hostId        String?
+  purpose       String?
+  checkInAt     DateTime?
+  checkOutAt    DateTime?
+  status        VisitStatus @default(EXPECTED)
+  preRegisterId String?
+  badgeNumber   String?
+  photo         String?
+  createdAt     DateTime    @default(now())
+
+  // Relations
+  contact     Contact      @relation(fields: [contactId], references: [id])
+  host        Employee?    @relation("VisitHost", fields: [hostId], references: [id])
+  preRegister PreRegister? @relation(fields: [preRegisterId], references: [id])
+
+  @@index([source, createdAt])
+  @@index([contactId])
+  @@index([hostId])
+  @@index([status])
+}
+
+/// PreRegister — advance visitor registration
+model PreRegister {
+  id           String      @id @default(cuid())
+  source       ServiceSlug @default(VISITORS)
+  visitorName  String
+  visitorEmail String?
+  visitorPhone String?
+  hostId       String
+  purpose      String?
+  expectedDate DateTime
+  expectedTime String?
+  status       String      @default("PENDING") // PENDING, CHECKED_IN, EXPIRED, CANCELLED
+  inviteSentAt DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // Relations
+  host   Employee @relation("PreRegisterHost", fields: [hostId], references: [id])
+  visits Visit[]
+
+  @@index([expectedDate])
+  @@index([hostId])
+  @@index([status])
+}
+
+/// Attendance — daily employee attendance record
+model Attendance {
+  id         String   @id @default(cuid())
+  employeeId String
+  date       DateTime @db.Date
+  clockInAt  DateTime?
+  clockOutAt DateTime?
+  status     String   @default("PRESENT") // PRESENT, LATE, ABSENT, HALF_DAY
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  // Relations
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, date])
+  @@index([date])
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PLATFORM / CROSS-CUTTING
+// ═══════════════════════════════════════════════════════════════
+
+/// ActivityLog — audit trail of all significant actions
+model ActivityLog {
+  id         String      @id @default(cuid())
+  source     ServiceSlug
+  locationId String?
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  summary    String
+  amountKobo Int?
+  metadata   Json?
+  createdAt  DateTime    @default(now())
+
+  // Relations
+  actor    User?     @relation("ActivityActor", fields: [actorId], references: [id])
+  location Location? @relation(fields: [locationId], references: [id])
+
+  @@index([source, createdAt])
+  @@index([actorId])
+  @@index([entityType, entityId])
+}
+
+/// Notification — in-app notification for a user
+model Notification {
+  id         String      @id @default(cuid())
+  source     ServiceSlug
+  userId     String
+  title      String
+  body       String
+  entityType String?
+  entityId   String?
+  isRead     Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@index([source, createdAt])
+}
+
+/// NotificationTemplate — template for generating notifications across channels
+model NotificationTemplate {
+  id        String      @id @default(cuid())
+  source    ServiceSlug
+  event     String
+  channel   String      // EMAIL, SMS, IN_APP
+  subject   String?
+  body      String      @db.Text
+  variables String[]
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([source, event])
+}
+
+/// BlogPost — content marketing / news
+model BlogPost {
+  id          String      @id @default(cuid())
+  source      ServiceSlug
+  title       String
+  slug        String      @unique
+  excerpt     String?     @db.Text
+  content     String      @db.Text
+  coverImage  String?
+  authorId    String
+  category    String?
+  tags        String[]
+  isPublished Boolean     @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  author User @relation("BlogAuthor", fields: [authorId], references: [id])
+
+  @@index([source, isPublished])
+  @@index([slug])
+}
+
+/// FAQ — frequently asked questions
+model FAQ {
+  id        String      @id @default(cuid())
+  source    ServiceSlug
+  question  String
+  answer    String      @db.Text
+  sortOrder Int         @default(0)
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+
+  @@index([source, isActive])
+}
+
+/// ContactMessage — contact form submissions
+model ContactMessage {
+  id        String       @id @default(cuid())
+  source    ServiceSlug?
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  message   String       @db.Text
+  isRead    Boolean      @default(false)
+  createdAt DateTime     @default(now())
+
+  @@index([isRead])
+  @@index([source])
+}
+
+/// NewsletterSubscriber — email list subscriber
+model NewsletterSubscriber {
+  id        String       @id @default(cuid())
+  email     String       @unique
+  source    ServiceSlug?
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+}
+
+/// CashDrawerSession — daily cash drawer open/close for POS
+model CashDrawerSession {
+  id                String   @id @default(cuid())
+  locationId        String
+  openedById        String
+  closedById        String?
+  openingAmountKobo Int
+  cashSalesKobo     Int      @default(0)
+  cashReceivedKobo  Int      @default(0)
+  expensesPaidKobo  Int      @default(0)
+  expectedCashKobo  Int      @default(0)
+  countedCashKobo   Int?
+  variance          Int?
+  date              DateTime @db.Date
+  openedAt          DateTime @default(now())
+  closedAt          DateTime?
+  notes             String?
+
+  // Relations
+  location Location @relation(fields: [locationId], references: [id])
+  openedBy User     @relation("DrawerOpenedBy", fields: [openedById], references: [id])
+  closedBy User?    @relation("DrawerClosedBy", fields: [closedById], references: [id])
+
+  @@index([locationId, date])
+  @@index([openedById])
+}
+
+/// Setting — key-value configuration store
+model Setting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String   @db.Text
+  group       String   @default("general")
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@index([group])
+}

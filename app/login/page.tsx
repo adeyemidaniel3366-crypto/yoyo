@@ -1,0 +1,189 @@
+"use client";
+
+import React, { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  Lock,
+  Mail,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  ShieldCheck,
+  CheckCircle2,
+} from "lucide-react";
+import { PLATFORM_NAME } from "@/lib/constants";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      router.push("/admin");
+    }, 600);
+  };
+
+  // Quick Demo Login buttons matching Visitor Management screenshot
+  const handleDemoLogin = (role: "admin" | "employee" | "reception") => {
+    if (role === "admin") {
+      setEmail("admin@zinoone.local");
+      setPassword("Admin123!");
+    } else if (role === "employee") {
+      setEmail("john.doe@zinoone.local");
+      setPassword("Employee123!");
+    } else {
+      setEmail("reception@zinoapartments.com");
+      setPassword("Reception123!");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F4F6FB] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+      {/* Top Brand Link */}
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center mb-6">
+        <Link href="/" className="inline-flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-xl bg-active flex items-center justify-center font-black text-white text-lg shadow-md">
+            Z1
+          </div>
+          <span className="text-2xl font-black text-heading tracking-tight">
+            {PLATFORM_NAME}
+          </span>
+        </Link>
+        <p className="text-xs text-muted mt-1">
+          Unified Business Platform · One Login for Everything
+        </p>
+      </div>
+
+      {/* Main Login Card */}
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-6 sm:px-10 rounded-2xl border border-border shadow-md space-y-6">
+          <div>
+            <h2 className="text-xl font-bold text-heading">Sign In Account</h2>
+            <p className="text-xs text-muted mt-1">
+              Enter your credentials to access your unified admin workspace.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+            {/* Email */}
+            <div>
+              <label className="block font-bold text-heading uppercase tracking-wider mb-1.5">
+                E-mail Address
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  required
+                  placeholder="admin@zinoone.local"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full h-10 px-3.5 rounded-lg border border-border bg-white text-heading placeholder:text-muted focus:outline-none focus:border-active focus:ring-2 focus:ring-active/20"
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block font-bold text-heading uppercase tracking-wider mb-1.5">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full h-10 pl-3.5 pr-10 rounded-lg border border-border bg-white text-heading placeholder:text-muted focus:outline-none focus:border-active focus:ring-2 focus:ring-active/20"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-heading"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Remember Me & Reset Password */}
+            <div className="flex items-center justify-between text-xs pt-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="rounded border-border text-active focus:ring-active"
+                />
+                <span className="text-muted">Remember Me</span>
+              </label>
+
+              <Link
+                href="/forgot-password"
+                className="font-bold text-active hover:underline"
+              >
+                Reset Password?
+              </Link>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-11 rounded-xl bg-active hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-sm flex items-center justify-center gap-2 mt-2"
+            >
+              <span>{isLoading ? "Signing in..." : "SIGN IN"}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+
+          {/* Demo Login Buttons matching Screenshot media_1795026254021_4d0a38d1.jpg */}
+          <div className="pt-4 border-t border-border text-center space-y-2.5">
+            <p className="text-[11px] font-bold text-muted uppercase tracking-wider">
+              For Demo Login, Click Below:
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleDemoLogin("admin")}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-2xs"
+              >
+                Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoLogin("employee")}
+                className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition-colors shadow-2xs"
+              >
+                Employee
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoLogin("reception")}
+                className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-colors shadow-2xs"
+              >
+                Reception
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="text-center mt-6 text-xs text-muted">
+          <span>Don&apos;t have a customer account? </span>
+          <Link href="/register" className="font-bold text-active hover:underline">
+            Create public account
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}

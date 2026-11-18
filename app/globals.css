@@ -1,0 +1,226 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   Zino One — Design System CSS Variables
+   --------------------------------------------------------------------------- */
+:root {
+  /* Layout */
+  --color-sidebar: #14142B;
+  --color-topbar: #1A1A2E;
+  --color-active: #4F46E5;
+  --color-content-bg: #F4F6FB;
+  --color-card: #FFFFFF;
+
+  /* Typography */
+  --color-heading: #1A1A2E;
+  --color-body: #4A4A5A;
+  --color-muted: #8A8A9A;
+
+  /* Borders */
+  --color-border: #E9ECEF;
+
+  /* Semantic */
+  --color-success: #28A745;
+  --color-warning: #FFB800;
+  --color-danger: #DC3545;
+  --color-info: #17A2B8;
+
+  /* Services */
+  --color-billstacks: #28A745;
+  --color-billstacks-tint: #E8F5EE;
+  --color-billstacks-dark: #1b6d2f;
+
+  --color-builders: #006B3F;
+  --color-builders-accent: #FFB800;
+  --color-builders-tint: #E8F5EE;
+  --color-builders-dark: #004d2c;
+
+  --color-spark: #2563EB;
+  --color-spark-tint: #E8EEFB;
+  --color-spark-dark: #1d4ed8;
+
+  --color-apartments: #1E3A5F;
+  --color-apartments-accent: #D4A843;
+  --color-apartments-tint: #E8EEF5;
+  --color-apartments-dark: #13253d;
+
+  --color-galaxy: #E74C3C;
+  --color-galaxy-slate: #2C3E50;
+  --color-galaxy-tint: #FDF2F2;
+  --color-galaxy-dark: #c0392b;
+
+  --color-visitors: #7C3AED;
+  --color-visitors-tint: #F3EFFF;
+  --color-visitors-dark: #5b21b6;
+
+  /* Sidebar dimensions */
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 72px;
+  --topbar-height: 64px;
+}
+
+/* ---------------------------------------------------------------------------
+   Base layer
+   --------------------------------------------------------------------------- */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    @apply border-border;
+  }
+
+  html {
+    @apply antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  body {
+    @apply bg-content-bg text-body font-sans;
+    min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply text-heading font-semibold tracking-tight;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Component layer
+   --------------------------------------------------------------------------- */
+@layer components {
+  /* Scrollbar styling */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+
+  /* Card */
+  .card {
+    @apply bg-card rounded-xl border border-border shadow-sm;
+  }
+
+  /* Stat card */
+  .stat-card {
+    @apply card p-5 flex flex-col gap-3;
+  }
+
+  /* Badge */
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+
+  /* Page header */
+  .page-header {
+    @apply flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold text-heading;
+  }
+
+  /* Table base */
+  .data-table {
+    @apply w-full text-sm;
+  }
+
+  .data-table thead {
+    @apply border-b border-border;
+  }
+
+  .data-table th {
+    @apply px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider;
+  }
+
+  .data-table td {
+    @apply px-4 py-3.5 text-body;
+  }
+
+  .data-table tbody tr {
+    @apply border-b border-border last:border-0 hover:bg-gray-50/50 transition-colors;
+  }
+
+  /* Sidebar link */
+  .sidebar-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-white/10 transition-colors;
+  }
+
+  .sidebar-link-active {
+    @apply text-white bg-active;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Utility layer
+   --------------------------------------------------------------------------- */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-in-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-slide-down {
+    animation: slideDown 0.3s ease-out;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Keyframes
+   --------------------------------------------------------------------------- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
