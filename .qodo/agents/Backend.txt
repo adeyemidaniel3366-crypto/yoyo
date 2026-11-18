@@ -1,0 +1,2320 @@
+Zino One — Backend Build Prompt
+Goal: Build the complete server side of the Zino One unified
+business platform: the PostgreSQL database, the Prisma data layer,
+authentication and authorization, every API route, all business
+logic, payments, notifications, exports, scheduled jobs, and the
+seed script.
+>
+Read first: zino-unified-platform-prompt.md — the main spec.
+It defines the six services, the design system, the routes, the
+source-labelling rules, the roles, and the module features. This
+file is the server-side detail for that spec. It does not
+re-specify screens; it specifies everything the screens call.
+>
+Where the two files disagree, this file wins for backend matters
+(schema details, API contracts, transaction rules, security). If a
+disagreement changes a user-facing behaviour, flag it to the owner
+instead of deciding silently.
+>
+How to use this prompt: paste the whole file into your builder
+agent as the task, in the same project folder as the main build (or
+in an empty folder if the backend is built first — the frontend will
+be built against the API contracts in §7). Work in the phase order
+in §21. Do not invent endpoints, tables, or rules that are not in
+this spec or the main spec.
+
+1. Scope — what "backend" means here
+In scope (build all of it):
+PostgreSQL database + full Prisma schema (§5) + migrations + seed.
+NextAuth authentication, sessions, role and scope enforcement (§6).
+All API routes in §7 / §13 of the main spec, with validation,
+  pagination, filtering, and the standard response envelope.
+All business logic in §9: sales, invoicing, payments, stock
+  movements, booking availability, order pipeline, attendance,
+  cash drawer, numbering sequences.
+Source labelling enforced server-side (§8) — the API never trusts
+  the client to label a record.
+Activity logging on every mutation (§8.4).
+Payments: Paystack + Flutterwave checkout and webhooks (§10).
+Notifications: in-app, email (Nodemailer), SMS (Termii, optional)
+  with templates (§11).
+File uploads (§12), exports — CSV / Excel / PDF (§13).
+Scheduled jobs: recurring invoices, overdue marking, expiring
+  pre-registrations, low-stock scan, daily summaries (§14).
+Logging, error handling, rate limiting, security headers (§15–§17).
+Tests (§18) and deployment config (§20).
+Out of scope (do not build):
+Any page, component, or styling — the frontend consumes these APIs.
+Offline POS syncing (a later phase per the main spec §18).
+Real data migration from the old systems (CSV import endpoints
+  only — see §5.7).
+Mobile apps.
+The API is the contract. The frontend team (or the frontend phase
+of the same build) works only against the endpoints in §7. If an
+endpoint's shape must change, update this file's contract table first.
+
+2. Tech stack (locked — backend view)
+Layer
+Choice
+Notes
+Runtime
+Node.js 20 LTS
+engines field in package.json: >=20.
+Framework
+Next.js 14+ (App Router) + TypeScript (strict: true)
+API routes under app/api/. Route Handlers only — no pages/api.
+Database
+PostgreSQL 15+
+One database for all six services.
+ORM
+Prisma 5+
+Schema in prisma/schema.prisma. Migrations in prisma/migrations/.
+Auth
+NextAuth.js v5 (Auth.js) with Prisma adapter, database sessions
+Credentials provider (email + password, bcrypt). See §6.
+Validation
+Zod
+Every request body and query string validated. Schemas in lib/validators/.
+Passwords
+bcryptjs, 12 rounds
+Never store or log a plain password.
+Payments
+Paystack + Flutterwave
+Server SDKs / REST calls from lib/payments/. Webhook signature verification mandatory.
+Email
+Nodemailer (SMTP)
+Templates in lib/email/templates/.
+SMS
+Termii REST API (optional, env-flagged)
+Off unless TERMII_API_KEY is set.
+Excel export
+exceljs
+CSV is hand-built (no library); PDF via pdfkit.
+Charts data
+Computed in SQL/Prisma, returned as JSON
+No chart library on the server.
+Logging
+pino
+JSON logs. No secrets, passwords, tokens, or full card data in logs — ever.
+Rate limiting
+In-memory token bucket in dev; Upstash Redis in production (env-flagged)
+See §17.
+Cron
+Vercel Cron (vercel.json crons)
+Jobs in app/api/cron/, protected by CRON_SECRET.
+Testing
+Vitest + Supertest-style route tests (via next-test-api-route-handler or direct handler calls)
+See §18.
+Do not use: float money, raw SQL string concatenation (Prisma
+only, or $queryRaw with parameterised templates), a second database,
+or any auth mechanism other than NextAuth.
+
+3. Project structure (backend files)
+zino-one/
+├── prisma/
+│   ├── schema.prisma          # §5 — the full schema
+│   ├── migrations/            # generated, committed, never edited by hand
+│   └── seed.ts                # §19 — demo data (re-runnable, --reset)
+├── app/
+│   └── api/
+│       ├── auth/[...nextauth]/route.ts
+│       ├── dashboard/summary/route.ts
+│       ├── activity/route.ts
+│       ├── search/route.ts
+│       ├── contacts/route.ts
+│       ├── contacts/[id]/route.ts
+│       ├── notifications/route.ts
+│       ├── locations/route.ts
+│       ├── reports/[report]/route.ts
+│       ├── exports/route.ts
+│       ├── users/route.ts
+│       ├── users/[id]/route.ts
+│       ├── billstacks/...     # one folder per service, routes per §7
+│       ├── builders/...
+│       ├── spark/...
+│       ├── apartments/...
+│       ├── galaxy/...
+│       ├── visitors/...
+│       ├── webhooks/paystack/route.ts
+│       ├── webhooks/flutterwave/route.ts
+│       ├── cron/recurring-invoices/route.ts
+│       ├── cron/overdue-invoices/route.ts
+│       ├── cron/expire-pre-registers/route.ts
+│       ├── cron/low-stock-scan/route.ts
+│       └── cron/daily-summary/route.ts
+├── lib/
+│   ├── prisma.ts              # singleton PrismaClient
+│   ├── auth.ts                # NextAuth config + helpers (getSessionUser, requireRole)
+│   ├── scope.ts               # service/location scoping helpers (§6.4)
+│   ├── api.ts                 # response envelope, pagination, error classes (§7)
+│   ├── validators/            # Zod schemas, one file per resource
+│   ├── services/              # business logic, one file per domain:
+│   │   ├── sales.ts           # POS + counter sales (Spark, Builders)
+│   │   ├── invoicing.ts       # invoices, estimates, recurring, payments
+│   │   ├── inventory.ts       # stock levels, transfers, adjustments, counts
+│   │   ├── bookings.ts        # availability, booking lifecycle, front desk
+│   │   ├── orders.ts          # Galaxy orders + cart sync
+│   │   ├── visitors.ts        # visits, pre-registers, attendance
+│   │   ├── drawer.ts          # cash drawer sessions
+│   │   ├── numbering.ts       # atomic sequences (§5.5)
+│   │   ├── activity.ts        # activity log writer (§8.4)
+│   │   ├── notifications.ts   # notify() + template rendering (§11)
+│   │   ├── reports.ts         # report query builders (§13/§14 of main spec)
+│   │   ├── exports.ts         # CSV/Excel/PDF builders (§13)
+│   │   └── search.ts          # global search (§10.5 of main spec)
+│   ├── payments/
+│   │   ├── paystack.ts
+│   │   └── flutterwave.ts
+│   ├── email/
+│   │   ├── transporter.ts
+│   │   └── templates/         # one .ts per email (booking confirmation, ...)
+│   ├── sms/termii.ts
+│   ├── uploads.ts             # file validation + storage (§12)
+│   ├── money.ts               # kobo helpers: toKobo, formatNGN, addKobo...
+│   ├── dates.ts               # date-fns helpers, Africa/Lagos timezone
+│   └── logger.ts              # pino instance
+├── middleware.ts              # route protection (redirect to /login)
+├── vercel.json                # cron jobs
+├── .env.example               # every variable in §4, with placeholders
+└── vitest.config.ts
+Rules:
+Route handlers are THIN: parse + validate input, check auth/scope,
+  call one service function, return the envelope. No business logic
+  in route.ts files. No Prisma calls in route.ts files — services
+  own all database access.
+Every service function takes (ctx, input) where ctx carries the
+  authenticated user, their service/location scope, and (inside a
+  transaction) the transaction client.
+Shared helpers live in lib/ — never duplicated per service.
+
+4. Environment variables
+All in .env (dev) / Vercel project settings (production). .env.example
+lists every one with a placeholder and a comment. Never commit a real
+secret.
+# Database
+DATABASE_URL="postgresql://user:pass@host:5432/zino_one?sslmode=require"
+DIRECT_URL="postgresql://user:pass@host:5432/zino_one?sslmode=require"
+
+# Auth
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="<openssl rand -base64 32>"
+DEMO_LOGINS="true"                 # demo role buttons; MUST be "false" in production
+
+# Platform
+NEXT_PUBLIC_PLATFORM_NAME="Zino One"
+APP_TIMEZONE="Africa/Lagos"
+
+# Payments (sandbox keys in dev; live keys only in production)
+PAYSTACK_SECRET_KEY=""
+PAYSTACK_PUBLIC_KEY=""
+FLUTTERWAVE_SECRET_KEY=""
+FLUTTERWAVE_PUBLIC_KEY=""
+FLUTTERWAVE_WEBHOOK_SECRET_HASH=""
+
+# Email (SMTP)
+SMTP_HOST=""
+SMTP_PORT="587"
+SMTP_USER=""
+SMTP_PASS=""
+EMAIL_FROM="Zino One <no-reply@zinoone.com>"
+
+# SMS (optional; notifications skip SMS silently when unset)
+TERMII_API_KEY=""
+TERMII_SENDER_ID="ZinoOne"
+
+# Uploads (S3-compatible; local public/uploads when unset)
+S3_ENDPOINT=""
+S3_BUCKET=""
+S3_ACCESS_KEY=""
+S3_SECRET_KEY=""
+
+# Cron + rate limiting
+CRON_SECRET="<openssl rand -hex 16>"
+UPSTASH_REDIS_REST_URL=""
+UPSTASH_REDIS_REST_TOKEN=""
+
+# Business defaults
+DEFAULT_TAX_PCT="7.5"
+APARTMENTS_TAX_PCT="10"
+LOW_STOCK_DEFAULT="5"
+LARGE_SALE_ALERT_KOBO="50000000"   # ₦500,000 — notify manager above this
+Startup check: on boot, the app validates that DATABASE_URL,
+NEXTAUTH_SECRET and NEXTAUTH_URL are set and fails fast with a
+clear message if any is missing. Optional integrations (SMS, S3,
+Upstash) degrade gracefully with a warning log, never a crash.
+
+5. Database & Prisma
+5.1 Setup
+PostgreSQL 15+. One database, one schema (public).
+prisma migrate dev for local development; prisma migrate deploy
+  in production (runs in the Vercel build or as a release step — never
+  migrate dev in production, never db push in production).
+Every migration is committed. Never edit a migration that has run
+  anywhere shared — create a new one.
+Connection pooling: Prisma's default pool; set connection_limit=10
+  in DATABASE_URL for serverless. DIRECT_URL is used by migrations.
+5.2 Money — integer kobo, always
+Every money column is Int and stores kobo (1 NGN = 100 kobo).
+  Column names end in Kobo (totalKobo, priceKobo, paidKobo).
+No Decimal money columns. No float arithmetic on money anywhere.
+  lib/money.ts provides toKobo(naira), fromKobo(kobo),
+  formatNGN(kobo) (via `Intl.NumberFormat('en-NG', { style:
+  'currency', currency: 'NGN' })), and addKobo/subKobo/mulKobo`
+  (integer-only; mulKobo rounds half-up on division by using
+  integer math: (a * b + 50) / 100 style — never Math.round on a
+  float product).
+Tax is computed per line (line total × rate, rounded to the
+  nearest kobo), then summed. Never compute tax on the order total.
+Quantities may be fractional (kg, metres) — quantities use
+  Decimal(10, 2); money never does.
+Line total = qty × unitPriceKobo, computed in integer kobo after
+  converting qty to a scaled integer (qty × 100). Keep a qtyScaled
+  helper in lib/money.ts.
+5.3 The source spine
+`enum ServiceSlug { BILLSTACKS BUILDERS SPARK APARTMENTS GALAXY
+  VISITORS } — the six services. The Service` table (§5.6) holds
+  their display names, short names and colours; the enum is the
+  code-level value.
+Every transactional model has source ServiceSlug (see the schema
+  in §5.6). source is NOT NULL except on Contact.sources
+  (an array — a contact may belong to several services) and on
+  records explicitly marked Shared in the main spec §8.1 (only
+  contacts created with no service context, and platform settings).
+source is set by the server from the route context (§8.1) and is
+  immutable: no update endpoint accepts a source field, and the
+  Prisma schema has no update path for it.
+locationId is stored next to source wherever a location
+  applies (sales, stock, expenses, bookings via property).
+5.4 Indexes (mandatory)
+(source, createdAt) on: Sale, Invoice, Payment, Expense, Booking,
+  Order, Visit, ActivityLog, Notification.
+(locationId, createdAt) on: Sale, StockLevel (unique
+  [productId, locationId]), Expense.
+(contactId, createdAt) on: Sale, Invoice, Booking, Order, Visit.
+(status) on: Invoice, Booking, Order, Visit, Room.
+(slug) unique on: Product, Category, Brand, RoomType, BlogPost.
+(sku) unique on: Product, ProductVariant.
+(email) unique on: User, Contact (where present — Contact.email
+  is unique when not null: use a partial unique index).
+(phone) unique on: Contact (partial, when not null).
+Full-text: a tsvector is NOT required in v1 — global search uses
+  contains with mode: 'insensitive' on indexed text columns
+  (see §10.5 of the main spec). Add Postgres full-text search only
+  if search becomes slow (measure first).
+5.5 Numbering sequences (atomic — never count rows)
+Invoice numbers, receipt numbers, order numbers, booking refs and
+stock sheet numbers must be sequential and gap-free *within their
+sequence* and must never collide under concurrent requests.
+A Sequence table: `{ key String @unique, // e.g. "INV-BUILDERS-2026"
+  lastValue Int }`.
+lib/services/numbering.ts exposes nextNumber(key) which runs
+  inside the caller's transaction: `UPDATE sequences SET last_value =
+  last_value + 1 WHERE key = $key RETURNING last_value` (via
+  $queryRaw — the one sanctioned raw query), or a Prisma
+  upsert + increment in a transaction with row locking. The
+  caller formats the value (INV-000106, ST-00021, ZINO-XXXXXX
+  uses a random 6-char suffix instead of a sequence — see below).
+Sequences (keys): INV-BILLSTACKS, INV-BUILDERS (separate
+  sequences per service — the main spec keeps each service's own
+  invoice run), RCPT-SPARK-<locationId>, RCPT-BUILDERS,
+  SHEET-BUILDERS, PO-BILLSTACKS.
+Random refs (no sequence needed, but must be unique): booking ref
+  ZINO-XXXXXX (6 uppercase alphanumerics, retry on unique
+  collision, max 5 attempts), order no DG-XXXXXX (same pattern),
+  payment reference (gateway-provided).
+Numbering happens INSIDE the creation transaction, so a rolled-back
+  sale never consumes a number.
+5.6 Full Prisma schema
+The main spec §12 gives the core models. This is the complete
+schema: core models plus every supporting model. Keep model and
+field names exactly as written here — the frontend and the tests
+depend on them.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ServiceSlug {
+  BILLSTACKS
+  BUILDERS
+  SPARK
+  APARTMENTS
+  GALAXY
+  VISITORS
+}
+
+enum Role {
+  SUPER_ADMIN
+  SERVICE_MANAGER
+  ACCOUNTANT
+  CASHIER
+  RECEPTION
+  STOREKEEPER
+  EMPLOYEE
+  CUSTOMER
+}
+
+// ---------- Platform spine ----------
+
+model Service {
+  id        String      @id @default(cuid())
+  slug      ServiceSlug @unique
+  name      String
+  shortName String
+  color     String
+  isEnabled Boolean     @default(true)
+  sortOrder Int
+}
+
+model Location {
+  id         String        @id @default(cuid())
+  name       String
+  type       String
+  address    String?
+  phone      String?
+  managerId  String?
+  isActive   Boolean       @default(true)
+  services   ServiceSlug[]
+  stock      StockLevel[]
+  sales      Sale[]
+  expenses   Expense[]
+  transfersOut StockTransfer[] @relation("TransferFrom")
+  transfersIn  StockTransfer[] @relation("TransferTo")
+  adjustments  StockAdjustment[]
+  drawerSessions CashDrawerSession[]
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+model Sequence {
+  key       String @id
+  lastValue Int    @default(0)
+}
+
+// ---------- Auth (NextAuth v5 + Prisma adapter) ----------
+
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  password      String
+  firstName     String
+  lastName      String
+  phone         String?
+  avatar        String?
+  roles         Role[]
+  serviceAccess ServiceSlug[]
+  locationIds   String[]
+  emailVerified DateTime?
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  activity      ActivityLog[]
+  notifications Notification[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
+}
+
+// ---------- Shared engines ----------
+
+model Contact {
+  id         String        @id @default(cuid())
+  name       String
+  phone      String?       @unique
+  email      String?       @unique
+  address    String?
+  types      ContactType[]
+  sources    ServiceSlug[]
+  locationId String?
+  notes      String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  invoices   Invoice[]
+  payments   Payment[]
+  sales      Sale[]
+  bookings   Booking[]
+  orders     Order[]
+  visits     Visit[]
+  employee   Employee?
+}
+
+enum ContactType {
+  CUSTOMER
+  SUPPLIER
+  GUEST
+  VISITOR
+  EMPLOYEE
+  AFFILIATE
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  name        String
+  description String?
+  image       String?
+  parentId    String?
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  source      ServiceSlug
+  sortOrder   Int        @default(0)
+  isActive    Boolean    @default(true)
+  products    Product[]
+}
+
+model Brand {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  logo        String?
+  description String?
+  source      ServiceSlug
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  products    Product[]
+}
+
+model Product {
+  id             String          @id @default(cuid())
+  sku            String          @unique
+  slug           String          @unique
+  name           String
+  description    String?         @db.Text
+  categoryId     String?
+  category       Category?       @relation(fields: [categoryId], references: [id])
+  brandId        String?
+  brand          Brand?          @relation(fields: [brandId], references: [id])
+  source         ServiceSlug
+  unit           String
+  costKobo       Int             @default(0)
+  priceKobo      Int
+  salePriceKobo  Int?
+  saleStart      DateTime?
+  saleEnd        DateTime?
+  taxRatePct     Decimal         @default(0) @db.Decimal(5, 2)
+  lowStockAt     Int             @default(5)
+  images         String[]
+  specifications Json?
+  status         ProductStatus   @default(ACTIVE)
+  isFeatured     Boolean         @default(false)
+  isNew          Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  stock          StockLevel[]
+  variants       ProductVariant[]
+  saleItems      SaleItem[]
+  invoiceItems   InvoiceItem[]
+  orderItems     OrderItem[]
+  reviews        Review[]
+  cartItems      CartItem[]
+  wishlistItems  WishlistItem[]
+  compareItems   CompareItem[]
+  purchaseItems  PurchaseItem[]
+  transferItems  StockTransferItem[]
+  adjustmentItems StockAdjustmentItem[]
+  sheetItems     StockSheetItem[]
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model ProductVariant {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String
+  sku         String   @unique
+  priceKobo   Int
+  stockQty    Int      @default(0)
+  images      String[]
+  attributes  Json
+  isActive    Boolean  @default(true)
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+}
+
+model StockLevel {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id])
+  qty        Decimal  @db.Decimal(10, 2)
+  updatedAt  DateTime @updatedAt
+  @@unique([productId, locationId])
+}
+
+model Sale {
+  id           String      @id @default(cuid())
+  source       ServiceSlug
+  locationId   String
+  location     Location    @relation(fields: [locationId], references: [id])
+  receiptNo    String
+  contactId    String?
+  contact      Contact?    @relation(fields: [contactId], references: [id])
+  items        SaleItem[]
+  subtotalKobo Int
+  discountKobo Int         @default(0)
+  taxKobo      Int         @default(0)
+  totalKobo    Int
+  paidKobo     Int
+  status       SaleStatus  @default(PAID)
+  fulfilment   String?
+  paymentMethod String?
+  soldById     String
+  remarks      String?
+  isParked     Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  @@unique([source, locationId, receiptNo])
+  @@index([source, createdAt])
+  @@index([locationId, createdAt])
+}
+
+enum SaleStatus {
+  PAID
+  PART_PAID
+  UNPAID
+  RETURNED
+  VOID
+}
+
+model SaleItem {
+  id          String   @id @default(cuid())
+  saleId      String
+  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  qty         Decimal  @db.Decimal(10, 2)
+  unitPriceKobo Int
+  totalKobo   Int
+}
+
+model Invoice {
+  id           String        @id @default(cuid())
+  source       ServiceSlug
+  invoiceNo    String
+  contactId    String
+  contact      Contact       @relation(fields: [contactId], references: [id])
+  items        InvoiceItem[]
+  payments     Payment[]
+  subtotalKobo Int
+  discountKobo Int           @default(0)
+  taxKobo      Int           @default(0)
+  totalKobo    Int
+  status       InvoiceStatus @default(DRAFT)
+  dueDate      DateTime?
+  isRecurring  Boolean       @default(false)
+  recurringId  String?
+  recurring    RecurringInvoice? @relation(fields: [recurringId], references: [id])
+  sentAt       DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  @@unique([source, invoiceNo])
+  @@index([source, createdAt])
+  @@index([status])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  PART_PAID
+  OVERDUE
+  CANCELLED
+}
+
+model InvoiceItem {
+  id            String  @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId     String?
+  product       Product? @relation(fields: [productId], references: [id])
+  description   String
+  qty           Decimal @db.Decimal(10, 2)
+  unitPriceKobo Int
+  totalKobo     Int
+}
+
+model RecurringInvoice {
+  id            String   @id @default(cuid())
+  source        ServiceSlug
+  contactId     String
+  template      Json
+  frequency     String
+  nextRunAt     DateTime
+  isActive      Boolean  @default(true)
+  invoices      Invoice[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Estimate {
+  id           String        @id @default(cuid())
+  source       ServiceSlug
+  estimateNo   String
+  contactId    String
+  items        Json
+  subtotalKobo Int
+  taxKobo      Int           @default(0)
+  totalKobo    Int
+  status       EstimateStatus @default(DRAFT)
+  validUntil   DateTime?
+  convertedInvoiceId String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  @@unique([source, estimateNo])
+}
+
+enum EstimateStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  CONVERTED
+}
+
+model Payment {
+  id           String      @id @default(cuid())
+  source       ServiceSlug
+  contactId    String
+  contact      Contact     @relation(fields: [contactId], references: [id])
+  invoiceId    String?
+  invoice      Invoice?    @relation(fields: [invoiceId], references: [id])
+  bookingId    String?
+  booking      Booking?    @relation(fields: [bookingId], references: [id])
+  orderId      String?
+  order        Order?      @relation(fields: [orderId], references: [id])
+  amountKobo   Int
+  method       String
+  reference    String?     @unique
+  gateway      String?
+  gatewayRef   String?     @unique
+  status       PaymentStatus @default(PAID)
+  receivedById String
+  note         String?
+  date         DateTime    @default(now())
+  @@index([source, createdAt])
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  PARTIAL
+}
+
+model Expense {
+  id          String      @id @default(cuid())
+  source      ServiceSlug
+  locationId  String?
+  location    Location?   @relation(fields: [locationId], references: [id])
+  category    String
+  amountKobo  Int
+  paidTo      String?
+  receiptUrl  String?
+  note        String?
+  createdById String
+  date        DateTime    @default(now())
+  @@index([source, createdAt])
+}
+
+model PurchaseOrder {
+  id          String      @id @default(cuid())
+  source      ServiceSlug
+  poNo        String
+  contactId   String
+  items       PurchaseItem[]
+  totalKobo   Int
+  status      PurchaseOrderStatus @default(DRAFT)
+  expectedAt  DateTime?
+  note        String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  @@unique([source, poNo])
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  RECEIVED
+  PARTIAL
+  CANCELLED
+}
+
+model PurchaseItem {
+  id            String        @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product       @relation(fields: [productId], references: [id])
+  qty           Decimal       @db.Decimal(10, 2)
+  receivedQty   Decimal       @default(0) @db.Decimal(10, 2)
+  unitCostKobo  Int
+  totalKobo     Int
+}
+
+// ---------- Stock operations ----------
+
+model StockTransfer {
+  id           String      @id @default(cuid())
+  source       ServiceSlug
+  fromId       String
+  from         Location    @relation("TransferFrom", fields: [fromId], references: [id])
+  toId         String
+  to           Location    @relation("TransferTo", fields: [toId], references: [id])
+  items        StockTransferItem[]
+  status       TransferStatus @default(REQUESTED)
+  requestedById String
+  receivedById String?
+  note         String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+enum TransferStatus {
+  REQUESTED
+  IN_TRANSIT
+  RECEIVED
+  CANCELLED
+}
+
+model StockTransferItem {
+  id         String        @id @default(cuid())
+  transferId String
+  transfer   StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product       @relation(fields: [productId], references: [id])
+  qty        Decimal       @db.Decimal(10, 2)
+}
+
+model StockAdjustment {
+  id          String      @id @default(cuid())
+  source      ServiceSlug
+  locationId  String
+  location    Location    @relation(fields: [locationId], references: [id])
+  reason      String
+  items       StockAdjustmentItem[]
+  createdById String
+  note        String?
+  createdAt   DateTime    @default(now())
+}
+
+model StockAdjustmentItem {
+  id           String          @id @default(cuid())
+  adjustmentId String
+  adjustment   StockAdjustment @relation(fields: [adjustmentId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product         @relation(fields: [productId], references: [id])
+  qtyChange    Decimal         @db.Decimal(10, 2)
+}
+
+model StockMovement {
+  id         String   @id @default(cuid())
+  productId  String
+  locationId String
+  qtyChange  Decimal  @db.Decimal(10, 2)
+  reason     String
+  refType    String
+  refId      String
+  actorId    String
+  createdAt  DateTime @default(now())
+  @@index([productId, locationId, createdAt])
+}
+
+model StockSheet {
+  id        String          @id @default(cuid())
+  source    ServiceSlug     @default(BUILDERS)
+  sheetNo   String          @unique
+  date      DateTime        @db.Date
+  countedBy String
+  items     StockSheetItem[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model StockSheetItem {
+  id           String     @id @default(cuid())
+  stockSheetId String
+  stockSheet   StockSheet @relation(fields: [stockSheetId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id])
+  itemNo       Int
+  openingQty   Decimal    @db.Decimal(10, 2)
+  outQty       Decimal    @default(0) @db.Decimal(10, 2)
+  inQty        Decimal    @default(0) @db.Decimal(10, 2)
+  closingQty   Decimal    @db.Decimal(10, 2)
+}
+
+model CashDrawerSession {
+  id             String   @id @default(cuid())
+  source         ServiceSlug
+  locationId     String
+  location       Location @relation(fields: [locationId], references: [id])
+  openedById     String
+  closedById     String?
+  openedAt       DateTime @default(now())
+  closedAt       DateTime?
+  openingKobo    Int
+  expectedKobo   Int?
+  countedKobo    Int?
+  varianceKobo   Int?
+  status         String   @default("OPEN")
+  @@index([locationId, openedAt])
+}
+
+// ---------- Apartments ----------
+
+model RoomType {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  description  String   @db.Text
+  basePriceKobo Int
+  taxPct       Decimal  @default(10) @db.Decimal(5, 2)
+  adults       Int
+  children     Int
+  checkIn      String   @default("23:00")
+  checkOut     String   @default("10:00")
+  cancellation String   @default("Free Cancellation")
+  images       String[]
+  amenities    String[]
+  facilities   String[]
+  bedType      String   @default("6x6")
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  rooms        Room[]
+  bookings     Booking[]
+}
+
+model Room {
+  id         String     @id @default(cuid())
+  roomTypeId String
+  roomType   RoomType   @relation(fields: [roomTypeId], references: [id])
+  number     String     @unique
+  floor      Int?
+  status     RoomStatus @default(AVAILABLE)
+  bookings   Booking[]
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  CLEANING
+  MAINTENANCE
+  OUT_OF_ORDER
+}
+
+model Booking {
+  id              String        @id @default(cuid())
+  ref             String        @unique
+  source          ServiceSlug   @default(APARTMENTS)
+  contactId       String
+  contact         Contact       @relation(fields: [contactId], references: [id])
+  roomTypeId      String
+  roomType        RoomType      @relation(fields: [roomTypeId], references: [id])
+  roomId          String?
+  room            Room?         @relation(fields: [roomId], references: [id])
+  checkIn         DateTime      @db.Date
+  checkOut        DateTime      @db.Date
+  adults          Int
+  children        Int
+  rooms           Int           @default(1)
+  totalKobo       Int
+  taxKobo         Int
+  status          BookingStatus @default(REQUESTED)
+  specialRequests String?
+  payments        Payment[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  @@index([source, createdAt])
+  @@index([status])
+  @@index([checkIn, checkOut])
+}
+
+enum BookingStatus {
+  REQUESTED
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  NO_SHOW
+}
+
+// ---------- Galaxy ----------
+
+model Order {
+  id              String        @id @default(cuid())
+  orderNo         String        @unique
+  source          ServiceSlug   @default(GALAXY)
+  contactId       String
+  contact         Contact       @relation(fields: [contactId], references: [id])
+  items           OrderItem[]
+  payments        Payment[]
+  status          OrderStatus   @default(PENDING)
+  paymentStatus   PaymentStatus @default(PENDING)
+  shippingAddress Json
+  billingAddress  Json?
+  subtotalKobo    Int
+  taxKobo         Int
+  shippingKobo    Int           @default(0)
+  discountKobo    Int           @default(0)
+  totalKobo       Int
+  couponId        String?
+  coupon          Coupon?       @relation(fields: [couponId], references: [id])
+  notes           String?
+  paidAt          DateTime?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  @@index([source, createdAt])
+  @@index([status])
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+model OrderItem {
+  id          String          @id @default(cuid())
+  orderId     String
+  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product         @relation(fields: [productId], references: [id])
+  variantId   String?
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+  productName String
+  productSku  String
+  priceKobo   Int
+  qty         Int
+  totalKobo   Int
+}
+
+model Coupon {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  source         ServiceSlug @default(GALAXY)
+  discountPct    Decimal? @db.Decimal(5, 2)
+  discountKobo   Int?
+  minSpendKobo   Int?
+  maxUses        Int?
+  usedCount      Int      @default(0)
+  validFrom      DateTime?
+  validUntil     DateTime?
+  isActive       Boolean  @default(true)
+  orders         Order[]
+}
+
+model Review {
+  id                 String   @id @default(cuid())
+  productId          String
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  contactId          String
+  rating             Int
+  title              String?
+  comment            String   @db.Text
+  isVerifiedPurchase Boolean  @default(false)
+  isApproved         Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  @@index([productId, isApproved])
+}
+
+model CartItem {
+  id        String          @id @default(cuid())
+  contactId String
+  productId String
+  product   Product         @relation(fields: [productId], references: [id])
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+  qty       Int             @default(1)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  @@unique([contactId, productId, variantId])
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  contactId String
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+  @@unique([contactId, productId])
+}
+
+model CompareItem {
+  id        String   @id @default(cuid())
+  contactId String
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+  @@unique([contactId, productId])
+}
+
+// ---------- Visitors ----------
+
+model Department {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  employees Employee[]
+}
+
+model Designation {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  employees Employee[]
+}
+
+model Employee {
+  id            String       @id @default(cuid())
+  contactId     String       @unique
+  contact       Contact      @relation(fields: [contactId], references: [id])
+  departmentId  String?
+  department    Department?  @relation(fields: [departmentId], references: [id])
+  designationId String?
+  designation   Designation? @relation(fields: [designationId], references: [id])
+  isActive      Boolean      @default(true)
+  attendances   Attendance[]
+  hostedVisits  Visit[]      @relation("Host")
+  leaveRequests LeaveRequest[]
+}
+
+model LeaveRequest {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  type       String
+  startDate  DateTime @db.Date
+  endDate    DateTime @db.Date
+  reason     String?
+  status     String   @default("PENDING")
+  decidedById String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Visit {
+  id            String      @id @default(cuid())
+  source        ServiceSlug @default(VISITORS)
+  contactId     String
+  contact       Contact     @relation(fields: [contactId], references: [id])
+  hostId        String?
+  host          Employee?   @relation("Host", fields: [hostId], references: [id])
+  purpose       String?
+  checkInAt     DateTime?
+  checkOutAt    DateTime?
+  status        VisitStatus @default(EXPECTED)
+  preRegisterId String?
+  preRegister   PreRegister? @relation(fields: [preRegisterId], references: [id])
+  createdAt     DateTime    @default(now())
+  @@index([source, createdAt])
+  @@index([status])
+}
+
+enum VisitStatus {
+  EXPECTED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  EXPIRED
+}
+
+model PreRegister {
+  id          String      @id @default(cuid())
+  source      ServiceSlug @default(VISITORS)
+  contactId   String
+  hostId      String?
+  visitDate   DateTime    @db.Date
+  visitTime   String?
+  purpose     String?
+  inviteToken String      @unique
+  inviteSentAt DateTime?
+  status      VisitStatus @default(EXPECTED)
+  visits      Visit[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Attendance {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  date       DateTime @db.Date
+  clockInAt  DateTime?
+  clockOutAt DateTime?
+  status     String   @default("PRESENT")
+  @@unique([employeeId, date])
+}
+
+// ---------- Content ----------
+
+model BlogPost {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  source        ServiceSlug
+  title         String
+  excerpt       String
+  content       String   @db.Text
+  featuredImage String?
+  authorId      String
+  tags          String[]
+  status        String   @default("DRAFT")
+  publishedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model FAQ {
+  id        String      @id @default(cuid())
+  source    ServiceSlug
+  question  String
+  answer    String      @db.Text
+  category  String?
+  sortOrder Int         @default(0)
+  isActive  Boolean     @default(true)
+}
+
+model ContactMessage {
+  id        String      @id @default(cuid())
+  source    ServiceSlug
+  name      String
+  email     String
+  subject   String
+  message   String      @db.Text
+  isRead    Boolean     @default(false)
+  createdAt DateTime    @default(now())
+}
+
+model NewsletterSubscriber {
+  id        String      @id @default(cuid())
+  source    ServiceSlug
+  email     String
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  @@unique([source, email])
+}
+
+// ---------- Platform ----------
+
+model ActivityLog {
+  id         String      @id @default(cuid())
+  source     ServiceSlug
+  locationId String?
+  actorId    String?
+  actor      User?       @relation(fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  summary    String
+  amountKobo Int?
+  createdAt  DateTime    @default(now())
+  @@index([source, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model Notification {
+  id         String      @id @default(cuid())
+  source     ServiceSlug
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  body       String
+  entityType String?
+  entityId   String?
+  channel    String      @default("IN_APP")
+  isRead     Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  @@index([userId, isRead, createdAt])
+  @@index([source, createdAt])
+}
+
+model NotificationTemplate {
+  id        String      @id @default(cuid())
+  source    ServiceSlug
+  event     String
+  channel   String
+  subject   String?
+  body      String      @db.Text
+  variables String[]
+  isActive  Boolean     @default(true)
+  updatedAt DateTime    @updatedAt
+  @@unique([source, event, channel])
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  gateway     String
+  eventId     String   @unique
+  eventType   String
+  payload     Json
+  processedAt DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model IdempotencyKey {
+  key         String   @id
+  requestHash String
+  response    Json
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+}
+
+model PlatformSetting {
+  key   String @id
+  value Json
+}
+5.7 CSV import (for the owner's real catalogs)
+POST /api/spark/products/import and POST /api/builders/products/import
+  accept a CSV file (multipart): columns `sku, name, category, brand,
+  unit, cost, price, lowStockAt, <location columns with quantities>`.
+Import runs in a transaction per batch of 200 rows; a row that fails
+  validation is collected into an error report (row number + reason)
+  and the rest still import. Response: { imported, skipped, errors[] }.
+Same pattern for contacts import (POST /api/contacts/import):
+  name, phone, email, address, types. Duplicate phone → skip with a
+  note, never overwrite.
+Imports are logged in the activity feed (source = the importing
+  service) and the uploaded file is kept for 30 days.
+
+6. Auth & authorization
+6.1 NextAuth v5 configuration (lib/auth.ts)
+Prisma adapter (@auth/prisma-adapter), database sessions
+  (so a stolen session can be revoked by deleting the row).
+Credentials provider only. authorize() looks up the user by email
+  (case-insensitive), checks isActive, compares the bcrypt hash with
+  a constant-time compare, and returns the user object (never the
+  password hash). Failed logins are logged (email + IP, never the
+  password) and rate-limited (§17).
+Session: 8h expiry, sliding (updateAge 1h). Remember me sets a
+  30-day session via a separate remember flag on the session row.
+JWT is NOT used for sessions. The session token is a random 32-byte
+  value stored hashed (SHA-256) in the Session table.
+Callbacks attach roles, serviceAccess and locationIds to the
+  session object so route guards never re-query the user.
+Password policy (enforced by Zod on register/reset/change):
+  minimum 8 characters, at least one letter and one number.
+  Password change requires the current password.
+Password reset: VerificationToken row with 24h expiry, single
+  use, emailed link. Email verification for new public accounts uses
+  the same table.
+Demo logins (DEMO_LOGINS=true only): three fixed demo accounts
+  (Admin / Employee / Reception) created by the seed script. The
+  demo-login endpoint returns 404 when the flag is off.
+6.2 Route protection
+middleware.ts protects /admin/* and /account/*: no session →
+  redirect to /login?callbackUrl=<path>.
+API routes do NOT rely on middleware. Every API route calls
+  getSessionUser() first and returns 401 when there is no session.
+Public API routes (no auth): storefront product/category reads,
+  blog reads, FAQ reads, booking creation, visitor pre-registration,
+  contact form, newsletter signup, auth routes, payment webhooks
+  (signature-verified instead — §10.3). Every other route requires a
+  session. The route table in §7 marks each route's auth requirement.
+6.3 Role guards
+requireRole(ctx, [...roles]) throws a 403 error when the user
+  lacks every listed role. SUPER_ADMIN bypasses all role checks
+  (but NOT scope checks — a Super Admin still only sees enabled
+  services... actually no: Super Admin sees everything. Scope checks
+  apply to everyone except Super Admin).
+requireService(ctx, 'SPARK') throws 403 when the service is not
+  in the user's serviceAccess (or the service is disabled).
+requireLocation(ctx, locationId) throws 403 when the location
+  is not in the user's locationIds (Super Admin exempt; Service
+  Managers are scoped to their service's locations by assignment).
+6.4 Query scoping (the critical rule)
+**Every list query is scoped by the caller's service and location
+access, in the database query itself — never by filtering in
+JavaScript after the fetch, and never only by hiding UI.**
+scopeWhere(ctx, { service }) returns a Prisma where fragment:
+  { source: { in: ctx.serviceAccess } } intersected with the
+  requested service filter, and `{ locationId: { in:
+  ctx.locationIds } }` when the model has a location and the user is
+  not a Super Admin.
+A user who requests ?service=SPARK without Spark access gets
+  403, not an empty list. A user who requests a single record
+  outside their scope gets 404 (not 403 — do not leak existence),
+  and the attempt is written to the audit log.
+Cross-service endpoints (/api/dashboard/summary,
+  /api/activity, /api/reports/*) scope with `source: { in:
+  serviceAccess }` and return per-service breakdowns only for
+  accessible services.
+Tests must cover this: for every module, a test proves a
+  service-scoped user cannot read another service's records via the
+  API (§18).
+6.5 Audit logging of access
+Every login, logout, failed login, password change, role change,
+  and denied access (403/404-on-scope) is written to ActivityLog
+  with source = the service in scope (or the first service the
+  user can access when there is none) and action prefixed
+  AUTH_.
+
+7. API conventions
+7.1 Response envelope (every endpoint, no exceptions)
+Success:
+{ "ok": true, "data": { ... } }
+List success (adds pagination):
+{ "ok": true, "data": [ ... ], "meta": { "page": 1, "perPage": 20, "total": 137, "totalPages": 7 } }
+Error:
+{ "ok": false, "error": { "code": "VALIDATION_ERROR", "message": "Quantity must be greater than 0", "details": { "field": "qty" } } }
+HTTP statuses: 200 OK, 201 created, 400 validation,
+  401 unauthenticated, 403 forbidden, 404 not found (or
+  out-of-scope — see §6.4), 409 conflict (duplicate, double-booking,
+  insufficient stock), 422 business-rule violation, 429 rate
+  limited, 500 server error.
+Error codes are stable strings (VALIDATION_ERROR,
+  UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT,
+  INSUFFICIENT_STOCK, BUSINESS_RULE, RATE_LIMITED,
+  PAYMENT_FAILED, INTERNAL). The frontend switches on code,
+  never on the message text.
+500 responses never leak stack traces or SQL. The full error is
+  logged server-side with a request id (x-request-id header,
+  echoed in the error body as requestId for support).
+7.2 List conventions
+Query params: page (default 1), perPage (default 20, max 100),
+  q (free-text search), sort (field:asc|desc, e.g.
+  createdAt:desc), from / to (ISO dates), service (comma
+  list of slugs), location (comma list of ids), plus
+  resource-specific filters (status, contactId, ...).
+Unknown query params are ignored, never error.
+sort values are allow-listed per resource (never pass a raw
+  client string into orderBy).
+Dates in responses are ISO 8601 strings in UTC; the frontend
+  converts to Africa/Lagos. Date-only fields (@db.Date) serialize
+  as YYYY-MM-DD.
+Money in responses is integer kobo (totalKobo: 130000), plus a
+  pre-formatted display string where the frontend needs it
+  (totalDisplay: "₦1,300.00"). Never return floats for money.
+7.3 Route table (method, path, auth, roles)
+A = any authenticated user (scoped). SA = Super Admin.
+SM = Service Manager of that service. Other codes per §9.2 of the
+main spec. PUB = public (no session). WH = webhook signature.
+# Platform / shared
+GET    /api/dashboard/summary                          A
+GET    /api/activity                                   A
+GET    /api/search                                     A
+GET    /api/contacts                                   A
+POST   /api/contacts                                   A (CASHIER+)
+GET    /api/contacts/[id]                              A
+PATCH  /api/contacts/[id]                              A (SM+)
+POST   /api/contacts/import                            SM, SA
+GET    /api/notifications                              A
+PATCH  /api/notifications/[id]/read                    A
+POST   /api/notifications/read-all                     A
+GET    /api/locations                                  A
+POST   /api/locations                                  SA
+PATCH  /api/locations/[id]                             SA
+GET    /api/reports/[report]                           A (ACCOUNTANT+ for finance)
+POST   /api/exports                                    A
+GET    /api/users                                      SA, SM (own service)
+POST   /api/users                                      SA
+PATCH  /api/users/[id]                                 SA
+PATCH  /api/users/[id]/roles                           SA
+POST   /api/users/[id]/deactivate                      SA
+GET    /api/settings                                   SA
+PATCH  /api/settings                                   SA
+
+# Billstacks
+GET    /api/billstacks/dashboard                       A (BILLSTACKS)
+GET    /api/billstacks/invoices                        A
+POST   /api/billstacks/invoices                        A (ACCOUNTANT+)
+GET    /api/billstacks/invoices/[id]                   A
+PATCH  /api/billstacks/invoices/[id]                   A (ACCOUNTANT+)
+POST   /api/billstacks/invoices/[id]/send              A (ACCOUNTANT+)
+POST   /api/billstacks/invoices/[id]/pay               A (ACCOUNTANT+)
+POST   /api/billstacks/invoices/[id]/payment-link      A (ACCOUNTANT+)
+POST   /api/billstacks/invoices/[id]/cancel            SM, SA
+GET    /api/billstacks/estimates                       A
+POST   /api/billstacks/estimates                       A (ACCOUNTANT+)
+POST   /api/billstacks/estimates/[id]/convert          A (ACCOUNTANT+)
+GET    /api/billstacks/recurring                       A
+POST   /api/billstacks/recurring                       A (ACCOUNTANT+)
+POST   /api/billstacks/recurring/[id]/pause            A (ACCOUNTANT+)
+GET    /api/billstacks/expenses                        A
+POST   /api/billstacks/expenses                        A
+GET    /api/billstacks/purchase-orders                 A
+POST   /api/billstacks/purchase-orders                 A (ACCOUNTANT+)
+POST   /api/billstacks/purchase-orders/[id]/receive    STOREKEEPER, SM, SA
+GET    /api/billstacks/tax-report                      A (ACCOUNTANT+)
+GET    /api/billstacks/hrm/employees                   A (BILLSTACKS)
+GET    /api/billstacks/hrm/leave                       A
+POST   /api/billstacks/hrm/leave/[id]/decide           SM, SA
+
+# Builders
+GET    /api/builders/dashboard                         A (BUILDERS)
+GET    /api/builders/sales                             A
+POST   /api/builders/sales                             CASHIER, SM, SA
+GET    /api/builders/sales/[id]                        A
+GET    /api/builders/sales/[id]/print                  A
+POST   /api/builders/sales/[id]/void                   SM, SA
+GET    /api/builders/stock/sheets                      A
+GET    /api/builders/stock/sheets/[id]                 A
+POST   /api/builders/stock/in                          STOREKEEPER, SM, SA
+POST   /api/builders/stock/count                       STOREKEEPER, SM, SA
+GET    /api/builders/debtors                           A
+POST   /api/builders/debtors/[id]/payments             CASHIER, SM, SA
+GET    /api/builders/products                          A
+POST   /api/builders/products                          SM, SA
+PATCH  /api/builders/products/[id]                     SM, SA
+GET    /api/builders/drawer                            CASHIER, SM, SA
+POST   /api/builders/drawer/open                       CASHIER, SM, SA
+POST   /api/builders/drawer/close                      CASHIER, SM, SA
+
+# Spark
+GET    /api/spark/dashboard                            A (SPARK)
+GET    /api/spark/products                             A
+POST   /api/spark/products                             SM, SA
+PATCH  /api/spark/products/[id]                        SM, SA
+POST   /api/spark/products/import                      SM, SA
+POST   /api/spark/sales                                CASHIER, SM, SA
+POST   /api/spark/sales/[id]/park                      CASHIER, SM, SA
+POST   /api/spark/sales/[id]/void                      SM, SA
+POST   /api/spark/sales/[id]/return                    CASHIER, SM, SA
+GET    /api/spark/stock-alert                          A
+GET    /api/spark/purchases                            A
+POST   /api/spark/purchases                            SM, SA
+POST   /api/spark/purchases/[id]/receive               STOREKEEPER, SM, SA
+POST   /api/spark/purchases/[id]/return                SM, SA
+GET    /api/spark/transfers                            A
+POST   /api/spark/transfers                            STOREKEEPER, SM, SA
+POST   /api/spark/transfers/[id]/receive               STOREKEEPER, SM, SA
+POST   /api/spark/adjustments                          STOREKEEPER, SM, SA
+GET    /api/spark/expenses                             A
+POST   /api/spark/expenses                             A
+GET    /api/spark/reports/[report]                     A
+GET    /api/spark/drawer                               CASHIER, SM, SA
+POST   /api/spark/drawer/open                          CASHIER, SM, SA
+POST   /api/spark/drawer/close                         CASHIER, SM, SA
+
+# Apartments
+GET    /api/apartments/room-types                      PUB
+GET    /api/apartments/room-types/[slug]               PUB
+GET    /api/apartments/room-types/[slug]/availability  PUB
+GET    /api/apartments/rooms                           A (APARTMENTS)
+POST   /api/apartments/bookings                        PUB (create) / A (list)
+GET    /api/apartments/bookings                        A (APARTMENTS)
+GET    /api/apartments/bookings/[ref]                  A
+POST   /api/apartments/bookings/[ref]/confirm          RECEPTION, SM, SA
+POST   /api/apartments/bookings/[ref]/check-in         RECEPTION, SM, SA
+POST   /api/apartments/bookings/[ref]/check-out        RECEPTION, SM, SA
+POST   /api/apartments/bookings/[ref]/cancel           RECEPTION, SM, SA
+POST   /api/apartments/bookings/[ref]/no-show          RECEPTION, SM, SA
+GET    /api/apartments/front-desk/today                RECEPTION, SM, SA
+GET    /api/apartments/guests                          A (APARTMENTS)
+GET    /api/apartments/reports/[report]                A (APARTMENTS)
+POST   /api/apartments/room-types                      SM, SA
+PATCH  /api/apartments/room-types/[id]                 SM, SA
+GET    /api/apartments/faq                             PUB
+GET    /api/apartments/blog/posts                      PUB
+POST   /api/apartments/contact                         PUB (rate-limited)
+POST   /api/apartments/newsletter                      PUB (rate-limited)
+
+# Galaxy
+GET    /api/galaxy/categories                          PUB
+GET    /api/galaxy/products                            PUB
+GET    /api/galaxy/products/[slug]                     PUB
+GET    /api/galaxy/brands                              PUB
+GET    /api/galaxy/cart                                A (CUSTOMER)
+POST   /api/galaxy/cart                                A (CUSTOMER)
+PATCH  /api/galaxy/cart/[id]                           A (CUSTOMER)
+DELETE /api/galaxy/cart/[id]                           A (CUSTOMER)
+POST   /api/galaxy/cart/sync                           A (CUSTOMER)
+GET    /api/galaxy/wishlist                            A (CUSTOMER)
+POST   /api/galaxy/wishlist                            A (CUSTOMER)
+DELETE /api/galaxy/wishlist/[id]                       A (CUSTOMER)
+GET    /api/galaxy/compare                             A (CUSTOMER)
+POST   /api/galaxy/compare                             A (CUSTOMER)
+DELETE /api/galaxy/compare/[id]                        A (CUSTOMER)
+DELETE /api/galaxy/compare                             A (CUSTOMER)
+POST   /api/galaxy/orders                              A (CUSTOMER)
+GET    /api/galaxy/orders                              A
+GET    /api/galaxy/orders/[id]                         A
+PATCH  /api/galaxy/orders/[id]/status                  SM, SA (GALAXY)
+POST   /api/galaxy/reviews                             A (CUSTOMER)
+PATCH  /api/galaxy/reviews/[id]/approve                SM, SA
+GET    /api/galaxy/blog/posts                          PUB
+POST   /api/galaxy/coupons/validate                    A (CUSTOMER)
+
+# Visitors
+GET    /api/visitors                                   A (VISITORS)
+POST   /api/visitors                                   RECEPTION, SM, SA
+POST   /api/visitors/check-in                          PUB (kiosk, token) / RECEPTION
+POST   /api/visitors/[id]/check-out                    RECEPTION, SM, SA
+GET    /api/visitors/pre-registers                     A (VISITORS)
+POST   /api/visitors/pre-registers                     A (EMPLOYEE+)
+POST   /api/visitors/pre-registers/[id]/invite         A (EMPLOYEE+)
+POST   /api/visitors/pre-registers/[id]/cancel         A
+GET    /api/visitors/employees                         A (VISITORS)
+POST   /api/visitors/employees                         SM, SA
+GET    /api/visitors/departments                       A
+POST   /api/visitors/departments                       SM, SA
+GET    /api/visitors/designations                      A
+POST   /api/visitors/designations                      SM, SA
+POST   /api/visitors/attendance/clock-in               A (EMPLOYEE+)
+POST   /api/visitors/attendance/clock-out              A (EMPLOYEE+)
+GET    /api/visitors/attendance                        A (VISITORS)
+GET    /api/visitors/reports/[report]                  A (VISITORS)
+
+# Webhooks & cron
+POST   /api/webhooks/paystack                          WH
+POST   /api/webhooks/flutterwave                       WH
+POST   /api/cron/recurring-invoices                    CRON_SECRET
+POST   /api/cron/overdue-invoices                      CRON_SECRET
+POST   /api/cron/expire-pre-registers                  CRON_SECRET
+POST   /api/cron/low-stock-scan                        CRON_SECRET
+POST   /api/cron/daily-summary                         CRON_SECRET
+Idempotency: POST /api/spark/sales, POST /api/builders/sales,
+POST /api/galaxy/orders and POST /api/apartments/bookings accept
+an Idempotency-Key header. The server stores the key + request hash
+response for 24h (in a IdempotencyKey table or Redis) and returns
+the stored response on a retry instead of creating a duplicate. The
+POS frontend sends a UUID per sale attempt — a double-tap or a network
+retry must never create two sales.
+
+8. Source labelling — server-side enforcement
+The main spec §8 makes source labelling a UI rule. This section makes
+it a server rule: the API never trusts the client to label a
+record, and no record can exist without a source.
+8.1 Source is derived from the route, not the body
+Each service's routes live under /api/<service>/.... A route
+  constant maps the path prefix to its ServiceSlug
+  (billstacks → BILLSTACKS, builders → BUILDERS,
+  spark → SPARK, apartments → APARTMENTS,
+  galaxy → GALAXY, visitors → VISITORS).
+The service layer sets source from that constant. If a request
+  body contains a source field, it is stripped by the Zod schema
+  (.strict() + no source key) — a client can never choose or
+  change a record's source.
+Shared routes (/api/contacts, /api/expenses if shared) accept
+  an explicit service field in the body (validated against the
+  user's serviceAccess); when absent, the record is created with
+  no service context and gets the Shared treatment from main
+  spec §8.1 (contacts only).
+8.2 Source is immutable
+No PATCH endpoint accepts source. No service function updates
+  it. A database-level guard is optional but recommended: a Prisma
+  $extends result check or a Postgres trigger that raises an
+  exception if source changes on UPDATE (apply to Sale, Invoice,
+  Booking, Order, Visit, Payment, Expense).
+8.3 Every response carries the source
+Every single-record and list response includes source plus a
+  sourceLabel object: { slug, name, shortName, color } (from the
+  Service table, cached in memory with a 60s TTL — it changes
+  rarely).
+Every export (§13) includes a Source column. Every activity entry
+  includes source. Every notification includes source.
+8.4 Activity logging (automatic, transactional)
+lib/services/activity.ts exposes `logActivity(tx, { source,
+  locationId, actorId, action, entityType, entityId, summary,
+  amountKobo })`.
+It is called INSIDE the same Prisma transaction as the mutation it
+  describes — if the mutation rolls back, the log entry rolls back
+  too. Never log after the transaction commits.
+action values are UPPER_SNAKE constants from one registry
+  (lib/activity-actions.ts): SALE_CREATED, SALE_VOIDED,
+  SALE_RETURNED, INVOICE_CREATED, INVOICE_SENT,
+  INVOICE_PAID, INVOICE_OVERDUE, PAYMENT_RECORDED,
+  STOCK_IN, STOCK_TRANSFERRED, STOCK_ADJUSTED,
+  STOCK_COUNTED, BOOKING_REQUESTED, BOOKING_CONFIRMED,
+  BOOKING_CHECKED_IN, BOOKING_CHECKED_OUT, BOOKING_CANCELLED,
+  ORDER_PLACED, ORDER_SHIPPED, ORDER_DELIVERED,
+  ORDER_CANCELLED, VISIT_CHECKED_IN, VISIT_CHECKED_OUT,
+  PRE_REGISTER_CREATED, ATTENDANCE_CLOCK_IN,
+  ATTENDANCE_CLOCK_OUT, DRAWER_OPENED, DRAWER_CLOSED,
+  USER_CREATED, ROLE_CHANGED, AUTH_LOGIN, AUTH_LOGIN_FAILED,
+  AUTH_LOGOUT, AUTH_DENIED, SYSTEM_LOW_STOCK,
+  SYSTEM_DAILY_SUMMARY, and so on. New actions are added to the
+  registry, never invented inline.
+summary is a human sentence built by the service function with
+  the real values (names, amounts, locations) — the timeline
+  displays it verbatim.
+The ActivityLog table is append-only: no update or delete
+  endpoint, no service function mutates it. Retention: keep forever
+  in v1 (partition later if it grows past ~10M rows).
+8.5 The dashboard summary endpoint
+GET /api/dashboard/summary?service=&location=&from=&to= returns
+the unified dashboard (§7.3 of the main spec) in ONE call:
+{
+  "cards": [
+    { "key": "totalSales", "label": "Total Sales", "valueKobo": 125000000,
+      "display": "₦1,250,000", "deltaPct": 12.4, "sources": ["SPARK","BUILDERS","GALAXY"] },
+    ...
+  ],
+  "salesLast30Days": { "labels": ["2026-10-20", ...],
+    "series": [ { "name": "Zino Spark Adepele", "source": "SPARK", "color": "#2563EB", "data": [...] } ] },
+  "salesFinancialYear": { ... },
+  "attention": [ { "severity": "high", "source": "APARTMENTS", "title": "2 delayed checkouts", "href": "/admin/apartments/front-desk?filter=delayed" } ],
+  "recentActivity": [ ...10 ActivityLog rows... ],
+  "salesPaymentDue": { "rows": [...], "totalKobo": ... },
+  "purchasePaymentDue": { "rows": [...], "totalKobo": ... }
+}
+All queries run in parallel (Promise.all) against Prisma; the
+  endpoint must respond in under 800ms on seed data (measure in
+  tests with a seeded DB).
+deltaPct compares the selected period with the previous equal
+  period.
+The service / location query params filter every section; the
+  caller's scope (§6.4) is applied first.
+
+9. Business logic (per domain — the rules engine)
+Every rule below is enforced in lib/services/, inside Prisma
+transactions. Route handlers never implement these rules.
+9.1 Sales (Spark POS + Builders counter) — lib/services/sales.ts
+createSale(ctx, input) runs in ONE transaction:
+Validate items (product exists, is ACTIVE, qty > 0).
+Lock the stock rows (SELECT ... FOR UPDATE via
+     $queryRaw on StockLevel for the (product, location) pairs)
+     and check availability: qty <= available. If not → `409
+     INSUFFICIENT_STOCK` naming the product and the available qty.
+     (Builders allows oversell ONLY when the sale is UNPAID credit
+     with a manager override flag — otherwise the same rule.)
+Compute line totals (qty × price, integer kobo), subtotal,
+     discount (never above subtotal), tax per line, total.
+Take the next receipt number from the sequence (§5.5).
+Insert Sale + SaleItems, decrement stock, insert Payment row(s)
+     for the amount paid, update the contact's sources array,
+     write the activity entry, and (if total ≥ LARGE_SALE_ALERT_KOBO)
+     queue a manager notification.
+If the sale is parked (isParked: true), skip stock decrement
+     and payment; a parked sale reserves NOTHING.
+voidSale (manager only): reverses stock, marks the sale VOID,
+  records the reason; the original row is kept (never deleted).
+returnSale (partial or full): creates a negative-quantity
+  adjustment + a refund Payment row (status: REFUNDED); stock is
+  incremented back only for items marked restock: true.
+Sale statuses derive from money: paidKobo >= totalKobo → PAID;
+  0 < paidKobo < totalKobo → PART_PAID; paidKobo = 0 → UNPAID.
+  Status is recomputed by the service after every payment — never
+  set by the client.
+A sale's soldById is the authenticated user. A cashier can only
+  sell at locations in their locationIds.
+9.2 Invoicing & payments — lib/services/invoicing.ts
+createInvoice: validate contact + items, compute totals (per-line
+  tax), take the next invoice number for the service, status DRAFT.
+  sendInvoice sets SENT + sentAt and emails the PDF link.
+recordPayment(invoiceId, { amountKobo, method, reference }):
+  runs in a transaction; rejects overpayment beyond the outstanding
+  balance (409); inserts the Payment; recomputes the invoice status
+  (PAID when the sum of payments ≥ total, else PART_PAID); if the
+  invoice was OVERDUE and is now paid, clears the overdue state.
+  A payment can also be recorded without an invoice (on-account
+  payment) — it sits on the contact until allocated.
+Overdue marking is a cron job (§14), not a realtime check: an
+  invoice is OVERDUE when status IN (SENT, PART_PAID) and
+  dueDate < today. The job runs daily, updates statuses, writes
+  activity entries, and queues reminder notifications at 7/14/30
+  days overdue.
+convertEstimate: creates an invoice from the estimate's items
+  (fresh invoice number, status DRAFT), marks the estimate
+  CONVERTED with convertedInvoiceId.
+Recurring invoices: the cron job (§14) creates the next invoice
+  from the template on nextRunAt, advances nextRunAt by the
+  frequency, and emails it when the template says autoSend.
+Payment links: createPaymentLink initialises a Paystack (or
+  Flutterwave) transaction for the invoice total and stores the
+  reference on the invoice; the webhook (§10.3) settles it.
+Refunds: a refund is a negative Payment row linked to the original
+  invoice/order, created by a manager; it never deletes the original
+  payment.
+9.3 Inventory — lib/services/inventory.ts
+`adjustStock(tx, { productId, locationId, qtyChange, reason,
+  actorId }) is the ONLY function that writes StockLevel.qty`.
+  Every caller (sale, purchase receipt, transfer, adjustment, count,
+  order) goes through it. It upserts the row, applies the change,
+  and throws 409 INSUFFICIENT_STOCK if the result would go below
+  zero (unless the caller passes allowNegative: true — only the
+  Builders credit-oversell path and the count-correction path may).
+receivePurchase: for each item, adjustStock(+qty) at the
+  receiving location, update receivedQty on the PO item, and mark
+  the PO RECEIVED (or PARTIAL). Receiving more than ordered is
+  rejected.
+transferStock: creates the transfer (REQUESTED) and decrements
+  the source location immediately (the stock is in transit, not
+  available). receiveTransfer increments the destination and marks
+  RECEIVED. Cancelling a REQUESTED/IN_TRANSIT transfer returns the
+  stock to the source. Both legs are transactions.
+recordCount: for each counted product, compares counted vs
+  system qty; writes a StockAdjustment with reason
+  PHYSICAL_COUNT for every variance, and creates/updates the day's
+  StockSheet (Builders) with opening/out/in/closing computed from
+  the day's movements (movements are derived from the audit of
+  adjustStock calls — see below).
+Stock movement audit: every adjustStock call also inserts a
+  StockMovement row (see the model in §5.6: product, location,
+  qtyChange, reason, reference type + id, actor, timestamp). The
+  stock report, the stock sheet, and the valuation report read from
+  this table.
+Low-stock check: getStockAlerts(locationId?) returns products
+  where qty <= lowStockAt, ordered by qty ascending. The daily
+  cron (§14) notifies on newly-below-threshold products only (track
+  the last alerted state to avoid spamming).
+9.4 Bookings & availability — lib/services/bookings.ts
+checkAvailability(roomTypeId, checkIn, checkOut):
+  totalRoomsOfType - overlappingActiveBookings. Overlap rule: an
+  existing booking blocks when `existing.checkIn < requested.checkOut
+  AND existing.checkOut > requested.checkIn` and its status is in
+  (CONFIRMED, CHECKED_IN) (REQUESTED bookings do NOT block —
+  they are held for 30 minutes; see below). Returns
+  { available, totalRooms, bookedRooms }.
+createBooking runs in a transaction with a row lock on the
+  room type (SELECT ... FOR UPDATE on RoomType) so two
+  simultaneous bookings cannot both take the last room. It validates
+  dates (checkOut > checkIn, 1–30 nights, no past dates), guest
+  counts (≤ room type capacity), computes price
+  (nights × rooms × basePrice, tax = 10% of base, total = base +
+  tax), generates the ZINO-XXXXXX ref, and creates the booking as
+  REQUESTED. A REQUESTED booking holds its rooms for 30 minutes
+  (a holdExpiresAt timestamp; the cron job releases expired holds
+  by cancelling them). Public bookings skip the hold when they pay
+  immediately (status CONFIRMED on successful payment).
+confirmBooking: REQUESTED → CONFIRMED (assigns rooms if the
+  request specified a count; room assignment can be deferred to
+  check-in).
+checkIn: CONFIRMED → CHECKED_IN; requires assigned room(s);
+  sets the room status OCCUPIED; records the check-in time; a
+  booking checked in after 23:00 is flagged lateCheckIn.
+checkOut: CHECKED_IN → CHECKED_OUT; requires the bill settled
+  (total paid ≥ total, or a manager override with a reason);
+  releases the room (status CLEANING); records the check-out time.
+  A checkout after 10:00 without an extension is a delayed checkout
+  (flagged on the front-desk board + the dashboard card).
+cancelBooking: any pre-checkout status → CANCELLED with a reason;
+  releases the room; refund rules follow the room type's
+  cancellation policy (free cancellation → full refund as a negative
+  Payment row).
+noShow: a CONFIRMED booking not checked in by 23:00 on the
+  check-in day is flagged by the daily cron for the receptionist to
+  mark NO_SHOW (never automatic — a human decides).
+9.5 Galaxy orders — lib/services/orders.ts
+createOrder (customer): validates cart items (product ACTIVE,
+  variant stock at Galaxy Online), applies the coupon (validate
+  code, dates, min spend, max uses — increment usedCount in the
+  same transaction), computes totals (shipping: flat rate from
+  settings in v1, free above a threshold from settings), decrements
+  Galaxy Online stock, creates the order (PENDING, payment
+  PENDING), clears the cart, generates the DG-XXXXXX number, and
+  returns a payment initialisation (Paystack/Flutterwave) when the
+  method is online. Cash-on-delivery orders skip payment init.
+Order status machine (enforced — illegal transitions return 422):
+  PENDING → CONFIRMED → PROCESSING → SHIPPED → DELIVERED, with
+  CANCELLED allowed from PENDING/CONFIRMED/PROCESSING and
+  REFUNDED from DELIVERED. Each transition stamps its timestamp
+  (shippedAt, deliveredAt) and notifies the customer.
+Cancelling an order returns its stock to Galaxy Online.
+syncCart merges the localStorage cart into the server cart
+  (quantities take the max of local/server per line; out-of-stock
+  lines are dropped and reported).
+Compare is capped at 4 items (409 when adding a 5th).
+9.6 Visitors & attendance — lib/services/visitors.ts
+preRegister: creates the contact (or reuses by phone), the
+  PreRegister row with a random inviteToken, status EXPECTED.
+  sendInvite emails/SMSes the check-in link
+  (/visit/check-in?token=...); the link is single-use and expires
+  at the end of the visit date.
+checkIn (kiosk, by token): validates the token (exists, not
+  used, not expired), creates the Visit (CHECKED_IN, `checkInAt =
+  now`), links the PreRegister, notifies the host employee.
+  Walk-in check-in (reception) creates the contact + Visit directly.
+checkOut: sets checkOutAt, status CHECKED_OUT. A visit still
+  CHECKED_IN at the end of visiting hours is flagged on the
+  dashboard (never auto-checked-out).
+clockIn / clockOut: one Attendance row per employee per day
+  (unique [employeeId, date]). Clocking in after the configured
+  start time marks LATE. A second clock-in without a clock-out
+  returns 409. Clock-out computes hours worked.
+Data retention: visits older than the configured retention period
+  (default 12 months) are archived by a monthly cron (moved to an
+  archive export, then soft-deleted — deletedAt set, row kept).
+9.7 Cash drawer — lib/services/drawer.ts
+openDrawer(locationId, openingKobo): one open session per
+  location at a time (409 if one is already open).
+closeDrawer(sessionId, countedKobo): computes `expectedKobo =
+  opening + cashSales + cashReceived - cashExpenses - cashRefunds`
+  for the session window (from the Sale/Payment/Expense tables,
+  method = CASH), sets varianceKobo = counted - expected, status
+  CLOSED. A non-zero variance writes an activity entry and notifies
+  the Service Manager. The drawer summary powers the Top Builders
+  "Balance After Expenses" card and the Spark drawer view.
+Closing is required before the day's sales book can be closed
+  (Builders closeDay checks for an open drawer session and
+  returns 422 until it is closed).
+9.8 Dashboard & reports — lib/services/reports.ts
+Every report is a function taking `{ service, locationIds, from,
+  to, groupBy } and returning { rows, totals, chart? }`. Reports
+  run as Prisma aggregations (groupBy, _sum) — never load all
+  rows into memory and aggregate in JavaScript.
+Date handling: from/to are interpreted in Africa/Lagos; the
+  query converts to UTC day boundaries. Financial-year reports use
+  January–December (the Zino Spark screenshot shows Jan–Dec 2026).
+The consolidated report (cross-service P&L) sums revenue,
+  expenses and profit per service per month, with a grand total row.
+
+10. Payments (Paystack + Flutterwave)
+10.1 Initialisation
+lib/payments/paystack.ts and lib/payments/flutterwave.ts each
+  expose `initializePayment({ amountKobo, email, reference, metadata,
+  callbackUrl }) → { authorizationUrl, reference }` and
+  verifyPayment(reference) → { status, amountKobo, paidAt }.
+Amounts sent to gateways are in kobo (Paystack) / kobo-equivalent
+  minor units (Flutterwave uses major units with decimals — convert
+  with fromKobo and send a string with 2 decimals; never a float).
+The reference is generated server-side (Z1-<service>-<random>)
+  and stored on the Payment row BEFORE redirecting the customer.
+Payment links for invoices (§9.2) and Galaxy checkout (§9.5) both
+  use these helpers. The gateway choice per transaction is a setting
+  (PAYMENT_GATEWAY_DEFAULT, overridable per service in settings).
+10.2 Verification
+After the customer returns from the gateway, the frontend calls
+  GET /api/payments/verify?reference=..., which calls the
+  gateway's verify endpoint server-side and settles the payment
+  (see §10.3). The frontend NEVER decides a payment succeeded — only
+  the server's verification counts.
+Settlement is idempotent: if the Payment row is already PAID for
+  that reference, verification returns the existing result.
+10.3 Webhooks (the source of truth for async payments)
+POST /api/webhooks/paystack and POST /api/webhooks/flutterwave:
+Verify the signature (Paystack: HMAC-SHA512 of the raw body
+     with the secret key, compared with x-paystack-signature;
+     Flutterwave: verif-hash header against
+     FLUTTERWAVE_WEBHOOK_SECRET_HASH). Invalid signature → 401,
+     no further processing, log the attempt.
+Read the RAW body (Next.js route handlers: `await
+     req.text()` — do not parse JSON first, or the signature check
+     fails).
+Deduplicate: insert the event into WebhookEvent keyed by the
+     gateway's event id; a duplicate insert (unique violation) →
+     return 200 immediately (already processed).
+Handle charge.success (Paystack) / charge.completed
+     (Flutterwave): find the Payment by reference, verify the amount
+     matches (reject and alert on mismatch — never settle a
+     short payment silently), mark PAID, settle the linked invoice /
+     order / booking (recompute statuses per §9.2/§9.5/§9.4),
+     write the activity entry, and send the receipt email.
+Handle charge.failed / refunds similarly (mark FAILED /
+     REFUNDED).
+Always return 200 quickly (under 3s). Heavy work (emails,
+     notifications) runs after the response where the runtime
+     allows, or is queued via the notification service.
+Webhook endpoints are NOT rate-limited by the auth limiter (they
+  are signature-protected) but they ARE logged, and repeated invalid
+  signatures from one IP trigger a temporary block (see §17).
+10.4 Refunds
+Refunds go through the gateway's refund API where the original
+  payment was online; cash/POS refunds are recorded manually. Both
+  create a negative Payment row (§9.2) and notify the customer.
+
+11. Notifications & email
+11.1 Notification service (lib/services/notifications.ts)
+`notify({ userIds | roles, source, title, body, entityType,
+  entityId, channels }): writes Notification` rows (in-app) and,
+  for channels including EMAIL/SMS, renders the matching
+  NotificationTemplate (looked up by [source, event, channel])
+  and sends it.
+Template variables are {{doubleBraces}} and are HTML-escaped in
+  email. Missing variables render as empty strings (never crash).
+User preferences: each user has per-service toggles (stored on the
+  User row as notificationPrefs: Json — `{ SPARK: { email: true,
+  sms: false }, ... }). notify()` respects them; system-critical
+  alerts (security, drawer variance) ignore the toggles.
+In-app notifications are fetched by /api/notifications (paged,
+  unread-first) and marked read individually or all at once.
+Email sending failures are retried twice with backoff, then logged
+  (never crash the request that triggered them). SMS failures are
+  logged and skipped.
+11.2 Email templates (Nodemailer, lib/email/templates/)
+booking-confirmation, booking-reminder, invoice-sent,
+  invoice-payment-link, payment-receipt, payment-reminder,
+  visitor-invite, visitor-arrival (to host), order-confirmation,
+  order-shipped, order-delivered, password-reset, email-verification,
+  welcome, low-stock-alert, daily-summary.
+Every email: plain-text alternative + HTML; subject prefixed with
+  the service name ([Zino Spark] ... — main spec §8.2); footer
+  with the platform name and an unsubscribe link for marketing mail
+  (transactional mail has no unsubscribe).
+All email is sent from EMAIL_FROM. In development, emails are
+  logged to the console instead of sent (unless SMTP is configured).
+11.3 Events that MUST notify (wired in the service layer)
+Low/out of stock · overdue invoice (7/14/30 days) · booking request
+received · delayed checkout · visitor arrival (host) · large sale
+(≥ LARGE_SALE_ALERT_KOBO) · cash drawer variance · failed payment ·
+order shipped/delivered · pre-registration expiring in 24h ·
+password changed (security email to the user).
+
+12. File uploads
+POST /api/uploads (multipart, auth required): validates file
+  type (images: jpg/png/webp; documents: pdf; receipts: jpg/png/pdf)
+  and size (images ≤ 5MB, documents ≤ 10MB), generates a random
+  filename (never trust the client filename), stores to local
+  public/uploads/ in dev or the S3-compatible bucket in production
+  (env-flagged), and returns { url, key, size, mimeType }.
+Uploaded files are served from /uploads/... (local) or the bucket
+  URL. Directories are per-entity (products/, rooms/, receipts/,
+  avatars/, imports/).
+Product/room images are resized server-side (max 1600px wide,
+  WebP conversion) before storage — use sharp.
+Deleting a record does NOT delete its files (audit safety); an
+  orphan-file cleanup job runs monthly (Phase 7, optional).
+CSV imports (§5.7) use the same upload endpoint with
+  purpose: "import".
+
+13. Exports & print data
+POST /api/exports with { type, format, filters } where type
+  is a report or list key (sales, invoices, stock-alert,
+  bookings, orders, visitors, attendance, activity, ...),
+  format is csv | xlsx | pdf, and filters match the list
+  query params (§7.2). Response: the file download (streamed) with
+  a Content-Disposition filename like
+  zino-one-stock-alert-2026-11-18.xlsx.
+Every export includes a Source column (§8.3) and a header row
+  with the platform name, the export title, the applied filters and
+  the generation timestamp (Africa/Lagos).
+CSV: UTF-8 with BOM (so Excel opens ₦ correctly), quoted fields.
+Excel (exceljs): one worksheet per service when the export spans
+  services, plus a summary sheet with totals; styled header row
+  (bold, dark navy fill, white text).
+PDF (pdfkit): portrait A4, header with platform name + service,
+  table with alternating row shading, footer with page numbers and
+  the generation timestamp. Max 5,000 rows per PDF export (larger
+  exports must use CSV/Excel — return 422 with that guidance).
+Print views (receipts/invoices) are frontend pages fed by
+  GET .../print endpoints that return the full record with its
+  line items, totals, and the service's header details — the backend
+  does not render print HTML.
+Exports are generated synchronously up to 10,000 rows; beyond that
+  the endpoint returns 202 with a job id and the file is delivered
+  by email/notification when ready (v1 may return 422 asking the
+  user to narrow the filters — implement the async path only if time
+  allows in Phase 7).
+
+14. Scheduled jobs (Vercel Cron)
+All jobs live under app/api/cron/, require the CRON_SECRET
+bearer token, are idempotent (safe to run twice), and log a
+start/finish entry. vercel.json:
+{
+  "crons": [
+    { "path": "/api/cron/recurring-invoices", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/overdue-invoices", "schedule": "15 6 * * *" },
+    { "path": "/api/cron/expire-pre-registers", "schedule": "0 * * * *" },
+    { "path": "/api/cron/low-stock-scan", "schedule": "0 7 * * *" },
+    { "path": "/api/cron/daily-summary", "schedule": "0 19 * * *" }
+  ]
+}
+(Times are UTC; 06:00 UTC = 07:00 WAT.)
+Job
+What it does
+recurring-invoices
+Creates due recurring invoices (§9.2), advances nextRunAt, emails them when autoSend.
+overdue-invoices
+Marks SENT/PART_PAID invoices past dueDate as OVERDUE; queues 7/14/30-day reminders; writes activity entries.
+expire-pre-registers
+Marks EXPECTED pre-registers past their visit date as EXPIRED; cancels REQUESTED bookings whose 30-minute hold expired (§9.4).
+low-stock-scan
+Finds products newly at/below threshold (§9.3) and notifies Storekeeper + Service Manager (per location).
+daily-summary
+Emails the Super Admin + Service Managers a per-service day summary (sales, bookings, visitors, alerts) — one email per manager, scoped to their services.
+
+15. Validation & error handling
+Every request body has a Zod schema in lib/validators/; every
+  query string has a Zod schema too (coercing page/perPage to
+  numbers, from/to to dates). Invalid input → `400
+  VALIDATION_ERROR with the first field error in details`.
+Zod schemas are .strict() — unknown fields are rejected, which is
+  what strips a client-supplied source (§8.1).
+Business-rule failures throw typed errors (BusinessError,
+  NotFoundError, ForbiddenError, ConflictError) from a shared
+  lib/errors.ts; a single withErrorHandler wrapper in lib/api.ts
+  converts them to the envelope in §7.1. Route handlers never
+  try/catch individually — the wrapper owns it.
+Prisma errors are translated: unique violation (P2002) → `409
+  CONFLICT` with a friendly message naming the field; foreign-key
+  violation (P2003) → 422 BUSINESS_RULE; record not found
+  (P2025) → 404 NOT_FOUND. Raw Prisma messages never reach the
+  client.
+Every response carries an x-request-id header (UUID per request,
+  in the pino log context).
+
+16. Logging & monitoring
+pino JSON logs. Every log line includes requestId, userId
+  (when known), service (when known) and route.
+Log levels: info for requests (method, path, status, duration),
+  warn for validation failures and rate-limit hits, error for
+  500s and failed external calls (gateway, email, SMS) with the
+  error message but never secrets or full payloads.
+Never log: passwords, tokens, session values, gateway secrets,
+  full card data, or the raw bodies of webhook requests (log the
+  event id and type only).
+Health endpoint: GET /api/health returns `{ ok, db: "up",
+  time } after a SELECT 1`. Used by the host's uptime check.
+Uptime + error monitoring: Sentry (optional, env-flagged
+  SENTRY_DSN) — wire it in Phase 7 if the owner wants it; the
+  code must not depend on it.
+
+17. Security
+Headers (in next.config.js): Strict-Transport-Security,
+  X-Content-Type-Options: nosniff, X-Frame-Options: DENY,
+  Referrer-Policy: strict-origin-when-cross-origin,
+  Permissions-Policy (camera/microphone/geolocation off except on
+  the visitor kiosk route, where camera is allowed for photo
+  capture). CSP: default-src 'self' with the gateway + font
+  origins allow-listed (document every exception).
+Rate limiting: auth endpoints (login/register/reset): 10
+  attempts per IP per 10 minutes, then 429 (with Retry-After).
+  Public form endpoints (contact, newsletter, booking creation):
+  20 per IP per hour. Authenticated API: 300 requests per user per
+  minute. Webhooks: exempt (signature-protected). Use the token
+  bucket in lib/rate-limit.ts (in-memory dev, Upstash Redis prod).
+Input safety: Zod everywhere (§15); Prisma parameterises all
+  queries; the two sanctioned $queryRaw uses (sequence increment,
+  stock row lock) use parameterised templates only.
+Secrets: only from env vars; never in code, logs, or the repo.
+  .env.example documents them; .env is gitignored.
+Sessions: database sessions (§6.1); logout deletes the session
+  row; a Super Admin can revoke any user's sessions from the user
+  detail page (POST /api/users/[id]/revoke-sessions).
+CORS: same-origin only in v1 (the frontend is the same Next.js
+  app). No public third-party API access.
+File uploads: type + size validation (§12); uploaded files are
+  never executed; the uploads directory is served as static files
+  with Content-Disposition: inline only for images/PDFs.
+Dependency hygiene: npm audit clean at delivery (no high or
+  critical vulnerabilities); lockfile committed.
+
+18. Testing
+Framework: Vitest. Test DB: a separate Postgres database
+  (DATABASE_URL_TEST), reset before each test file
+  (prisma migrate reset --force in the global setup, then seed the
+  minimal fixtures per file).
+Unit tests (lib/services/*.test.ts): money helpers, tax
+  computation, numbering, invoice status derivation, availability
+  overlap logic, drawer expected-cash computation, coupon validation.
+API tests (route level, authenticated with a test session):
+Auth: login success/failure, role guard 403s, session expiry.
+Scope tests (mandatory): for every service module, a user
+    with access to service A gets 404 (not data) when requesting
+    service B's records, and a user with one location cannot see
+    another location's sales.
+Sales: create sale decrements stock; insufficient stock → 409;
+    double-submit with the same idempotency key creates one sale;
+    void restores stock.
+Invoicing: overpayment rejected; partial payment sets PART_PAID;
+    full payment sets PAID.
+Bookings: two concurrent bookings for the last room — exactly
+    one succeeds (test with Promise.all).
+Orders: coupon applied once; out-of-stock checkout rejected;
+    cancel returns stock.
+Visitors: token check-in works once; expired token rejected;
+    double clock-in rejected.
+Webhooks: invalid signature → 401; duplicate event processed
+    once; amount mismatch → payment NOT settled + alert logged.
+Exports: CSV contains a Source column.
+Coverage target: ≥ 80% of lib/services/ and lib/validators/.
+  Run npm test in CI (GitHub Actions: install → lint → typecheck →
+  test).
+Load smoke test: the dashboard summary endpoint responds in
+  under 800ms against the seeded database (§8.5).
+
+19. Seed data & demo mode
+prisma/seed.ts (see main spec §14 for the data): services,
+  locations, users (demo accounts behind DEMO_LOGINS), products,
+  customers, sales, bookings, orders, invoices, visitors, attendance.
+npm run seed seeds into an empty database; npm run seed:reset
+  wipes and re-seeds (refuses to run when NODE_ENV=production
+  unless ALLOW_SEED_RESET=true is explicitly set — a guard against
+  wiping production by accident).
+Demo accounts: admin@zinoone.local (Super Admin),
+  manager.spark@zinoone.local, cashier@zinoone.local,
+  reception@zinoone.local, storekeeper@zinoone.local,
+  employee@zinoone.local, customer@zinoone.local — all with the
+  password Demo1234! in seed only, forced change on first login
+  in any non-local environment.
+The seed script is idempotent for the service registry and
+  locations (upsert by slug/name); transactional data is wiped and
+  recreated on reset.
+
+20. Deployment
+Host: Vercel (app) + hosted PostgreSQL (Neon or Supabase).
+Build: npm run build must pass with zero TypeScript errors
+  and zero ESLint errors. prisma generate runs in postinstall.
+Migrations on deploy: prisma migrate deploy as a Vercel
+  build step (or a release command) — never migrate dev.
+Env vars: set in the Vercel dashboard per environment
+  (Production / Preview). Preview deployments use a separate
+  database branch (Neon branching or a second database).
+Cron: vercel.json crons (§14) — enabled on Production only.
+Backups: daily automated backups on the hosted Postgres (the
+  provider's feature — enable it and confirm the retention, 7 days
+  minimum). Document the restore procedure in the README.
+Rollout: deploy behind the existing domains per service only
+  when the owner confirms (§18 of the main spec). Until then the
+  platform lives on its own domain/subdomain.
+README (README.md at the project root): setup from zero
+  (clone → env → install → migrate → seed → dev), the architecture
+  diagram (one paragraph + the structure in §3), how to run tests,
+  how to deploy, and the runbook for the cron jobs.
+
+21. Implementation phases (backend order)
+Phase 1 — Foundation
+Scaffold (Next.js + TS + Prisma + NextAuth), env, logging, errors.
+Full schema (§5.6) + migrations + seed (services, locations,
+   users only).
+Auth: login/register/reset, sessions, role + scope guards.
+API envelope, pagination, validation plumbing, rate limiting.
+Activity log writer + notification service skeleton.
+Done when: a seeded Super Admin can log in via the API, and
+   a scoped user gets 404s outside their scope (scope tests pass).
+Phase 2 — Shared engines
+Contacts + locations + settings endpoints.
+Money + numbering + inventory services (stock levels, movements).
+Invoicing + payments engine (invoices, estimates, recurring,
+   payments, drawer).
+Dashboard summary + activity + search + reports skeleton.
+Exports (CSV/Excel/PDF).
+Done when: an invoice can be created, paid and exported
+    end-to-end via the API, with activity entries.
+Phase 3 — Sales modules (Spark + Builders)
+Sales service (POS + counter) with idempotency + stock locking.
+Purchases, transfers, adjustments, counts, stock sheets.
+Stock alerts + low-stock cron.
+Done when: the sales API tests pass, including the
+    concurrency and idempotency tests (§18).
+Phase 4 — Apartments + Galaxy
+Room types, availability, booking lifecycle, front desk.
+Galaxy catalog reads, cart/wishlist/compare, orders, coupons,
+    reviews.
+Paystack/Flutterwave init + verify + webhooks (with the
+    webhook tests).
+Done when: a booking and an order can both be paid through
+    the sandbox gateways and settle via webhook.
+Phase 5 — Visitors + jobs + polish
+Visitors, pre-registers, attendance, employees, departments.
+All cron jobs + daily summary email.
+Email templates + SMS wiring.
+Uploads + CSV imports.
+Tests to the coverage target, security pass (§17), README,
+    deployment config, backup confirmation.
+Done when: the full §22 checklist passes.
+
+22. Done-when checklist (verify before delivering)
+Foundation
+npm run build passes (zero TS + ESLint errors); npm test
+      passes; npm audit shows no high/critical issues.
+Migrations run clean on an empty database; seed runs and
+      re-runs with --reset.
+Login works; sessions are database-backed; logout revokes;
+      demo logins are off when DEMO_LOGINS=false.
+Every API route returns the §7.1 envelope; errors carry stable
+      codes and never leak stack traces or SQL.
+Correctness
+Scope tests pass for every service (a user cannot read another
+      service's data via the API).
+Sales: stock decrements atomically; insufficient stock → 409;
+      idempotency key prevents duplicate sales; void/return restore
+      stock correctly.
+Invoicing: overpayment rejected; statuses derive from money;
+      recurring invoices generate on schedule; overdue job marks and
+      reminds.
+Bookings: concurrent booking of the last room yields exactly
+      one success; check-in/out move room statuses; delayed checkout
+      is flagged.
+Orders: coupon rules enforced; out-of-stock checkout rejected;
+      cancel returns stock; status machine rejects illegal
+      transitions.
+Visitors: token check-in is single-use and expirable; double
+      clock-in rejected; attendance unique per employee per day.
+Drawer: expected cash computes correctly; variance notifies the
+      manager; day close requires a closed drawer (Builders).
+Numbering: invoice/receipt/sheet numbers are sequential with no
+      gaps or collisions under concurrent creation.
+Source labelling & activity
+No record can be created without a source; no client-supplied
+      source is accepted; no update changes a source.
+Every list response includes source + sourceLabel; every
+      export includes a Source column.
+Every mutation in §9 writes an activity entry in the same
+      transaction; the timeline shows real entries for a sale, a
+      booking, a payment, a stock move and a visit.
+Payments & notifications
+Paystack + Flutterwave sandbox payments settle end-to-end via
+      webhook; invalid signatures → 401; duplicate events processed
+      once; amount mismatch never settles.
+All §11.3 events produce notifications; emails render with the
+      service prefix in the subject; SMS is skipped cleanly when
+      unconfigured.
+Exports, jobs, security
+CSV/Excel/PDF exports work for every type in §13 with the
+      Source column; the 5,000-row PDF limit is enforced.
+All five cron jobs run (trigger manually with CRON_SECRET)
+      and are idempotent.
+Rate limits hold on auth and public form endpoints; security
+      headers are present; GET /api/health returns db: "up".
+Dashboard summary responds in under 800ms on seed data.
+Delivery
+README covers setup, architecture, tests, deployment and the
+      cron runbook. .env.example is complete. Backups are enabled
+      with ≥ 7-day retention.
+
+23. Open questions (for the owner — defaults in brackets)
+Payment gateway priority — Paystack first, Flutterwave second, or
+   the reverse? (Default: Paystack default, Flutterwave as fallback.)
+SMS provider — Termii, or another Nigerian provider the owner
+   already uses? (Default: Termii, off until keys are supplied.)
+Email sending domain + SMTP provider — which mailbox sends the
+   transactional mail? (Default: the owner's domain mailbox; the
+   builder uses a placeholder until the owner supplies credentials.)
+Database host — Neon, Supabase, or the owner's own Postgres?
+   (Default: Neon, with branching for previews.)
+Backup retention beyond 7 days, and who owns the restore drill?
+   (Default: 7 days; owner confirms.)
+Sentry (or another error tracker) — wanted? (Default: no; add in
+   Phase 5 only if the owner asks.)
+
+*Companion to zino-unified-platform-prompt.md (the main spec).
+Compiled 18 November 2026. Where this file and the main spec disagree
+on backend matters, this file wins; where they disagree on a
+user-facing behaviour, ask the owner.*
