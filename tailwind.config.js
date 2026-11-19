@@ -61,6 +61,7 @@ module.exports = {
         sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
       },
     },
+    darkMode: ["class", "media"],
   },
   plugins: [],
 };

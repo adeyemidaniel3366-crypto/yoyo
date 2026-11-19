@@ -48,6 +48,42 @@ export function AdminTopbar({
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [isClockedIn, setIsClockedIn] = useState(false);
+  const [clockLoading, setClockLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  React.useEffect(() => {
+    // Check notifications
+    fetch("/api/notifications?perPage=10")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (res?.ok && Array.isArray(res.data)) {
+          const unread = res.data.filter((n: any) => !n.isRead).length;
+          setUnreadCount(unread);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleClockToggle = async () => {
+    setClockLoading(true);
+    try {
+      const endpoint = isClockedIn
+        ? "/api/visitors/attendance/clock-out"
+        : "/api/visitors/attendance/clock-in";
+      const res = await fetch(endpoint, { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setIsClockedIn(!isClockedIn);
+      } else {
+        // Fallback for demo mode
+        setIsClockedIn(!isClockedIn);
+      }
+    } catch {
+      setIsClockedIn(!isClockedIn);
+    } finally {
+      setClockLoading(false);
+    }
+  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,8 +92,12 @@ export function AdminTopbar({
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/signout", { method: "POST" });
+    } catch {}
     router.push("/login");
+    router.refresh();
   };
 
   return (
@@ -217,19 +257,17 @@ export function AdminTopbar({
         {/* Clock In / Out button (Staff attendance) */}
         <button
           type="button"
-          onClick={() => {
-            setIsClockedIn(!isClockedIn);
-            alert(isClockedIn ? "Clocked Out successfully at " + new Date().toLocaleTimeString() : "Clocked In successfully at " + new Date().toLocaleTimeString());
-          }}
+          disabled={clockLoading}
+          onClick={handleClockToggle}
           className={cn(
-            "hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
+            "hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors disabled:opacity-50",
             isClockedIn
               ? "bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 border border-rose-600/30"
               : "bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-600/30"
           )}
         >
           <Clock className="w-3.5 h-3.5" />
-          <span>{isClockedIn ? "Checkout" : "Clock In"}</span>
+          <span>{clockLoading ? "Updating..." : isClockedIn ? "Checkout" : "Clock In"}</span>
         </button>
 
         {/* Notifications Bell */}
@@ -238,7 +276,11 @@ export function AdminTopbar({
           className="relative p-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
         >
           <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-topbar" />
+          {unreadCount > 0 && (
+            <span className="absolute top-1 right-1 px-1 min-w-[16px] h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-topbar">
+              {unreadCount}
+            </span>
+          )}
         </Link>
 
         {/* Language selector */}

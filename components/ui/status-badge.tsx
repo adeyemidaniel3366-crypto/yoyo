@@ -25,11 +25,12 @@ export function StatusBadge({
         color.text,
         size === "sm" && "text-[11px] px-2 py-0.5",
         size === "md" && "text-xs px-2.5 py-0.5",
+        "dark:text-gray-200",
         className
       )}
     >
       {showDot && (
-        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", color.dot)} />
+        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", color.dot, "dark:bg-gray-300")} />
       )}
       <span>{color.label || status}</span>
     </span>

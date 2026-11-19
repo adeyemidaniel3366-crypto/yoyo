@@ -29,7 +29,47 @@ import { SourceBadge } from "@/components/ui/source-badge";
 import { ChartCard } from "@/components/ui/chart-card";
 
 export default function VisitorManagementDashboardPage() {
-  const [userName] = useState("John Doe");
+  const [userName, setUserName] = useState("John Doe");
+  const [visitorData, setVisitorData] = useState<{
+    totalVisitors: number;
+    totalPreRegisters: number;
+    todayAttendance: number;
+    totalEmployees: number;
+  }>({
+    totalVisitors: 5,
+    totalPreRegisters: 5,
+    todayAttendance: 0,
+    totalEmployees: 5,
+  });
+
+  React.useEffect(() => {
+    // Fetch authenticated user
+    fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (res?.ok && res?.data) {
+          const u = res.data;
+          setUserName(`${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email || "Staff");
+        }
+      })
+      .catch(() => {});
+
+    // Fetch live visitor summary
+    fetch("/api/visitors/reports/daily")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (res?.ok && res?.data) {
+          const d = res.data;
+          setVisitorData({
+            totalVisitors: d.totalVisits ?? 5,
+            totalPreRegisters: d.visitsByStatus?.find((v: any) => v.status === "EXPECTED")?.count ?? 5,
+            todayAttendance: d.attendanceByStatus?.reduce((acc: number, curr: any) => acc + (curr.count || 0), 0) ?? 0,
+            totalEmployees: 5,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Determine greeting
   const hour = new Date().getHours();
@@ -37,10 +77,10 @@ export default function VisitorManagementDashboardPage() {
 
   // 4 Overview cards from Screenshot media_1795026254019_24141187.jpg
   const overviewCards = [
-    { title: "Total Employees", value: "5", bg: "bg-[#0A1931] text-white" },
-    { title: "Total Visitors", value: "5", bg: "bg-[#6D5DF6] text-white" },
-    { title: "Total Pre Registers", value: "5", bg: "bg-[#3B82F6] text-white" },
-    { title: "Today Attendance", value: "0", bg: "bg-[#8B5CF6] text-white" },
+    { title: "Total Employees", value: String(visitorData.totalEmployees), bg: "bg-[#0A1931] text-white" },
+    { title: "Total Visitors", value: String(visitorData.totalVisitors), bg: "bg-[#6D5DF6] text-white" },
+    { title: "Total Pre Registers", value: String(visitorData.totalPreRegisters), bg: "bg-[#3B82F6] text-white" },
+    { title: "Today Attendance", value: String(visitorData.todayAttendance), bg: "bg-[#8B5CF6] text-white" },
   ];
 
   // 12 Nov - 18 Nov Chart Data

@@ -139,12 +139,12 @@ export function DataTable<T extends Record<string, any>>({
   };
 
   return (
-    <div className={cn("bg-white rounded-xl border border-border overflow-hidden shadow-2xs", className)}>
+    <div className={cn("rounded-xl border border-border overflow-hidden shadow-2xs", className, "dark:bg-gray-800 dark:border-gray-700")}>
       {/* Title & Top Toolbar */}
       <div className="p-4 sm:p-5 border-b border-border space-y-3">
         {(title || rightAction) && (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            {title && <h3 className="text-base font-semibold text-heading">{title}</h3>}
+            {title && <h3 className="text-base font-semibold text-heading dark:text-gray-100">{title}</h3>}
             {rightAction && <div className="shrink-0">{rightAction}</div>}
           </div>
         )}
@@ -235,7 +235,7 @@ export function DataTable<T extends Record<string, any>>({
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full h-8 pl-9 pr-3 rounded border border-border bg-white text-xs text-heading placeholder:text-muted focus:outline-none focus:border-active"
+              className={cn("w-full h-8 pl-9 pr-3 rounded border border-border bg-white/90 dark:bg-gray-800/30 text-xs text-heading placeholder:text-muted/60 focus:outline-none focus:border-active dark:focus:border-primary")}
             />
           </div>
         </div>
@@ -245,7 +245,7 @@ export function DataTable<T extends Record<string, any>>({
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm border-collapse">
           <thead>
-            <tr className="border-b border-border bg-gray-50/70 text-xs font-semibold text-heading">
+            <tr className={cn("border-b border-border bg-gray-50/70 text-xs font-semibold text-heading dark:text-gray-600")}
               {showSourceColumn && (
                 <th className="py-3 px-4 w-28">Source</th>
               )}
@@ -296,8 +296,8 @@ export function DataTable<T extends Record<string, any>>({
                   key={(row as any).id || idx}
                   onClick={() => onRowClick?.(row)}
                   className={cn(
-                    "hover:bg-gray-50/80 transition-colors text-xs text-body",
-                    onRowClick && "cursor-pointer"
+                    "hover:bg-gray-50/80 transition-colors dark:hover:bg-gray-800/50",
+                    "cursor-pointer"
                   )}
                 >
                   {showSourceColumn && (
@@ -337,7 +337,7 @@ export function DataTable<T extends Record<string, any>>({
       </div>
 
       {/* Footer: Pagination */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-border text-xs text-muted">
+      <div className={cn("flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-border dark:border-gray-700 dark:text-gray-400")}>
         <div>
           Showing {totalEntries === 0 ? 0 : startIndex + 1} to{" "}
           {Math.min(startIndex + pageSize, totalEntries)} of {totalEntries} entries

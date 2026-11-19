@@ -20,14 +20,14 @@ export function SourceBadge({
     return (
       <span
         className={cn(
-          "inline-flex items-center gap-1.5 font-medium rounded-full bg-gray-100 text-gray-700 select-none",
+          "inline-flex items-center gap-1.5 font-medium rounded-full bg-gray-100 text-gray-700 select-none dark:bg-gray-800 dark:text-gray-300",
           size === "sm" && "text-[11px] px-2 py-0.5",
           size === "md" && "text-xs px-2.5 py-1",
           size === "lg" && "text-sm px-3 py-1.5",
           className
         )}
       >
-        {showDot && <span className="w-2 h-2 rounded-full bg-gray-400 shrink-0" />}
+        {showDot && <span className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 shrink-0" />}
         <span>Shared</span>
       </span>
     );
@@ -49,6 +49,7 @@ export function SourceBadge({
         size === "sm" && "text-[11px] px-2 py-0.5",
         size === "md" && "text-xs px-2.5 py-1",
         size === "lg" && "text-sm px-3.5 py-1.5",
+        "dark:text-gray-200",
         className
       )}
       style={{

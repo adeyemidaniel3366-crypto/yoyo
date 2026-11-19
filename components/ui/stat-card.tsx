@@ -41,8 +41,9 @@ export function StatCard({
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
       className={cn(
-        "bg-white rounded-xl border border-border p-5 shadow-sm transition-all duration-200 flex items-start gap-4",
+        "rounded-xl border border-border p-5 shadow-sm transition-all duration-200 flex items-start gap-4",
         isClickable && "hover:shadow-md hover:border-gray-300 cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-active/20",
+        "dark:border-gray-700 dark:hover:bg-gray-900/20",
         className
       )}
     >
@@ -64,7 +65,7 @@ export function StatCard({
           {source && <SourceBadge source={source} size="sm" />}
         </div>
 
-        <h3 className="text-2xl lg:text-[26px] font-bold text-heading tracking-tight tabular-nums truncate">
+        <h3 className="text-2xl lg:text-[26px] font-bold text-heading tracking-tight tabular-nums truncate dark:text-gray-100">
           {value}
         </h3>
 
@@ -90,7 +91,7 @@ export function StatCard({
           )}
 
           {subtitle && !delta && (
-            <p className="text-xs text-muted truncate">{subtitle}</p>
+            <p className="text-xs text-muted truncate dark:text-gray-300">{subtitle}</p>
           )}
         </div>
       </div>

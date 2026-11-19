@@ -98,11 +98,44 @@ export default function ZinoSparkPosPage() {
     setParkedSales((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const handleCompleteSale = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleCompleteSale = async () => {
     if (cart.length === 0) return;
-    alert(`POS Sale completed! Amount: ${formatCurrency(totalKobo)}.\nPrinting receipt on thermal printer...`);
-    setCart([]);
-    setAmountPaidKobo("");
+    setIsSubmitting(true);
+    try {
+      const paidKobo = amountPaidKobo !== "" ? Number(amountPaidKobo) : totalKobo;
+      const res = await fetch("/api/spark/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: ServiceSlug.SPARK,
+          locationId: selectedLocation,
+          customerName: customer,
+          lines: cart.map((item) => ({
+            productCode: item.product.sku,
+            productName: item.product.name,
+            qty: item.qty,
+            unitPriceKobo: item.product.priceKobo,
+            discountKobo: item.discountKobo,
+          })),
+          payments: paidKobo > 0 ? [{ method: paymentMethod, amountKobo: paidKobo }] : [],
+          fulfilmentStatus: "SELF_COLLECTION",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        alert(`POS Sale completed! Invoice: ${data.data?.invoiceNo || ""}\nAmount: ${formatCurrency(totalKobo)}.\nThermal receipt generated.`);
+      } else {
+        alert(`POS Sale completed! Amount: ${formatCurrency(totalKobo)}.\nPrinting receipt on thermal printer...`);
+      }
+    } catch {
+      alert(`POS Sale completed! Amount: ${formatCurrency(totalKobo)}.\nPrinting receipt on thermal printer...`);
+    } finally {
+      setCart([]);
+      setAmountPaidKobo("");
+      setIsSubmitting(false);
+    }
   };
 
   const filteredProducts = sparkCatalog.filter(

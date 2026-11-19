@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminTopbar } from "./admin-topbar";
 import { ServiceSlug } from "@/lib/constants";
@@ -13,6 +13,35 @@ export function AdminLayoutShell({ children }: AdminLayoutShellProps) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceSlug | "ALL">("ALL");
   const [selectedLocation, setSelectedLocation] = useState<string>("ALL");
+  const [user, setUser] = useState<{ name: string; role: string } | null>(null);
+  const [bookingRequestsCount, setBookingRequestsCount] = useState<number>(0);
+
+  useEffect(() => {
+    // Load current authenticated user session
+    fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (res?.ok && res?.data) {
+          const u = res.data;
+          const fullName = `${u.firstName || ""} ${u.lastName || ""}`.trim();
+          setUser({
+            name: fullName || u.email || "Admin User",
+            role: Array.isArray(u.roles) && u.roles.length > 0 ? u.roles.join(", ") : "Admin",
+          });
+        }
+      })
+      .catch(() => {});
+
+    // Fetch live pending booking requests count
+    fetch("/api/apartments/front-desk/today")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (res?.ok && res?.data?.stats) {
+          setBookingRequestsCount(res.data.stats.arrivalsCount || 0);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen bg-content-bg flex">
@@ -20,7 +49,7 @@ export function AdminLayoutShell({ children }: AdminLayoutShellProps) {
       <AdminSidebar
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
-        bookingRequestsCount={0}
+        bookingRequestsCount={bookingRequestsCount}
         guestSupportCount={1}
       />
 
@@ -33,9 +62,9 @@ export function AdminLayoutShell({ children }: AdminLayoutShellProps) {
           onSelectService={setSelectedService}
           selectedLocation={selectedLocation}
           onSelectLocation={setSelectedLocation}
-          bookingRequestsCount={0}
-          userName="Admin"
-          userRole="Super Admin"
+          bookingRequestsCount={bookingRequestsCount}
+          userName={user?.name || "Admin"}
+          userRole={user?.role || "Super Admin"}
         />
 
         {/* Page Content */}

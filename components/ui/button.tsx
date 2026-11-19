@@ -27,20 +27,20 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || isLoading}
         className={cn(
-          "inline-flex items-center justify-center font-medium rounded-lg transition-colors select-none focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]",
+          "inline-flex items-center justify-center font-medium rounded-lg transition-colors select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]",
           // Variants
           variant === "primary" &&
-            "bg-active text-white hover:bg-indigo-700 focus:ring-active shadow-sm",
+            "bg-active text-white hover:bg-indigo-700 focus-visible:ring-active shadow-sm",
           variant === "secondary" &&
-            "bg-white border border-border text-heading hover:bg-gray-50 focus:ring-gray-200 shadow-sm",
+            "bg-white border border-border text-heading hover:bg-gray-50 focus-visible:ring-gray-200 shadow-sm",
           variant === "outline" &&
-            "border border-border text-heading bg-transparent hover:bg-gray-100 focus:ring-gray-200",
+            "border border-border text-heading bg-transparent hover:bg-gray-100 focus-visible:ring-gray-200",
           variant === "danger" &&
-            "bg-rose-600 text-white hover:bg-rose-700 focus:ring-rose-500 shadow-sm",
+            "bg-rose-600 text-white hover:bg-rose-700 focus-rose-500 shadow-sm",
           variant === "success" &&
-            "bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500 shadow-sm",
+            "bg-emerald-600 text-white hover:bg-emerald-700 focus-emerald-500 shadow-sm",
           variant === "ghost" &&
-            "bg-transparent text-heading hover:bg-gray-100 focus:ring-gray-200",
+            "bg-transparent text-heading hover:bg-gray-100 focus-visible:ring-gray-200",
           // Sizes
           size === "sm" && "h-8 px-3 text-xs gap-1.5",
           size === "md" && "h-10 px-4 text-sm gap-2",

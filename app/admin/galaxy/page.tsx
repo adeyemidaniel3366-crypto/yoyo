@@ -19,7 +19,30 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCurrency } from "@/lib/money";
 
 export default function DeviceGalaxyDashboardPage() {
-  const galaxyOrders = [
+  const [liveOrders, setLiveOrders] = React.useState<any[] | null>(null);
+
+  React.useEffect(() => {
+    fetch("/api/galaxy/orders")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (res?.ok && Array.isArray(res.data)) {
+          const mapped = res.data.map((ord: any) => ({
+            id: ord.id,
+            orderNo: ord.orderNo,
+            customer: ord.contact?.name || ord.guestName || "Customer",
+            itemsCount: Array.isArray(ord.lines) ? ord.lines.length : 1,
+            amountKobo: ord.totalKobo || 0,
+            status: ord.status,
+            paymentStatus: ord.paymentStatus || "PAID",
+            date: typeof ord.createdAt === "string" ? ord.createdAt.slice(0, 10) : "Today",
+          }));
+          setLiveOrders(mapped);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const defaultOrders = [
     {
       id: "ord_1",
       orderNo: "DG-892104",
@@ -61,6 +84,8 @@ export default function DeviceGalaxyDashboardPage() {
       date: "15 Nov 2026",
     },
   ];
+
+  const galaxyOrders = liveOrders && liveOrders.length > 0 ? liveOrders : defaultOrders;
 
   return (
     <div className="space-y-6">

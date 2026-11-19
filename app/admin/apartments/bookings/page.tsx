@@ -36,8 +36,51 @@ interface BookingRecord {
 
 export default function ApartmentsBookingsPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
+  const [liveBookings, setLiveBookings] = useState<BookingRecord[] | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const bookings: BookingRecord[] = [
+  const fetchBookings = () => {
+    fetch("/api/apartments/bookings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (res?.ok && Array.isArray(res.data)) {
+          const mapped: BookingRecord[] = res.data.map((b: any) => ({
+            id: b.id,
+            bookingRef: b.ref,
+            guestName: b.contact?.name || "Guest",
+            roomName: b.room?.number ? `${b.roomType?.name || "Room"} (${b.room.number})` : b.roomType?.name || "Room",
+            checkIn: typeof b.checkIn === "string" ? b.checkIn.slice(0, 10) : "",
+            checkOut: typeof b.checkOut === "string" ? b.checkOut.slice(0, 10) : "",
+            nights: b.nights || 1,
+            totalKobo: b.totalKobo || 0,
+            status: b.status,
+            paymentStatus: b.paymentStatus || "PAID",
+          }));
+          setLiveBookings(mapped);
+        }
+      })
+      .catch(() => {});
+  };
+
+  React.useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const handleBookingAction = async (bookingRef: string, action: "check-in" | "check-out" | "cancel") => {
+    setActionLoading(bookingRef);
+    try {
+      const res = await fetch(`/api/apartments/bookings/${bookingRef}/${action}`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        fetchBookings();
+      }
+    } catch {} finally {
+      setActionLoading(null);
+    }
+  };
+
+  const defaultBookings: BookingRecord[] = [
     {
       id: "bkg_001",
       bookingRef: "ZA-2026-0891",
@@ -99,6 +142,8 @@ export default function ApartmentsBookingsPage() {
       paymentStatus: "PAID",
     },
   ];
+
+  const bookings = liveBookings && liveBookings.length > 0 ? liveBookings : defaultBookings;
 
   const filteredBookings = selectedStatus === "ALL"
     ? bookings
@@ -164,6 +209,44 @@ export default function ApartmentsBookingsPage() {
       header: "Payment",
       accessorKey: "paymentStatus",
       cell: (row) => <StatusBadge status={row.paymentStatus} size="sm" />,
+    },
+    {
+      header: "Action",
+      id: "actions",
+      cell: (row) => (
+        <div className="flex items-center gap-1.5">
+          {row.status === "CONFIRMED" && (
+            <button
+              type="button"
+              disabled={actionLoading === row.bookingRef}
+              onClick={() => handleBookingAction(row.bookingRef, "check-in")}
+              className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition-colors disabled:opacity-50"
+            >
+              Check In
+            </button>
+          )}
+          {row.status === "CHECKED_IN" && (
+            <button
+              type="button"
+              disabled={actionLoading === row.bookingRef}
+              onClick={() => handleBookingAction(row.bookingRef, "check-out")}
+              className="px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[11px] transition-colors disabled:opacity-50"
+            >
+              Check Out
+            </button>
+          )}
+          {row.status !== "CHECKED_OUT" && row.status !== "CANCELLED" && (
+            <button
+              type="button"
+              disabled={actionLoading === row.bookingRef}
+              onClick={() => handleBookingAction(row.bookingRef, "cancel")}
+              className="px-2 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold text-[11px] transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      ),
     },
   ];
 

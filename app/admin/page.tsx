@@ -39,37 +39,63 @@ import { formatCurrency, formatCurrencyCompact } from "@/lib/money";
 
 export default function UnifiedAdminDashboard() {
   const [chartGrouping, setChartGrouping] = useState<"service" | "location">("service");
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Mock / Seed Data reflecting the screenshots & seed specs:
+  React.useEffect(() => {
+    setIsLoading(true);
+    fetch("/api/dashboard/summary")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (res?.ok && res?.data) {
+          setDashboardData(res.data);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  // Mock / Seed Data reflecting the screenshots & seed specs (with live override):
+  const rawCards = dashboardData?.cards || [];
+  const getCard = (key: string) => rawCards.find((c: any) => c.key === key);
+
   // Row 1: 8 Stat cards
   const stats = [
     {
       title: "Total Sales (Today)",
-      value: "₦1,842,500",
+      value: getCard("totalSales")?.display || "₦1,842,500",
       icon: ShoppingCart,
       iconColor: "#2563EB",
       iconBg: "#E8EEFB",
-      delta: { value: 12.4, isPositive: true, period: "vs yesterday" },
+      delta: {
+        value: getCard("totalSales")?.deltaPct ?? 12.4,
+        isPositive: (getCard("totalSales")?.deltaPct ?? 12.4) >= 0,
+        period: "vs yesterday",
+      },
     },
     {
       title: "Net (Today)",
-      value: "₦1,420,000",
+      value: getCard("net")?.display || "₦1,420,000",
       icon: DollarSign,
       iconColor: "#28A745",
       iconBg: "#E8F5EE",
-      delta: { value: 8.1, isPositive: true, period: "vs yesterday" },
+      delta: {
+        value: getCard("net")?.deltaPct ?? 8.1,
+        isPositive: (getCard("net")?.deltaPct ?? 8.1) >= 0,
+        period: "vs yesterday",
+      },
     },
     {
       title: "Invoice Due",
-      value: "₦834,500",
+      value: getCard("invoiceDue")?.display || "₦834,500",
       icon: FileText,
       iconColor: "#FFB800",
       iconBg: "#FFF9E6",
-      subtitle: "6 debtors in Builders & Spark",
+      subtitle: "Debtors in Builders & Spark",
     },
     {
       title: "Total Sell Return",
-      value: "₦0.00",
+      value: getCard("sellReturn")?.display || "₦0.00",
       icon: RefreshCw,
       iconColor: "#E74C3C",
       iconBg: "#FDF2F2",
@@ -77,37 +103,37 @@ export default function UnifiedAdminDashboard() {
     },
     {
       title: "Total Purchase (Today)",
-      value: "₦650,000",
+      value: getCard("totalPurchase")?.display || "₦650,000",
       icon: ShoppingBag,
       iconColor: "#17A2B8",
       iconBg: "#E8F7F9",
-      subtitle: "2 orders received",
+      subtitle: "Received orders",
     },
     {
       title: "Purchase Due",
-      value: "₦320,000",
+      value: getCard("purchaseDue")?.display || "₦320,000",
       icon: AlertTriangle,
       iconColor: "#FFB800",
       iconBg: "#FFF9E6",
-      subtitle: "1 supplier balance pending",
+      subtitle: "Supplier balances pending",
     },
     {
       title: "Active Bookings",
-      value: "2",
+      value: getCard("activeBookings")?.display || "2",
       icon: Building2,
       iconColor: "#1E3A5F",
       iconBg: "#E8EEF5",
       source: ServiceSlug.APARTMENTS,
-      subtitle: "Deluxe & Luxury 2-Bed",
+      subtitle: "Deluxe & Luxury Suites",
     },
     {
       title: "Visitors Today",
-      value: "5",
+      value: getCard("visitorsToday")?.display || "5",
       icon: Users,
       iconColor: "#7C3AED",
       iconBg: "#F3EFFF",
       source: ServiceSlug.VISITORS,
-      subtitle: "3 checked-in, 2 expected",
+      subtitle: "Checked-in & expected",
     },
   ];
 
