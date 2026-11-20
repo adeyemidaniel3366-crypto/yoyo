@@ -47,6 +47,19 @@ export function validateEnv(): void {
     process.env.NEXT_PHASE === "phase-production-build" ||
     process.env.NODE_ENV === "test";
 
+  // Provide development defaults if missing so dev server never hard-crashes
+  if (process.env.NODE_ENV !== "production") {
+    if (!process.env.DATABASE_URL) {
+      process.env.DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/zino_one?schema=public";
+    }
+    if (!process.env.NEXTAUTH_SECRET) {
+      process.env.NEXTAUTH_SECRET = "dev-secret-key-32-bytes-minimum-length-for-zino-2026";
+    }
+    if (!process.env.NEXTAUTH_URL) {
+      process.env.NEXTAUTH_URL = "http://localhost:3000";
+    }
+  }
+
   const required = ["DATABASE_URL", "NEXTAUTH_SECRET", "NEXTAUTH_URL"] as const;
   const missing = required.filter((k) => !process.env[k]);
 
