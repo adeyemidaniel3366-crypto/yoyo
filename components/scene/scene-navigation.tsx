@@ -3,18 +3,14 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Command, Menu, X, ArrowUpRight, Play, Pause } from "lucide-react";
+import { Command, Menu, X, ArrowUpRight } from "lucide-react";
 
 interface SceneNavigationProps {
   onOpenCommandPalette: () => void;
-  isAutoTourEnabled: boolean;
-  onToggleAutoTour: () => void;
 }
 
 export function SceneNavigation({
   onOpenCommandPalette,
-  isAutoTourEnabled,
-  onToggleAutoTour,
 }: SceneNavigationProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -96,34 +92,8 @@ export function SceneNavigation({
             ))}
           </nav>
 
-          {/* Actions: Auto-Tour, Search, Primary CTA */}
+          {/* Actions: Search, Primary CTA */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Auto-Tour Toggle */}
-            <button
-              type="button"
-              onClick={onToggleAutoTour}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-mono font-semibold transition-all ${
-                isAutoTourEnabled
-                  ? "bg-[#00CEC8] text-[#12110E] border-[#00CEC8] shadow-sm"
-                  : "bg-white/70 hover:bg-white text-[#12110E]/80 border-[#12110E]/10"
-              }`}
-              title="Automatically tour the website sections"
-            >
-              {isAutoTourEnabled ? (
-                <>
-                  <Pause className="w-3 h-3 fill-current" />
-                  <span className="hidden sm:inline">Tour:</span>
-                  <span>ON</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-3 h-3 fill-current" />
-                  <span className="hidden sm:inline">Auto-</span>
-                  <span>Tour</span>
-                </>
-              )}
-            </button>
-
             {/* Quick Search Trigger */}
             <button
               type="button"
@@ -138,13 +108,13 @@ export function SceneNavigation({
               </kbd>
             </button>
 
-            {/* Launch Apps Workspace Primary CTA */}
+            {/* Staff / Client Login Link */}
             <Link
-              href="/admin"
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#EB4203] hover:bg-[#EB4203]/90 text-white text-xs font-mono font-bold tracking-wide transition-all shadow-sm hover:shadow"
+              href="/login"
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#12110E] hover:bg-[#12110E]/90 text-white text-xs font-mono font-semibold tracking-wide transition-all shadow-sm hover:shadow"
             >
-              <span>Workspace</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
+              <span>Sign In</span>
+              <ArrowUpRight className="w-3 h-3 text-[#00CEC8]" />
             </Link>
 
             {/* Mobile Menu Button */}

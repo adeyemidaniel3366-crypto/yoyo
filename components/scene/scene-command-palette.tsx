@@ -38,7 +38,7 @@ export function SceneCommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     { id: "space-about", label: "About Zino company", category: "Navigation", href: "#about", icon: User },
     { id: "space-projects", label: "Explore Projects & Software", category: "Navigation", href: "#projects", icon: Layers },
     { id: "space-platforms", label: "Digital Platforms & Websites", category: "Navigation", href: "#platforms", icon: Globe },
-    { id: "action-copy-email", label: "Copy Email (adeyemidaniel3366@gmail.com)", category: "Quick Action", href: "action:copy-email", icon: Mail },
+    { id: "action-copy-email", label: "Copy Email (adeyemiZino3366@gmail.com)", category: "Quick Action", href: "action:copy-email", icon: Mail },
     { id: "app-admin", label: "Zino One Unified Operations Core", category: "Live Applications", href: "/admin", icon: Terminal },
     { id: "app-shop", label: "Device Galaxy Electronics E-Commerce", category: "Live Applications", href: "/shop", icon: ShoppingBag },
     { id: "app-apartments", label: "Zino Luxury Apartments Hotel PMS", category: "Live Applications", href: "/apartments", icon: Building2 },
@@ -47,7 +47,7 @@ export function SceneCommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     { id: "app-visit", label: "Security & Visitor Check-In Kiosk", category: "Live Applications", href: "/visit", icon: UserCheck },
     { id: "ext-neadston", label: "Neadston Limited Partner Portal", category: "External Websites", href: "https://sales.neadstonltd.com/", isExternal: true, icon: ExternalLink },
     { id: "ext-estoworld", label: "Esto World Sales Ecosystem", category: "External Websites", href: "https://sales.estoworld.com/login", isExternal: true, icon: ExternalLink },
-    { id: "ext-github", label: "GitHub Profile & Repositories", category: "External Websites", href: "https://github.com/adeyemidaniel3366-crypto", isExternal: true, icon: ExternalLink },
+    { id: "ext-github", label: "GitHub Profile & Repositories", category: "External Websites", href: "https://github.com/adeyemiZino3366-crypto", isExternal: true, icon: ExternalLink },
   ];
 
   const filtered = navigationItems.filter(

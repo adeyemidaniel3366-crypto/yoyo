@@ -39,48 +39,50 @@ import { formatCurrency } from "@/lib/money";
 export default function ZinoApartmentsAdminDashboard() {
   const [excludingTax, setExcludingTax] = useState(true);
 
-  // Exact 8 Top Stat Cards from the screenshot media_1795026254029_e38b43d6.jpg
+  // 8 Top Stat Cards for Zino Luxury Apartments
   const topStats = [
     { title: "Delayed Checkout", value: "0", icon: LogOut, color: "text-rose-500", bg: "bg-rose-50", border: "border-rose-100" },
-    { title: "Pending Check-In", value: "0", icon: LogIn, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-100" },
-    { title: "Upcoming Check-In", value: "0", icon: ArrowRight, color: "text-cyan-500", bg: "bg-cyan-50", border: "border-cyan-100" },
-    { title: "Upcoming Checkout", value: "0", icon: LogOut, color: "text-blue-500", bg: "bg-blue-50", border: "border-blue-100" },
-    { title: "Today's Booked Rooms", value: "0", icon: CheckSquare, color: "text-indigo-900", bg: "bg-indigo-50", border: "border-indigo-100" },
-    { title: "Today's Available Rooms", value: "2", icon: BedDouble, color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-100" },
-    { title: "Active Booking", value: "0", icon: CheckSquare, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-    { title: "Total Bookings", value: "0", icon: Building2, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-100" },
+    { title: "Pending Check-In", value: "2", icon: LogIn, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-100" },
+    { title: "Upcoming Check-In", value: "3", icon: ArrowRight, color: "text-cyan-500", bg: "bg-cyan-50", border: "border-cyan-100" },
+    { title: "Upcoming Checkout", value: "1", icon: LogOut, color: "text-blue-500", bg: "bg-blue-50", border: "border-blue-100" },
+    { title: "Today's Booked Rooms", value: "9", icon: CheckSquare, color: "text-indigo-900", bg: "bg-indigo-50", border: "border-indigo-100" },
+    { title: "Today's Available Rooms", value: "3", icon: BedDouble, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+    { title: "Active Booking", value: "9", icon: CheckSquare, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+    { title: "Total Bookings", value: "48", icon: Building2, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-100" },
   ];
 
-  // Exact 4 Bottom Guest Stat Cards from the screenshot
+  // 4 Bottom Guest Stat Cards
   const guestStats = [
-    { title: "Total Registered Guests", value: "0", icon: Users, bg: "bg-indigo-600 text-white" },
-    { title: "Active Registered Guests", value: "0", icon: CheckSquare, bg: "bg-emerald-600 text-white" },
-    { title: "Email Unverified Guests", value: "0", icon: Mail, bg: "bg-rose-600 text-white" },
-    { title: "Mobile Unverified Guests", value: "0", icon: Smartphone, bg: "bg-amber-600 text-white" },
+    { title: "Total Registered Guests", value: "142", icon: Users, bg: "bg-indigo-600 text-white" },
+    { title: "Active Registered Guests", value: "38", icon: CheckSquare, bg: "bg-emerald-600 text-white" },
+    { title: "Email Unverified Guests", value: "4", icon: Mail, bg: "bg-rose-600 text-white" },
+    { title: "Mobile Unverified Guests", value: "2", icon: Smartphone, bg: "bg-amber-600 text-white" },
   ];
 
-  // Chart data for Booking Report (Nov 4 - Nov 18, 2026)
+  // Chart data for Booking Report (Nov 4 - Nov 20, 2026)
   const bookingReportData = [
-    { date: "04-Nov", bookings: 0 },
-    { date: "06-Nov", bookings: 0 },
-    { date: "08-Nov", bookings: 0 },
-    { date: "10-Nov", bookings: 0 },
-    { date: "12-Nov", bookings: 0 },
-    { date: "14-Nov", bookings: 0 },
-    { date: "16-Nov", bookings: 0 },
-    { date: "18-Nov", bookings: 0 },
+    { date: "04-Nov", bookings: 4 },
+    { date: "06-Nov", bookings: 6 },
+    { date: "08-Nov", bookings: 5 },
+    { date: "10-Nov", bookings: 8 },
+    { date: "12-Nov", bookings: 7 },
+    { date: "14-Nov", bookings: 9 },
+    { date: "16-Nov", bookings: 8 },
+    { date: "18-Nov", bookings: 11 },
+    { date: "20-Nov", bookings: 12 },
   ];
 
-  // Chart data for Payment Report (Received vs Returned)
+  // Chart data for Payment Report (Received vs Returned in ₦)
   const paymentReportData = [
-    { date: "04-Nov", received: 0, returned: 0 },
-    { date: "06-Nov", received: 0, returned: 0 },
-    { date: "08-Nov", received: 0, returned: 0 },
-    { date: "10-Nov", received: 0, returned: 0 },
-    { date: "12-Nov", received: 0, returned: 0 },
-    { date: "14-Nov", received: 0, returned: 0 },
-    { date: "16-Nov", received: 0, returned: 0 },
-    { date: "18-Nov", received: 0, returned: 0 },
+    { date: "04-Nov", received: 240000, returned: 0 },
+    { date: "06-Nov", received: 380000, returned: 0 },
+    { date: "08-Nov", received: 310000, returned: 0 },
+    { date: "10-Nov", received: 520000, returned: 0 },
+    { date: "12-Nov", received: 450000, returned: 0 },
+    { date: "14-Nov", received: 610000, returned: 0 },
+    { date: "16-Nov", received: 580000, returned: 0 },
+    { date: "18-Nov", received: 720000, returned: 0 },
+    { date: "20-Nov", received: 850000, returned: 0 },
   ];
 
   return (
@@ -195,7 +197,7 @@ export default function ZinoApartmentsAdminDashboard() {
               <LineChart data={paymentReportData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F1F3F5" />
                 <XAxis dataKey="date" stroke="#8A8A9A" fontSize={11} tickLine={false} />
-                <YAxis stroke="#8A8A9A" fontSize={11} tickLine={false} domain={[0, 6]} />
+                <YAxis stroke="#8A8A9A" fontSize={11} tickLine={false} tickFormatter={(val) => `₦${(val / 1000).toFixed(0)}k`} />
                 <Tooltip
                   formatter={(val: any) => [`₦${val}`, "Amount"]}
                   contentStyle={{ backgroundColor: "#1A1A2E", borderRadius: "8px", color: "#fff", fontSize: "12px" }}

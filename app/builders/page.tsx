@@ -75,8 +75,8 @@ export default function TopBuildersPublicPage() {
           </Link>
 
           <div className="flex items-center gap-4 text-xs font-bold">
-            <Link href="/admin/builders" className="text-builders hover:underline">
-              Admin Sales Book →
+            <Link href="/login" className="text-builders hover:underline">
+              Staff Sign In →
             </Link>
           </div>
         </div>
@@ -102,10 +102,10 @@ export default function TopBuildersPublicPage() {
               Browse Catalog
             </a>
             <Link
-              href="/admin/builders/sales/new"
+              href="/login"
               className="px-6 py-3 rounded-xl bg-white/10 text-white uppercase tracking-wider hover:bg-white/20 transition-colors border border-white/20"
             >
-              POS Quick Sale
+              Staff Portal
             </Link>
           </div>
         </div>

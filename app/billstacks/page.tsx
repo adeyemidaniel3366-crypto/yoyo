@@ -99,8 +99,8 @@ export default function BillstacksPublicPage() {
           <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-heading">
             <Link href="/billstacks" className="text-billstacks">Features</Link>
             <a href="#pricing" className="hover:text-billstacks transition-colors">Pricing</a>
-            <Link href="/admin/billstacks" className="text-active hover:underline font-bold">
-              Open Admin App →
+            <Link href="/login" className="text-active hover:underline font-bold">
+              Staff Sign In →
             </Link>
           </nav>
         </div>
@@ -130,10 +130,10 @@ export default function BillstacksPublicPage() {
               Get Started Now
             </a>
             <Link
-              href="/admin/billstacks"
+              href="/login"
               className="px-6 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider transition-colors border border-white/20"
             >
-              Demo Workspace
+              Staff Portal
             </Link>
           </div>
         </div>

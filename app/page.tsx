@@ -25,11 +25,19 @@ import {
   UserCheck,
   ShieldCheck,
   CheckCircle2,
+  Search,
+  Eye,
+  Zap,
+  BarChart3,
+  SlidersHorizontal,
 } from "lucide-react";
 import { SceneNavigation } from "@/components/scene/scene-navigation";
 import { SceneHeroCenterpiece } from "@/components/scene/scene-hero-centerpiece";
 import { SceneCommandPalette } from "@/components/scene/scene-command-palette";
-import { SceneAutoTour } from "@/components/scene/scene-auto-tour";
+import { SceneProjectModal } from "@/components/scene/scene-project-modal";
+import { SceneLagosClock } from "@/components/scene/scene-lagos-clock";
+import { SceneContactForm } from "@/components/scene/scene-contact-form";
+import { sceneAudio } from "@/components/scene/scene-sound";
 import {
   SCENE_ONE_PROFILE,
   SCENE_LIVE_ACTIVITY,
@@ -40,8 +48,9 @@ import {
 
 export default function SceneOneHomePage() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [isAutoTourEnabled, setIsAutoTourEnabled] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [activeModalProject, setActiveModalProject] = useState<SceneProject | null>(null);
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
 
@@ -66,15 +75,19 @@ export default function SceneOneHomePage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+
   // Copy email helper
   const handleCopyEmail = () => {
+    sceneAudio.playClick();
     navigator.clipboard.writeText(SCENE_ONE_PROFILE.email);
     setCopiedEmail(true);
+    sceneAudio.playSuccess();
     setTimeout(() => setCopiedEmail(false), 2000);
   };
 
   // Scroll to top helper
   const scrollToTop = () => {
+    sceneAudio.playClick();
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -86,9 +99,18 @@ export default function SceneOneHomePage() {
     { id: "FINTECH", label: "FinTech" },
   ];
 
-  const filteredProjects = SCENE_PROJECTS.filter((p) =>
-    selectedCategory === "ALL" ? true : p.category === selectedCategory
-  );
+  // Filter projects by category and real-time search query
+  const filteredProjects = SCENE_PROJECTS.filter((p) => {
+    const matchesCategory =
+      selectedCategory === "ALL" ? true : p.category === selectedCategory;
+    const q = searchQuery.toLowerCase().trim();
+    const matchesQuery =
+      !q ||
+      p.name.toLowerCase().includes(q) ||
+      p.description.toLowerCase().includes(q) ||
+      p.technologies.some((t) => t.toLowerCase().includes(q));
+    return matchesCategory && matchesQuery;
+  });
 
   return (
     <div className="min-h-screen bg-[#FCEFC3] text-[#12110E] selection:bg-[#00CEC8] selection:text-[#12110E] overflow-x-hidden font-sans">
@@ -98,17 +120,15 @@ export default function SceneOneHomePage() {
         onClose={() => setIsCommandPaletteOpen(false)}
       />
 
+      {/* ─── QUICK VIEW PROJECT MODAL ─── */}
+      <SceneProjectModal
+        project={activeModalProject}
+        onClose={() => setActiveModalProject(null)}
+      />
+
       {/* ─── NAVIGATION BAR ─── */}
       <SceneNavigation
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-        isAutoTourEnabled={isAutoTourEnabled}
-        onToggleAutoTour={() => setIsAutoTourEnabled((prev) => !prev)}
-      />
-
-      {/* ─── AUTO-TOUR CONTROLLER ─── */}
-      <SceneAutoTour
-        isEnabled={isAutoTourEnabled}
-        onToggle={(val) => setIsAutoTourEnabled(val)}
       />
 
       {/* ─── 01. HERO / INTRODUCTION SECTION ─── */}
@@ -119,11 +139,12 @@ export default function SceneOneHomePage() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           {/* Left Column: Bio & Core Pitch */}
           <div className="lg:col-span-7 space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 backdrop-blur-sm border border-[#12110E]/10 text-xs font-mono font-semibold">
-              <span className="w-2 h-2 rounded-full bg-[#00CEC8] animate-pulse" />
-              <span>Zino company // zino one</span>
-              <span className="text-[#12110E]/30">·</span>
-              <span className="text-[#EB4203]">LAGOS, NIGERIA</span>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 backdrop-blur-sm border border-[#12110E]/10 text-xs font-mono font-semibold">
+                <span className="w-2 h-2 rounded-full bg-[#00CEC8] animate-pulse" />
+                <span>Zino company // zino one</span>
+              </div>
+              <SceneLagosClock />
             </div>
 
             <div className="space-y-3">
@@ -140,6 +161,7 @@ export default function SceneOneHomePage() {
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <Link
                 href="#projects"
+                onClick={() => sceneAudio.playClick()}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#EB4203] hover:bg-[#EB4203]/90 text-white font-semibold text-sm transition-all shadow-sm hover:shadow"
               >
                 <span>Explore Projects</span>
@@ -147,18 +169,19 @@ export default function SceneOneHomePage() {
               </Link>
 
               <Link
-                href="/admin"
+                href="#projects"
+                onClick={() => sceneAudio.playClick()}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white hover:bg-[#FFF8DC] text-[#12110E] border border-[#12110E]/10 font-semibold text-sm transition-all shadow-sm"
               >
-                <span>Open Apps Workspace</span>
-                <ArrowUpRight className="w-4 h-4 text-[#00CEC8]" />
+                <span>Our Software Systems</span>
+                <ArrowRight className="w-4 h-4 text-[#00CEC8]" />
               </Link>
 
               <button
                 type="button"
                 onClick={handleCopyEmail}
                 className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white/60 hover:bg-white text-[#12110E] border border-[#12110E]/10 text-sm font-medium transition-all"
-                title="Copy Daniel's direct email"
+                title="Copy direct email address"
               >
                 {copiedEmail ? (
                   <>
@@ -259,6 +282,57 @@ export default function SceneOneHomePage() {
               ))}
             </div>
           </div>
+
+          {/* Operational Impact Highlights Bar */}
+          <div className="pt-6 border-t border-[#12110E]/10">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#EB4203] block mb-4">
+              System Benchmarks &amp; Real-World Scale
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                {
+                  metric: "₦4.8M+",
+                  title: "Peak Daily Checkout",
+                  desc: "Device Galaxy automated payment throughput in Lagos.",
+                  accent: "#00CEC8",
+                },
+                {
+                  metric: "162 Routes",
+                  title: "Single App Router Core",
+                  desc: "Zino One centralized dashboard orchestrating 6 services.",
+                  accent: "#EB4203",
+                },
+                {
+                  metric: "12 Suites",
+                  title: "Real-Time Room Rack",
+                  desc: "Zino Apartments automated check-ins and tourism tax math.",
+                  accent: "#FF9C5F",
+                },
+                {
+                  metric: "100%",
+                  title: "Idempotent Orders",
+                  desc: "Paystack & Flutterwave signed webhook validation engine.",
+                  accent: "#12110E",
+                },
+              ].map((b) => (
+                <div
+                  key={b.title}
+                  className="p-4 rounded-2xl bg-white/60 border border-[#12110E]/10 space-y-1.5 shadow-2xs hover:bg-white transition-colors"
+                >
+                  <span
+                    className="text-lg font-bold font-mono block"
+                    style={{ color: b.accent }}
+                  >
+                    {b.metric}
+                  </span>
+                  <p className="text-xs font-bold text-[#12110E]">{b.title}</p>
+                  <p className="text-[11px] text-[#12110E]/70 leading-relaxed">
+                    {b.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -285,7 +359,10 @@ export default function SceneOneHomePage() {
                 <button
                   key={cat.id}
                   type="button"
-                  onClick={() => setSelectedCategory(cat.id)}
+                  onClick={() => {
+                    sceneAudio.playHover();
+                    setSelectedCategory(cat.id);
+                  }}
                   className={`px-3 py-1.5 rounded-full transition-all ${
                     selectedCategory === cat.id
                       ? "bg-[#00CEC8] text-[#12110E] font-bold shadow-sm"
@@ -295,6 +372,37 @@ export default function SceneOneHomePage() {
                   {cat.label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Search bar inside projects */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-2xl bg-white/60 border border-[#12110E]/10">
+            <div className="relative w-full sm:w-96 flex items-center">
+              <Search className="w-4 h-4 absolute left-3.5 text-[#12110E]/40" />
+              <input
+                type="text"
+                placeholder="Search projects by tech (e.g. Next.js, Prisma, POS, VAT)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 rounded-xl bg-white border border-[#12110E]/10 text-xs font-medium text-[#12110E] placeholder:text-[#12110E]/40 focus:outline-none focus:border-[#00CEC8]"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 text-xs text-[#12110E]/40 hover:text-[#12110E]"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 text-xs font-mono text-[#12110E]/60">
+              <span className="w-2 h-2 rounded-full bg-[#00CEC8]" />
+              <span>
+                Showing <strong>{filteredProjects.length}</strong> of{" "}
+                {SCENE_PROJECTS.length} systems
+              </span>
             </div>
           </div>
 
@@ -313,14 +421,16 @@ export default function SceneOneHomePage() {
                 >
                   <div>
                     {/* Visual Preview */}
-                    <div className="relative aspect-[16/10] w-full bg-[#12110E]/5 overflow-hidden">
+                    <div
+                      className="relative aspect-[16/10] w-full bg-[#12110E]/5 overflow-hidden cursor-pointer"
+                      onClick={() => setActiveModalProject(project)}
+                    >
                       <img
                         src={project.image}
                         alt={project.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         loading="lazy"
                         onError={(e) => {
-                          // Fallback to elegant placeholder if image load fails
                           (e.target as HTMLElement).style.display = "none";
                         }}
                       />
@@ -329,6 +439,13 @@ export default function SceneOneHomePage() {
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border backdrop-blur-sm ${statusColor}`}
                         >
                           {project.status.replace("_", " ")}
+                        </span>
+                      </div>
+
+                      {/* Quick view hover overlay pill */}
+                      <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#12110E]/80 text-[#FCEFC3] text-[10px] font-mono backdrop-blur-md">
+                          <Eye className="w-3 h-3" /> Quick Look
                         </span>
                       </div>
                     </div>
@@ -364,13 +481,24 @@ export default function SceneOneHomePage() {
 
                   {/* Actions Bar */}
                   <div className="p-5 pt-0 border-t border-[#12110E]/5 mt-2 flex items-center justify-between gap-2">
-                    <Link
-                      href={project.primaryHref}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#EB4203] hover:text-[#EB4203]/80 transition-colors"
-                    >
-                      <span>Open System</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link
+                        href={project.primaryHref}
+                        onClick={() => sceneAudio.playClick()}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#EB4203] hover:text-[#EB4203]/80 transition-colors"
+                      >
+                        <span>Open System</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveModalProject(project)}
+                        className="text-xs font-mono text-[#12110E]/60 hover:text-[#12110E] transition-colors"
+                      >
+                        Specs
+                      </button>
+                    </div>
 
                     {project.githubHref && (
                       <a
@@ -413,6 +541,7 @@ export default function SceneOneHomePage() {
                 href={portal.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => sceneAudio.playClick()}
                 className="p-6 rounded-2xl bg-white/80 border border-[#12110E]/10 hover:border-[#00CEC8] shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group"
               >
                 <div className="space-y-3">
@@ -450,48 +579,73 @@ export default function SceneOneHomePage() {
       </section>
 
       {/* ─── 05. FOOTER & CONTACT ─── */}
-      <footer id="contact" className="py-16 px-4 sm:px-8 bg-white/40">
-        <div className="max-w-7xl mx-auto space-y-10">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-8 border-b border-[#12110E]/10">
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#12110E]">
-                Let's Build Something Together.
-              </h2>
-              <p className="text-sm text-[#12110E]/70 mt-1">
-                Open for high-impact software systems, architecture consulting, and technical leadership.
-              </p>
+      <footer id="contact" className="py-20 px-4 sm:px-8 bg-white/40">
+        <div className="max-w-7xl mx-auto space-y-12">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+            {/* Left Contact Pitch & Direct Options (6 cols) */}
+            <div className="lg:col-span-6 space-y-6">
+              <div className="space-y-2">
+                <span className="text-xs font-mono font-bold text-[#EB4203] uppercase tracking-widest block">
+                  Get in Touch
+                </span>
+                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#12110E]">
+                  Let's Build Something Together.
+                </h2>
+                <p className="text-sm text-[#12110E]/70 leading-relaxed max-w-lg">
+                  Open for enterprise systems engineering, technical architecture consulting, and high-performance software builds.
+                </p>
+              </div>
+
+              {/* Direct Buttons */}
+              <div className="flex flex-wrap items-center gap-3">
+                <a
+                  href={`mailto:${SCENE_ONE_PROFILE.email}`}
+                  onClick={() => sceneAudio.playClick()}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#EB4203] hover:bg-[#EB4203]/90 text-white font-semibold text-xs transition-all shadow-sm"
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>Send Direct Email</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={handleCopyEmail}
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white border border-[#12110E]/10 hover:bg-[#FCEFC3] text-[#12110E] font-medium text-xs transition-all"
+                >
+                  {copiedEmail ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-[#00CEC8]" />
+                      <span className="text-[#00CEC8] font-bold">Email Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-[#12110E]/60" />
+                      <span>{SCENE_ONE_PROFILE.email}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Availability Note */}
+              <div className="p-4 rounded-2xl bg-white/70 border border-[#12110E]/10 text-xs font-mono space-y-1 text-[#12110E]/80">
+                <div className="flex items-center gap-2 font-bold text-[#12110E]">
+                  <span className="w-2 h-2 rounded-full bg-[#00CEC8]" />
+                  <span>CURRENT AVAILABILITY</span>
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  Available for select venture projects, architecture contracts, and engineering leadership.
+                </p>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <a
-                href={`mailto:${SCENE_ONE_PROFILE.email}`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#EB4203] hover:bg-[#EB4203]/90 text-white font-semibold text-xs transition-all shadow-sm"
-              >
-                <Mail className="w-4 h-4" />
-                <span>Send Email</span>
-              </a>
-
-              <button
-                type="button"
-                onClick={handleCopyEmail}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-[#12110E]/10 hover:bg-[#FCEFC3] text-[#12110E] font-medium text-xs transition-all"
-              >
-                {copiedEmail ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-[#00CEC8]" />
-                    <span className="text-[#00CEC8] font-bold">Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5 text-[#12110E]/60" />
-                    <span>{SCENE_ONE_PROFILE.email}</span>
-                  </>
-                )}
-              </button>
+            {/* Right: Interactive Direct Message Form (6 cols) */}
+            <div className="lg:col-span-6">
+              <SceneContactForm />
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-[#12110E]/60">
+          {/* Bottom Copyright and Links */}
+          <div className="pt-8 border-t border-[#12110E]/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-[#12110E]/60">
             <div className="flex items-center gap-2.5">
               <div className="w-6 h-6 rounded-md bg-white border border-[#12110E]/15 p-0.5 flex items-center justify-center overflow-hidden">
                 <Image
@@ -507,7 +661,7 @@ export default function SceneOneHomePage() {
 
             <div className="flex items-center gap-4">
               <a
-                href="https://github.com/adeyemidaniel3366-crypto"
+                href="https://github.com/adeyemiZino3366-crypto"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-[#12110E] transition-colors"
@@ -520,8 +674,8 @@ export default function SceneOneHomePage() {
               >
                 Email
               </a>
-              <Link href="/admin" className="hover:text-[#12110E] transition-colors">
-                Workspace
+              <Link href="/login" className="hover:text-[#12110E] transition-colors">
+                Staff Sign In
               </Link>
             </div>
           </div>

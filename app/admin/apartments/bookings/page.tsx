@@ -20,6 +20,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import { StatCard } from "@/components/ui/stat-card";
 import { formatCurrency } from "@/lib/money";
+import { getApartmentBookings } from "@/lib/apartments-data";
 
 interface BookingRecord {
   id: string;
@@ -40,6 +41,19 @@ export default function ApartmentsBookingsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchBookings = () => {
+    const customBookings = getApartmentBookings().map((b) => ({
+      id: b.id,
+      bookingRef: b.bookingRef,
+      guestName: b.guestName,
+      roomName: `${b.suiteName} (${b.roomNumber || "Suite Assigned"})`,
+      checkIn: b.checkIn,
+      checkOut: b.checkOut,
+      nights: b.nights,
+      totalKobo: b.totalKobo,
+      status: (b.paymentStatus === "PAID" ? "CONFIRMED" : "CONFIRMED") as BookingRecord["status"],
+      paymentStatus: (b.paymentStatus === "PAID" ? "PAID" : "UNPAID") as BookingRecord["paymentStatus"],
+    }));
+
     fetch("/api/apartments/bookings")
       .then((r) => (r.ok ? r.json() : null))
       .then((res) => {
@@ -56,14 +70,20 @@ export default function ApartmentsBookingsPage() {
             status: b.status,
             paymentStatus: b.paymentStatus || "PAID",
           }));
-          setLiveBookings(mapped);
+          setLiveBookings([...customBookings, ...mapped]);
+        } else {
+          setLiveBookings([...customBookings, ...defaultBookings]);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setLiveBookings([...customBookings, ...defaultBookings]);
+      });
   };
 
   React.useEffect(() => {
     fetchBookings();
+    window.addEventListener("zino_apartments_bookings_update", fetchBookings);
+    return () => window.removeEventListener("zino_apartments_bookings_update", fetchBookings);
   }, []);
 
   const handleBookingAction = async (bookingRef: string, action: "check-in" | "check-out" | "cancel") => {

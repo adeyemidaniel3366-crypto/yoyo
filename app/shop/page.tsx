@@ -503,8 +503,8 @@ export default function DeviceGalaxyShopPage() {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>© 2026 Device Galaxy · Member of Zino Group</p>
           <div className="flex items-center gap-4 text-gray-400">
-            <Link href="/admin/galaxy" className="hover:text-white transition-colors">
-              Storefront Admin
+            <Link href="/login" className="hover:text-white transition-colors">
+              Staff Sign In
             </Link>
             <span>·</span>
             <Link href="/shop/checkout" className="hover:text-white transition-colors">
