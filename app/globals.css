@@ -438,13 +438,92 @@
   animation-play-state: paused;
 }
 
-/* Gradient shine animation */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+/* ---------------------------------------------------------------------------
+   zino one Design System Utilities (§1, §2, §10)
+   --------------------------------------------------------------------------- */
+
+.scene-canvas {
+  background-color: #FCEFC3;
+  color: #12110E;
 }
-.animate-shimmer {
-  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0) 100%);
-  background-size: 200% 100%;
-  animation: shimmer 3s infinite;
+
+/* Fine geometric grid on cream canvas */
+.scene-grid-bg {
+  background-image: 
+    linear-gradient(to right, rgba(18, 17, 14, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(18, 17, 14, 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.scene-grid-dense {
+  background-image: 
+    linear-gradient(to right, rgba(18, 17, 14, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(18, 17, 14, 0.07) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* Dots pattern */
+.scene-dots-bg {
+  background-image: radial-gradient(rgba(18, 17, 14, 0.12) 1.2px, transparent 1.2px);
+  background-size: 24px 24px;
+}
+
+/* Turquoise glow */
+.scene-glow-turquoise {
+  box-shadow: 0 0 35px -5px rgba(0, 206, 200, 0.45);
+}
+
+.scene-glow-orange {
+  box-shadow: 0 0 35px -5px rgba(235, 66, 3, 0.45);
+}
+
+.scene-glow-peach {
+  box-shadow: 0 0 35px -5px rgba(255, 156, 95, 0.45);
+}
+
+/* Kinetic slow spin */
+@keyframes sceneSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.animate-scene-spin {
+  animation: sceneSpin 24s linear infinite;
+}
+
+/* Floating bounce */
+@keyframes sceneFloat {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(1deg); }
+}
+.animate-scene-float {
+  animation: sceneFloat 6s ease-in-out infinite;
+}
+
+/* 3D Perspective utilities */
+.perspective-1000 {
+  perspective: 1000px;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+/* Hide scrollbar while preserving scroll functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+body {
+  overflow-x: hidden;
+  max-width: 100%;
 }

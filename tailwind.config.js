@@ -9,6 +9,17 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Official zino one Color System (§1)
+        scene: {
+          turquoise: "#00CEC8",
+          cream: "#FCEFC3",
+          peach: "#FF9C5F",
+          "orange-red": "#EB4203",
+          dark: "#12110E",
+          surface: "#FFF8DC",
+          border: "#EADDA7",
+          muted: "#7A735E",
+        },
         sidebar: "#14142B",
         topbar: "#1A1A2E",
         active: "#4F46E5",
@@ -59,6 +70,8 @@ module.exports = {
       },
       fontFamily: {
         sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+        display: ["Space Grotesk", "-apple-system", "sans-serif"],
+        mono: ["JetBrains Mono", "monospace"],
       },
     },
     darkMode: ["class", "media"],
