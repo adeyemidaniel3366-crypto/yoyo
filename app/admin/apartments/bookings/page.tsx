@@ -151,11 +151,12 @@ export default function ApartmentsBookingsPage() {
 
   const columns: ColumnDef<BookingRecord>[] = [
     {
+      key: "source",
       header: "Source",
-      id: "source",
       cell: () => <SourceBadge source={ServiceSlug.APARTMENTS} size="sm" />,
     },
     {
+      key: "bookingRef",
       header: "Booking Ref",
       accessorKey: "bookingRef",
       cell: (row) => (
@@ -163,6 +164,7 @@ export default function ApartmentsBookingsPage() {
       ),
     },
     {
+      key: "guestName",
       header: "Guest",
       accessorKey: "guestName",
       cell: (row) => (
@@ -175,13 +177,14 @@ export default function ApartmentsBookingsPage() {
       ),
     },
     {
+      key: "roomName",
       header: "Room / Type",
       accessorKey: "roomName",
       cell: (row) => <span className="text-gray-700">{row.roomName}</span>,
     },
     {
+      key: "dates",
       header: "Stay Dates",
-      id: "dates",
       cell: (row) => (
         <div className="text-xs">
           <span className="text-gray-900 font-medium">{row.checkIn}</span>
@@ -192,6 +195,7 @@ export default function ApartmentsBookingsPage() {
       ),
     },
     {
+      key: "totalKobo",
       header: "Total",
       accessorKey: "totalKobo",
       cell: (row) => (
@@ -201,18 +205,20 @@ export default function ApartmentsBookingsPage() {
       ),
     },
     {
+      key: "status",
       header: "Booking Status",
       accessorKey: "status",
       cell: (row) => <StatusBadge status={row.status} size="sm" />,
     },
     {
+      key: "paymentStatus",
       header: "Payment",
       accessorKey: "paymentStatus",
       cell: (row) => <StatusBadge status={row.paymentStatus} size="sm" />,
     },
     {
+      key: "actions",
       header: "Action",
-      id: "actions",
       cell: (row) => (
         <div className="flex items-center gap-1.5">
           {row.status === "CONFIRMED" && (
@@ -333,7 +339,6 @@ export default function ApartmentsBookingsPage() {
           data={filteredBookings}
           title="All Reservations & Bookings"
           searchPlaceholder="Search by ref, guest name, or room..."
-          source={ServiceSlug.APARTMENTS}
         />
       </div>
     </div>

@@ -120,22 +120,65 @@ export function DataTable<T extends Record<string, any>>({
   // Export handlers
   const handleExportCSV = () => {
     if (!sortedData.length) return;
-    const headers = columns.map((c) => c.header).join(",");
+    // UTF-8 BOM so Excel opens ₦ correctly
+    const BOM = "\uFEFF";
+    const visibleCols = columns.filter((c) => visibleColumns.has(c.key));
+    const headers = visibleCols.map((c) => `"${c.header}"`).join(",");
     const rows = sortedData.map((row) =>
-      columns.map((c) => `"${String(row[c.key] ?? "")}"`).join(",")
+      visibleCols.map((c) => {
+        const val = String(row[c.key] ?? "").replace(/"/g, '""');
+        return `"${val}"`;
+      }).join(",")
     );
-    const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = BOM + [headers, ...rows].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `export_${Date.now()}.csv`);
+    link.href = url;
+    link.download = `export_${Date.now()}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportExcel = () => {
+    if (!sortedData.length) return;
+    // Build a simple HTML table that Excel can open (XLSX-like via data URI)
+    const visibleCols = columns.filter((c) => visibleColumns.has(c.key));
+    const headerRow = `<tr>${visibleCols.map((c) => `<th style="background:#1E3A5F;color:#fff;font-weight:bold;padding:4px 8px">${c.header}</th>`).join("")}</tr>`;
+    const dataRows = sortedData.map((row, i) =>
+      `<tr style="background:${i % 2 === 0 ? "#fff" : "#F4F6FB"}">${visibleCols.map((c) => `<td style="padding:4px 8px;border:1px solid #E9ECEF">${String(row[c.key] ?? "")}</td>`).join("")}</tr>`
+    ).join("");
+    const tableHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body><table>${headerRow}${dataRows}</table></body></html>`;
+    const blob = new Blob([tableHtml], { type: "application/vnd.ms-excel;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `export_${Date.now()}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportPDF = () => {
+    if (!sortedData.length) return;
+    const visibleCols = columns.filter((c) => visibleColumns.has(c.key));
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const headerRow = `<tr>${visibleCols.map((c) => `<th style="background:#1E3A5F;color:#fff;padding:6px 10px;text-align:left;font-size:11px">${c.header}</th>`).join("")}</tr>`;
+    const dataRows = sortedData.map((row, i) =>
+      `<tr style="background:${i % 2 === 0 ? "#fff" : "#F4F6FB"}">${visibleCols.map((c) => `<td style="padding:5px 10px;border-bottom:1px solid #E9ECEF;font-size:11px">${String(row[c.key] ?? "")}</td>`).join("")}</tr>`
+    ).join("");
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Export PDF</title><style>body{font-family:sans-serif;margin:20px}table{border-collapse:collapse;width:100%}h2{font-size:14px;color:#1A1A2E;margin-bottom:8px}p{font-size:11px;color:#8A8A9A;margin-bottom:12px}@media print{body{margin:10px}}</style></head><body><h2>${title ?? "Data Export"}</h2><p>Generated: ${new Date().toLocaleString()} · ${sortedData.length} records</p><table>${headerRow}${dataRows}</table></body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
   };
 
   const handlePrint = () => {
-    window.print();
+    handleExportPDF();
   };
 
   return (
@@ -163,11 +206,19 @@ export function DataTable<T extends Record<string, any>>({
               </button>
               <button
                 type="button"
-                onClick={handleExportCSV}
+                onClick={handleExportExcel}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-border bg-white text-muted hover:text-heading hover:bg-gray-50 transition-colors shadow-2xs"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
                 <span>Export Excel</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleExportPDF}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-border bg-white text-muted hover:text-heading hover:bg-gray-50 transition-colors shadow-2xs"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export PDF</span>
               </button>
               <button
                 type="button"
@@ -215,7 +266,7 @@ export function DataTable<T extends Record<string, any>>({
               </div>
               <button
                 type="button"
-                onClick={handleExportCSV}
+                onClick={handleExportPDF}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-border bg-white text-muted hover:text-heading hover:bg-gray-50 transition-colors shadow-2xs"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -245,7 +296,7 @@ export function DataTable<T extends Record<string, any>>({
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm border-collapse">
           <thead>
-            <tr className={cn("border-b border-border bg-gray-50/70 text-xs font-semibold text-heading dark:text-gray-600")}
+            <tr className={cn("border-b border-border bg-gray-50/70 text-xs font-semibold text-heading dark:text-gray-600")}>
               {showSourceColumn && (
                 <th className="py-3 px-4 w-28">Source</th>
               )}

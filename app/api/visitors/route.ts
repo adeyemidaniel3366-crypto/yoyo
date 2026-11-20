@@ -1,5 +1,5 @@
 import { ServiceSlug, VisitStatus } from "@prisma/client";
-import { withErrorHandler, okList, buildPaginationMeta, parseBody, parseQuery } from "@/lib/api";
+import { withErrorHandler, ok, okList, buildPaginationMeta, parseBody, parseQuery } from "@/lib/api";
 import { requireAuth, requireService } from "@/lib/auth";
 import { listQuerySchema } from "@/lib/validators/common";
 import { createVisitSchema } from "@/lib/validators/visitors";

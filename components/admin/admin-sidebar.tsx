@@ -498,6 +498,18 @@ export function AdminSidebar({
             </p>
             <nav className="space-y-1">
               <Link
+                href="/admin/products"
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors",
+                  isLinkActive("/admin/products")
+                    ? "bg-active text-white shadow-sm font-semibold"
+                    : "text-gray-300 hover:text-white hover:bg-white/5"
+                )}
+              >
+                <Package className="w-4 h-4 text-gray-400" />
+                <span>Products &amp; Services</span>
+              </Link>
+              <Link
                 href="/admin/contacts"
                 className={cn(
                   "flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors",

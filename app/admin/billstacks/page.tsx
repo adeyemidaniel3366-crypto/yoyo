@@ -208,7 +208,7 @@ export default function BillstacksDashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {invoices.map((inv) => (
+              {invoices.map((inv: any) => (
                 <tr key={inv.id} className="hover:bg-gray-50/70">
                   <td className="py-3 font-bold text-billstacks">{inv.invoiceNo}</td>
                   <td className="py-3 font-medium text-heading">{inv.client}</td>

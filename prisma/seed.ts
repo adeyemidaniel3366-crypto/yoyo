@@ -270,8 +270,8 @@ async function main() {
   for (const [key, value] of Object.entries(defaultSettings)) {
     await prisma.platformSetting.upsert({
       where: { key },
-      update: { value },
-      create: { key, value },
+      update: { value: value as any },
+      create: { key, value: value as any },
     });
   }
 

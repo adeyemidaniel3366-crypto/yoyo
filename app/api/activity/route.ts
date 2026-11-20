@@ -8,13 +8,13 @@ export const GET = withErrorHandler(async (req, _ctx, requestId) => {
   const ctx = await requireAuth(req, requestId);
   const q = parseQuery(req, listQuerySchema);
   const { rows, total } = await listActivity(ctx, {
-    page: q.page,
-    perPage: q.perPage,
+    page: q.page ?? 1,
+    perPage: q.perPage ?? 25,
     services: parseCsvServices(q.service),
     locationIds: parseCsvStrings(q.location),
     q: q.q,
     from: q.from ? lagosStartOfDayUTC(q.from) : undefined,
     to: q.to ? lagosEndOfDayUTC(q.to) : undefined,
   });
-  return okList(rows, buildPaginationMeta(q.page, q.perPage, total), requestId);
+  return okList(rows, buildPaginationMeta(q.page ?? 1, q.perPage ?? 25, total), requestId);
 });

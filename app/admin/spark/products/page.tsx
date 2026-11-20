@@ -139,16 +139,18 @@ export default function SparkProductsPage() {
 
   const columns: ColumnDef<SparkProduct>[] = [
     {
+      key: "source",
       header: "Source",
-      id: "source",
       cell: () => <SourceBadge source={ServiceSlug.SPARK} size="sm" />,
     },
     {
+      key: "sku",
       header: "SKU",
       accessorKey: "sku",
       cell: (row) => <span className="font-mono text-xs font-semibold text-gray-700">{row.sku}</span>,
     },
     {
+      key: "name",
       header: "Product Name",
       accessorKey: "name",
       cell: (row) => (
@@ -159,11 +161,13 @@ export default function SparkProductsPage() {
       ),
     },
     {
+      key: "location",
       header: "Location",
       accessorKey: "location",
       cell: (row) => <span className="text-xs text-gray-600">{row.location}</span>,
     },
     {
+      key: "costKobo",
       header: "Cost Price",
       accessorKey: "costKobo",
       cell: (row) => (
@@ -171,6 +175,7 @@ export default function SparkProductsPage() {
       ),
     },
     {
+      key: "priceKobo",
       header: "Selling Price",
       accessorKey: "priceKobo",
       cell: (row) => (
@@ -180,6 +185,7 @@ export default function SparkProductsPage() {
       ),
     },
     {
+      key: "totalStock",
       header: "Stock Alert",
       accessorKey: "totalStock",
       cell: (row) => (
@@ -246,7 +252,6 @@ export default function SparkProductsPage() {
           data={filteredProducts}
           title="All Products & Inventory"
           searchPlaceholder="Search product by name, SKU or location..."
-          source={ServiceSlug.SPARK}
         />
       </div>
     </div>

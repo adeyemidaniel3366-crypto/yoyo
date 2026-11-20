@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { NextResponse } from "next/server";
-import { ZodError, ZodSchema } from "zod";
+import { z, ZodError, ZodSchema } from "zod";
 import { Prisma } from "@prisma/client";
 import crypto from "crypto";
 import {
@@ -53,7 +53,27 @@ export function buildPaginationMeta(
   };
 }
 
-export async function parseBody<T>(req: Request, schema: ZodSchema<T>): Promise<T> {
+export function parseQuery<TOut, TIn = any>(req: Request, schema: z.ZodType<TOut, z.ZodTypeDef, TIn>): TOut {
+  const url = new URL(req.url);
+  const obj: Record<string, string> = {};
+  url.searchParams.forEach((value, key) => {
+    obj[key] = value;
+  });
+  const parsed = schema.safeParse(obj);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    throw new ValidationError(first?.message ?? "Invalid query parameters", {
+      field: first?.path.join(".") || undefined,
+      issues: parsed.error.issues.map((i) => ({
+        path: i.path.join("."),
+        message: i.message,
+      })),
+    });
+  }
+  return parsed.data;
+}
+
+export async function parseBody<TOut, TIn = any>(req: Request, schema: z.ZodType<TOut, z.ZodTypeDef, TIn>): Promise<TOut> {
   let raw: unknown;
   try {
     raw = await req.json();
@@ -69,22 +89,6 @@ export async function parseBody<T>(req: Request, schema: ZodSchema<T>): Promise<
         path: i.path.join("."),
         message: i.message,
       })),
-    });
-  }
-  return parsed.data;
-}
-
-export function parseQuery<T>(req: Request, schema: ZodSchema<T>): T {
-  const url = new URL(req.url);
-  const obj: Record<string, string> = {};
-  url.searchParams.forEach((value, key) => {
-    obj[key] = value;
-  });
-  const parsed = schema.safeParse(obj);
-  if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    throw new ValidationError(first?.message ?? "Invalid query parameters", {
-      field: first?.path.join(".") || undefined,
     });
   }
   return parsed.data;

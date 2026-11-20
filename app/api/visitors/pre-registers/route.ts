@@ -20,7 +20,6 @@ export const GET = withErrorHandler(async (req, _ctx, requestId) => {
   const [rows, total] = await Promise.all([
     prisma.preRegister.findMany({
       where,
-      include: { host: { include: { contact: true } } },
       orderBy: { visitDate: "desc" },
       skip: (q.page - 1) * q.perPage,
       take: q.perPage,
