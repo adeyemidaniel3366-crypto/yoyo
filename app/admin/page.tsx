@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import NextImage from "next/image";
 import {
   ShoppingCart,
   DollarSign,
@@ -209,6 +210,7 @@ const VISUAL_SERVICE_SECTIONS = [
     publicHref: "/apartments",
     icon: Building2,
     metrics: "12 Luxury Rooms • 10% Tax Engine",
+    logoUrl: "/logos/apartments-logo.png",
   },
   {
     slug: ServiceSlug.BUILDERS,
@@ -222,6 +224,7 @@ const VISUAL_SERVICE_SECTIONS = [
     publicHref: "/builders",
     icon: Hammer,
     metrics: "Yard Stock Sheets • Debtors Ledger",
+    logoUrl: "/logos/builders-logo.png",
   },
   {
     slug: ServiceSlug.GALAXY,
@@ -248,6 +251,7 @@ const VISUAL_SERVICE_SECTIONS = [
     publicHref: "/billstacks",
     icon: Receipt,
     metrics: "SaaS Plans • Automated Billing",
+    logoUrl: "/logos/billstacks-logo.png",
   },
   {
     slug: ServiceSlug.VISITORS,
@@ -851,19 +855,31 @@ export default function UnifiedAdminDashboard() {
 
       {/* ── Page Header & Global Service Scope Pill Bar ── */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-heading tracking-tight">
-              Unified Business &amp; Financial Dashboard
-            </h1>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold uppercase">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Live Synced
-            </span>
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-white border border-border p-1.5 flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
+            <NextImage
+              src="/logos/zino-logo.png"
+              alt="Zino One Dashboard Logo"
+              width={48}
+              height={48}
+              className="w-full h-full object-contain"
+              priority
+            />
           </div>
-          <p className="text-xs text-muted mt-0.5">
-            Every sale, booking, order, visitor check-in, and product change across all 6 website sections communicates directly with this dashboard.
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-heading tracking-tight">
+                Unified Business &amp; Financial Dashboard
+              </h1>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold uppercase">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live Synced
+              </span>
+            </div>
+            <p className="text-xs text-muted mt-0.5">
+              Every sale, booking, order, visitor check-in, and product change across all 6 website sections communicates directly with this dashboard.
+            </p>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           <button
@@ -1089,10 +1105,24 @@ export default function UnifiedAdminDashboard() {
                       </h4>
                     </div>
                     <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md shrink-0"
-                      style={{ backgroundColor: cfg.color }}
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md shrink-0 bg-white p-1 border border-white/20 overflow-hidden"
                     >
-                      <Icon className="w-4 h-4" />
+                      {(sec as any).logoUrl ? (
+                        <NextImage
+                          src={(sec as any).logoUrl}
+                          alt={sec.title}
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <div
+                          className="w-full h-full rounded-lg flex items-center justify-center text-white"
+                          style={{ backgroundColor: cfg.color }}
+                        >
+                          <Icon className="w-4 h-4" />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

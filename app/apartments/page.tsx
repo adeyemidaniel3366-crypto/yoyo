@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Calendar,
   Users,
@@ -164,9 +165,16 @@ export default function ZinoApartmentsPublicPage() {
       {/* Main Header */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-border shadow-xs">
         <div className="max-w-7xl mx-auto h-20 px-4 sm:px-8 flex items-center justify-between">
-          <Link href="/apartments" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-apartments flex items-center justify-center font-black text-apartments-accent text-lg shadow-sm">
-              ZA
+          <Link href="/apartments" className="flex items-center gap-3 group">
+            <div className="w-12 h-10 rounded-xl bg-white border border-apartments/20 p-1 flex items-center justify-center shadow-xs overflow-hidden group-hover:scale-105 transition-transform">
+              <Image
+                src="/logos/apartments-logo.png"
+                alt="Zino Luxury Apartments Logo"
+                width={145}
+                height={103}
+                className="w-full h-full object-contain"
+                priority
+              />
             </div>
             <div>
               <span className="font-serif font-black text-heading text-xl tracking-tight block leading-tight">
@@ -406,8 +414,22 @@ export default function ZinoApartmentsPublicPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[#1A1A2E] text-gray-400 py-8 px-4 sm:px-8 text-xs text-center border-t border-gray-800">
-        <p>© 2026 Zino Service Apartment · Member of Zino Group</p>
+      <footer className="bg-[#1A1A2E] text-gray-400 py-8 px-4 sm:px-8 text-xs border-t border-gray-800">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white p-1 flex items-center justify-center">
+              <Image
+                src="/logos/apartments-logo.png"
+                alt="Zino Luxury Apartments Logo"
+                width={70}
+                height={50}
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <span className="font-semibold text-white">Zino Luxury Apartments</span>
+          </div>
+          <p>© 2026 Zino Service Apartment · Member of Zino Group Unified Platform</p>
+        </div>
       </footer>
     </div>
   );

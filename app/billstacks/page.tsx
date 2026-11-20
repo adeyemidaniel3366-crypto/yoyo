@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Receipt,
   CheckCircle2,
@@ -74,9 +75,16 @@ export default function BillstacksPublicPage() {
       {/* Top Navbar */}
       <header className="sticky top-0 z-40 bg-white border-b border-border shadow-xs">
         <div className="max-w-7xl mx-auto h-20 px-4 sm:px-8 flex items-center justify-between">
-          <Link href="/billstacks" className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-billstacks flex items-center justify-center font-black text-white text-lg">
-              BS
+          <Link href="/billstacks" className="flex items-center gap-3 group">
+            <div className="h-11 px-2.5 py-1 rounded-xl bg-white border border-border flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+              <Image
+                src="/logos/billstacks-logo.png"
+                alt="Billstacks Logo"
+                width={628}
+                height={250}
+                className="h-7 w-auto object-contain"
+                priority
+              />
             </div>
             <div>
               <span className="font-extrabold text-heading text-xl tracking-tight block leading-tight">
@@ -239,8 +247,22 @@ export default function BillstacksPublicPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-50 text-gray-500 py-10 px-4 sm:px-8 border-t border-border text-xs text-center mt-auto">
-        <p>© 2026 Billstacks · Member of Zino Group Unified Platform</p>
+      <footer className="bg-gray-50 text-gray-500 py-10 px-4 sm:px-8 border-t border-border text-xs mt-auto">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-8 px-2 py-0.5 rounded-lg bg-white border border-border flex items-center justify-center">
+              <Image
+                src="/logos/billstacks-logo.png"
+                alt="Billstacks Logo"
+                width={120}
+                height={50}
+                className="h-5 w-auto object-contain"
+              />
+            </div>
+            <span className="font-semibold text-heading">Billstacks Accounting</span>
+          </div>
+          <p>© 2026 Billstacks · Member of Zino Group Unified Platform</p>
+        </div>
       </footer>
     </div>
   );

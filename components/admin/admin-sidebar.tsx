@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -85,10 +86,17 @@ export function AdminSidebar({
         )}
       >
         {/* Top Logo Mark + Wordmark */}
-        <div className="h-16 flex items-center justify-between px-6 border-b border-[#222244] shrink-0">
+        <div className="h-16 flex items-center justify-between px-5 border-b border-[#222244] shrink-0">
           <Link href="/admin" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-active flex items-center justify-center font-black text-white text-base tracking-wider shadow-md">
-              Z1
+            <div className="w-9 h-9 rounded-lg bg-white p-1 flex items-center justify-center shadow-md overflow-hidden shrink-0">
+              <Image
+                src="/logos/zino-logo.png"
+                alt="Zino One Platform Logo"
+                width={36}
+                height={36}
+                className="w-full h-full object-contain"
+                priority
+              />
             </div>
             <div>
               <span className="font-extrabold text-white text-lg tracking-tight block leading-tight">
@@ -172,10 +180,15 @@ export function AdminSidebar({
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: SERVICE_CONFIG[ServiceSlug.BILLSTACKS].color }}
-                    />
+                    <div className="w-5 h-4 rounded bg-white p-0.5 flex items-center justify-center shrink-0 overflow-hidden">
+                      <Image
+                        src="/logos/billstacks-logo.png"
+                        alt="Billstacks"
+                        width={40}
+                        height={18}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
                     <span className="font-semibold text-gray-200">Billstacks</span>
                   </div>
                   {openGroups.billstacks ? (
@@ -234,10 +247,15 @@ export function AdminSidebar({
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: SERVICE_CONFIG[ServiceSlug.BUILDERS].color }}
-                    />
+                    <div className="w-5 h-5 rounded bg-white p-0.5 flex items-center justify-center shrink-0 overflow-hidden">
+                      <Image
+                        src="/logos/builders-logo.png"
+                        alt="Top Builders"
+                        width={24}
+                        height={24}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
                     <span className="font-semibold text-gray-200">Top Builders</span>
                   </div>
                   {openGroups.builders ? (
@@ -337,10 +355,15 @@ export function AdminSidebar({
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: SERVICE_CONFIG[ServiceSlug.APARTMENTS].color }}
-                    />
+                    <div className="w-5 h-4 rounded bg-white p-0.5 flex items-center justify-center shrink-0 overflow-hidden">
+                      <Image
+                        src="/logos/apartments-logo.png"
+                        alt="Zino Apartments"
+                        width={30}
+                        height={20}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
                     <span className="font-semibold text-gray-200">Zino Apartments</span>
                   </div>
                   {openGroups.apartments ? (

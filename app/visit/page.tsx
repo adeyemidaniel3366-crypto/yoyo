@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   UserCheck,
   Calendar,
@@ -58,9 +59,15 @@ export default function VisitorKioskPage() {
     <div className="min-h-screen bg-slate-900 text-white flex flex-col justify-between p-4 sm:p-8">
       {/* Kiosk Header */}
       <header className="max-w-4xl mx-auto w-full flex items-center justify-between pb-6 border-b border-slate-800">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-visitors flex items-center justify-center font-black text-white text-lg shadow-md">
-            Z1
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md overflow-hidden group-hover:scale-105 transition-transform">
+            <Image
+              src="/logos/zino-logo.png"
+              alt="Zino Security Kiosk"
+              width={40}
+              height={40}
+              className="w-full h-full object-contain"
+            />
           </div>
           <div>
             <h1 className="font-extrabold text-lg text-white leading-tight">Zino Security Kiosk</h1>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Command, Menu, X, ArrowUpRight, Play, Pause } from "lucide-react";
 
 interface SceneNavigationProps {
@@ -62,8 +63,15 @@ export function SceneNavigation({
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           {/* Brand Logo & Name */}
           <Link href="#hero" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 rounded-xl bg-[#12110E] text-[#FCEFC3] flex items-center justify-center font-mono font-black text-sm group-hover:bg-[#00CEC8] group-hover:text-[#12110E] transition-colors">
-              Z1
+            <div className="w-10 h-10 rounded-xl bg-white border border-[#12110E]/15 p-1 flex items-center justify-center shadow-xs overflow-hidden group-hover:scale-105 transition-all">
+              <Image
+                src="/logos/zino-logo.png"
+                alt="zino one logo"
+                width={40}
+                height={40}
+                className="w-full h-full object-contain"
+                priority
+              />
             </div>
             <div>
               <span className="font-bold text-sm tracking-tight text-[#12110E] block leading-none">

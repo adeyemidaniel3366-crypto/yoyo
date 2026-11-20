@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Building2,
   Calendar,
@@ -87,13 +88,26 @@ export default function ZinoApartmentsAdminDashboard() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-heading tracking-tight">Dashboard</h1>
-            <SourceBadge source={ServiceSlug.APARTMENTS} size="sm" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-8 rounded-lg bg-white border border-apartments/25 p-0.5 flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
+              <Image
+                src="/logos/apartments-logo.png"
+                alt="Zino Luxury Apartments"
+                width={80}
+                height={55}
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-heading tracking-tight">Zino Apartments Dashboard</h1>
+                <SourceBadge source={ServiceSlug.APARTMENTS} size="sm" />
+              </div>
+              <p className="text-xs text-muted mt-0.5">
+                Zino Luxury Serviced Living — Lekki Phase 1, Lagos
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-muted mt-0.5">
-            Zino Service Apartment — MAIN · Lekki Phase 1, Lagos
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">

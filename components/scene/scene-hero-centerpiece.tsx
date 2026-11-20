@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Sparkles, Layers, Cpu, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 export function SceneHeroCenterpiece() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -68,15 +69,17 @@ export function SceneHeroCenterpiece() {
         {/* Pulsing Core */}
         <Link
           href="#projects"
-          className="relative z-10 w-20 h-20 rounded-2xl bg-gradient-to-br from-[#00CEC8] via-[#FF9C5F] to-[#EB4203] p-[2px] shadow-xl hover:scale-105 transition-transform duration-300 group/core"
+          className="relative z-10 w-20 h-20 rounded-2xl bg-gradient-to-br from-[#00CEC8] via-[#FF9C5F] to-[#EB4203] p-[2.5px] shadow-xl hover:scale-105 transition-transform duration-300 group/core"
         >
-          <div className="w-full h-full rounded-2xl bg-[#12110E] flex flex-col items-center justify-center text-[#FCEFC3]">
-            <span className="text-lg font-mono font-black text-white group-hover/core:text-[#00CEC8] transition-colors">
-              Z1
-            </span>
-            <span className="text-[9px] font-mono tracking-widest text-[#FF9C5F] uppercase">
-              HUB
-            </span>
+          <div className="w-full h-full rounded-2xl bg-white p-2.5 flex items-center justify-center overflow-hidden">
+            <Image
+              src="/logos/zino-logo.png"
+              alt="zino one core logo"
+              width={70}
+              height={70}
+              className="w-full h-full object-contain"
+              priority
+            />
           </div>
         </Link>
       </div>

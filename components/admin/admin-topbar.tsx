@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Menu,
@@ -113,6 +114,18 @@ export function AdminTopbar({
         >
           <Menu className="w-5 h-5" />
         </button>
+
+        <Link href="/admin" className="lg:hidden flex items-center shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-white p-1 flex items-center justify-center overflow-hidden shadow-xs">
+            <Image
+              src="/logos/zino-logo.png"
+              alt="Zino One Logo"
+              width={32}
+              height={32}
+              className="w-full h-full object-contain"
+            />
+          </div>
+        </Link>
 
         {/* Global Search Bar */}
         <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-md">

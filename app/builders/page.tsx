@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   HardHat,
   Truck,
@@ -52,9 +53,16 @@ export default function TopBuildersPublicPage() {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-border shadow-xs">
         <div className="max-w-7xl mx-auto h-20 px-4 sm:px-8 flex items-center justify-between">
-          <Link href="/builders" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-builders flex items-center justify-center font-black text-white text-lg">
-              TB
+          <Link href="/builders" className="flex items-center gap-3 group">
+            <div className="w-12 h-12 rounded-xl bg-white border border-border p-1 flex items-center justify-center shadow-xs overflow-hidden group-hover:scale-105 transition-transform">
+              <Image
+                src="/logos/builders-logo.png"
+                alt="Top Builders Best Material Logo"
+                width={117}
+                height={114}
+                className="w-full h-full object-contain"
+                priority
+              />
             </div>
             <div>
               <span className="font-extrabold text-heading text-xl tracking-tight block leading-tight">
@@ -184,8 +192,22 @@ export default function TopBuildersPublicPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-50 text-gray-500 py-8 px-4 sm:px-8 text-xs text-center border-t border-border">
-        <p>© 2026 Top Builders Best Materials · Member of Zino Group</p>
+      <footer className="bg-gray-50 text-gray-500 py-8 px-4 sm:px-8 text-xs border-t border-border">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white border border-border p-1 flex items-center justify-center">
+              <Image
+                src="/logos/builders-logo.png"
+                alt="Top Builders Best Material Logo"
+                width={60}
+                height={60}
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <span className="font-semibold text-heading">Top Builders Best Material</span>
+          </div>
+          <p>© 2026 Top Builders Best Materials · Member of Zino Group Unified Platform</p>
+        </div>
       </footer>
     </div>
   );

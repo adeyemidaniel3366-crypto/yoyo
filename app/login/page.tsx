@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Lock,
@@ -105,13 +106,25 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#F4F6FB] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
       {/* Top Brand Link */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center mb-6">
-        <Link href="/" className="inline-flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl bg-active flex items-center justify-center font-black text-white text-lg shadow-md">
-            Z1
+        <Link href="/" className="inline-flex items-center gap-3 group">
+          <div className="w-12 h-12 rounded-2xl bg-white border border-border p-1.5 flex items-center justify-center shadow-md overflow-hidden group-hover:scale-105 transition-transform">
+            <Image
+              src="/logos/zino-logo.png"
+              alt="Zino One Platform Logo"
+              width={48}
+              height={48}
+              className="w-full h-full object-contain"
+              priority
+            />
           </div>
-          <span className="text-2xl font-black text-heading tracking-tight">
-            {PLATFORM_NAME}
-          </span>
+          <div className="text-left">
+            <span className="text-2xl font-black text-heading tracking-tight block leading-tight">
+              {PLATFORM_NAME}
+            </span>
+            <span className="text-[10px] text-muted font-bold tracking-widest uppercase block">
+              Unified Business Architecture
+            </span>
+          </div>
         </Link>
         <p className="text-xs text-muted mt-1">
           Unified Business Platform · One Login for Everything

@@ -492,8 +492,16 @@ export default function SceneOneHomePage() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-[#12110E]/60">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#00CEC8]" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-6 h-6 rounded-md bg-white border border-[#12110E]/15 p-0.5 flex items-center justify-center overflow-hidden">
+                <Image
+                  src="/logos/zino-logo.png"
+                  alt="zino one logo"
+                  width={24}
+                  height={24}
+                  className="w-full h-full object-contain"
+                />
+              </div>
               <span>zino one © 2026 Zino company. All rights reserved.</span>
             </div>
 
