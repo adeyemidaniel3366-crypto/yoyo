@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { ServiceSlug, SERVICE_CONFIG } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { usePlatformStore } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
 
 interface StoreProduct {
@@ -34,10 +35,36 @@ interface StoreProduct {
 }
 
 export default function DeviceGalaxyShopPage() {
+  const { products: unifiedProducts, recordTransaction } = usePlatformStore();
   const [activeTab, setActiveTab] = useState<"FEATURED" | "SPECIAL" | "NEW_ARRIVAL" | "LATEST">("FEATURED");
   const [cartCount, setCartCount] = useState(2);
+  const [shopBanner, setShopBanner] = useState<string | null>(null);
 
-  const products: StoreProduct[] = [
+  const storeSyncedProducts: StoreProduct[] = unifiedProducts
+    .filter(
+      (p) =>
+        (p.source === ServiceSlug.GALAXY || p.source === ServiceSlug.SPARK) &&
+        p.status !== "INACTIVE"
+    )
+    .map((p) => ({
+      id: p.id,
+      sku: p.sku,
+      name: p.name,
+      category: p.label || "Electronics",
+      priceKobo: p.priceKobo || 22000000,
+      originalPriceKobo: Math.round((p.priceKobo || 22000000) * 1.12),
+      image: p.imageUrl,
+      badge:
+        p.status === "OUT_OF_STOCK"
+          ? "OUT_OF_STOCK"
+          : p.isNew
+          ? "NEW"
+          : "SALE",
+      inStock: p.status !== "OUT_OF_STOCK" && p.totalStock > 0,
+      reviewsCount: 5,
+    }));
+
+  const defaultProducts: StoreProduct[] = [
     {
       id: "gal_1",
       sku: "13268",
@@ -108,14 +135,32 @@ export default function DeviceGalaxyShopPage() {
     },
   ];
 
+  const products = storeSyncedProducts.length > 0 ? storeSyncedProducts : defaultProducts;
+
   const handleAddToCart = (p: StoreProduct) => {
     if (!p.inStock) return;
     setCartCount((c) => c + 1);
-    alert(`Added ${p.name} to cart! Total items: ${cartCount + 1}`);
+    const inv = recordTransaction({
+      source: ServiceSlug.GALAXY,
+      activityType: "ORDER",
+      activitySummary: `Online Storefront Order — ${p.name}`,
+      customer: "Device Galaxy Shopper",
+      amountKobo: p.priceKobo,
+      location: "Galaxy Online",
+      status: "PAID",
+    });
+    setShopBanner(`Order ${inv.invoiceNo} for "${p.name}" placed & logged to Admin Dashboard!`);
+    setTimeout(() => setShopBanner(null), 4000);
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] flex flex-col">
+    <div className="min-h-screen bg-[#F8F9FA] flex flex-col overflow-x-hidden max-w-full">
+      {shopBanner && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#14142B] text-white text-xs font-bold shadow-2xl border border-indigo-500/40">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{shopBanner}</span>
+        </div>
+      )}
       {/* Top Bar */}
       <div className="bg-[#2C3E50] text-gray-300 text-xs py-2 px-4 sm:px-8 border-b border-gray-700">
         <div className="max-w-7xl mx-auto flex items-center justify-between">

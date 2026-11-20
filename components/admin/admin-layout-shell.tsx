@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminTopbar } from "./admin-topbar";
-import { ServiceSlug } from "@/lib/constants";
+import { usePlatformStore } from "@/lib/platform-store";
 
 interface AdminLayoutShellProps {
   children: React.ReactNode;
@@ -11,10 +11,10 @@ interface AdminLayoutShellProps {
 
 export function AdminLayoutShell({ children }: AdminLayoutShellProps) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [selectedService, setSelectedService] = useState<ServiceSlug | "ALL">("ALL");
+  const { globalServiceFilter, updateGlobalServiceFilter } = usePlatformStore();
   const [selectedLocation, setSelectedLocation] = useState<string>("ALL");
   const [user, setUser] = useState<{ name: string; role: string } | null>(null);
-  const [bookingRequestsCount, setBookingRequestsCount] = useState<number>(0);
+  const [bookingRequestsCount, setBookingRequestsCount] = useState<number>(2);
 
   useEffect(() => {
     // Load current authenticated user session
@@ -44,7 +44,7 @@ export function AdminLayoutShell({ children }: AdminLayoutShellProps) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-content-bg flex">
+    <div className="min-h-screen bg-content-bg flex overflow-x-hidden max-w-full">
       {/* Sidebar */}
       <AdminSidebar
         isOpenMobile={isMobileSidebarOpen}
@@ -54,12 +54,12 @@ export function AdminLayoutShell({ children }: AdminLayoutShellProps) {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 lg:pl-[260px]">
+      <div className="flex-1 flex flex-col min-w-0 max-w-full lg:pl-[260px]">
         {/* Topbar */}
         <AdminTopbar
           onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-          selectedService={selectedService}
-          onSelectService={setSelectedService}
+          selectedService={globalServiceFilter}
+          onSelectService={updateGlobalServiceFilter}
           selectedLocation={selectedLocation}
           onSelectLocation={setSelectedLocation}
           bookingRequestsCount={bookingRequestsCount}
@@ -68,7 +68,7 @@ export function AdminLayoutShell({ children }: AdminLayoutShellProps) {
         />
 
         {/* Page Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-7 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-4 sm:p-6 lg:p-7 max-w-7xl w-full min-w-0 mx-auto overflow-x-hidden">
           {children}
         </main>
       </div>

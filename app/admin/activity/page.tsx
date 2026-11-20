@@ -15,6 +15,7 @@ import {
 import { ServiceSlug, SERVICE_CONFIG, LOCATIONS } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { usePlatformStore } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
 
 interface ActivityItem {
@@ -32,11 +33,12 @@ interface ActivityItem {
 }
 
 export default function ActivityTimelinePage() {
+  const { activities: liveStoreActivities } = usePlatformStore();
   const [selectedSource, setSelectedSource] = useState<ServiceSlug | "ALL">("ALL");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const allActivities: ActivityItem[] = [
+  const staticActivities: ActivityItem[] = [
     {
       id: "act_101",
       source: ServiceSlug.SPARK,
@@ -126,6 +128,24 @@ export default function ActivityTimelinePage() {
       category: "stock",
     },
   ];
+
+  const allActivities: ActivityItem[] = useMemo(() => {
+    const mappedLive: ActivityItem[] = liveStoreActivities.map((la) => ({
+      id: la.id,
+      source: la.source,
+      time: la.time,
+      timestamp: "Today",
+      actor: la.actor,
+      action: la.action,
+      recordTitle: `${SERVICE_CONFIG[la.source]?.name ?? la.source} Activity`,
+      recordHref: "/admin",
+      amountKobo: la.amount ? Number(la.amount.replace(/[^0-9]/g, "")) * 100 || undefined : undefined,
+      location: la.location || undefined,
+      category: la.source === ServiceSlug.APARTMENTS ? "booking" : la.source === ServiceSlug.VISITORS ? "visit" : "sale",
+    }));
+    return [...mappedLive, ...staticActivities];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveStoreActivities]);
 
   const filtered = useMemo(() => {
     return allActivities.filter((item) => {

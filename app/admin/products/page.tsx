@@ -23,6 +23,8 @@ import { ServiceSlug, SERVICE_CONFIG } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
+import { ImageDropzone } from "@/components/ui/image-dropzone";
+import { usePlatformStore } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
@@ -230,39 +232,13 @@ function ProductModal({
             </label>
           </div>
 
-          {/* Images */}
-          <div>
-            <label className="text-xs font-semibold text-heading block mb-1.5">Images (URLs)</label>
-            <div className="flex gap-2 mb-2">
-              <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://example.com/product-image.jpg"
-                className="flex-1 h-9 px-3 rounded-lg border border-border text-sm text-heading focus:outline-none focus:border-active" />
-              <button type="button" onClick={addImage}
-                className="px-3 py-1.5 rounded-lg bg-active text-white text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center gap-1">
-                <Plus className="w-3.5 h-3.5" /> Add
-              </button>
-            </div>
-            {(form.images ?? []).length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {(form.images ?? []).map((url, idx) => (
-                  <div key={idx} className="relative group">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt={`Image ${idx + 1}`} className="w-16 h-16 rounded-lg object-cover border border-border" />
-                    <button type="button" onClick={() => removeImage(idx)}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {(form.images ?? []).length === 0 && (
-              <div className="flex items-center gap-2 text-xs text-muted mt-1">
-                <ImageIcon className="w-3.5 h-3.5" />
-                <span>No images added. Products without images show a placeholder.</span>
-              </div>
-            )}
-          </div>
+          {/* Images (Drag & Drop from Local Device) */}
+          <ImageDropzone
+            label="Product / Service Images (Drag & Drop from Local Device)"
+            multiple={true}
+            values={form.images ?? []}
+            onMultipleChange={(urls) => set("images", urls)}
+          />
         </div>
 
         {/* Footer */}
@@ -325,11 +301,30 @@ function DeleteDialog({ product, onConfirm, onCancel }: {
 // Main Page
 // ---------------------------------------------------------------------------
 export default function ProductsManagerPage() {
+  const { products: storeProducts, saveProduct, deleteProduct: removeStoreProduct } = usePlatformStore();
   const [activeTab, setActiveTab] = useState("ALL");
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [searchQuery, setSearchQuery] = useState("");
   const [modalProduct, setModalProduct] = useState<Partial<Product> | null | undefined>(undefined);
   const [deleteProduct, setDeleteProduct] = useState<Product | null>(null);
+
+  const products: Product[] = useMemo(
+    () =>
+      storeProducts.map((sp) => ({
+        id: sp.id,
+        source: sp.source,
+        sku: sp.sku,
+        name: sp.name,
+        description: sp.description || sp.label,
+        priceKobo: sp.priceKobo,
+        costKobo: sp.costKobo,
+        images: sp.images && sp.images.length > 0 ? sp.images : sp.imageUrl ? [sp.imageUrl] : [],
+        status: (sp.status === "PROMO" ? "ACTIVE" : sp.status) as Product["status"],
+        totalStock: sp.totalStock,
+        isFeatured: sp.isFeatured,
+        isNew: sp.isNew,
+      })),
+    [storeProducts]
+  );
 
   // Filter by tab
   const filtered = useMemo(() => {
@@ -347,31 +342,38 @@ export default function ProductsManagerPage() {
   }, [products, activeTab, searchQuery]);
 
   const handleSaveProduct = (p: Product) => {
-    setProducts((prev) => {
-      const idx = prev.findIndex((x) => x.id === p.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = p;
-        return next;
-      }
-      return [p, ...prev];
+    saveProduct({
+      id: p.id,
+      source: p.source,
+      sku: p.sku,
+      name: p.name,
+      label: p.description || "Featured",
+      description: p.description || "",
+      priceKobo: p.priceKobo,
+      costKobo: p.costKobo,
+      priceDisplay: formatCurrency(p.priceKobo),
+      imageUrl: p.images[0] || "",
+      images: p.images,
+      status: p.status,
+      totalStock: p.totalStock ?? 10,
+      isFeatured: p.isFeatured,
+      isNew: p.isNew,
     });
     setModalProduct(undefined);
   };
 
   const handleDeleteProduct = (p: Product) => {
-    setProducts((prev) => prev.filter((x) => x.id !== p.id));
+    removeStoreProduct(p.id);
     setDeleteProduct(null);
   };
 
   const toggleStatus = (id: string) => {
-    setProducts((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? { ...p, status: p.status === "ACTIVE" ? "INACTIVE" : "ACTIVE" }
-          : p
-      )
-    );
+    const target = storeProducts.find((p) => p.id === id);
+    if (!target) return;
+    saveProduct({
+      ...target,
+      status: target.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+    });
   };
 
   // DataTable columns

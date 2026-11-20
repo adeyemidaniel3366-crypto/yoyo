@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { recordPlatformTransaction } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
 
 interface BuilderProduct {
@@ -136,12 +137,25 @@ export default function TopBuildersNewSalePage() {
     setIsSubmitting(true);
     try {
       const paidKobo = Math.round(Number(amountPaid || 0) * 100);
+      const totalKobo = Math.round(subtotalNaira * 100);
+      const custName = isWalkIn ? walkInName || "Walk-In Customer" : customer;
+      const itemsSummary = cart.map((i) => `${i.qty} ${i.product.unit} ${i.product.name}`).join(", ");
+      const inv = recordPlatformTransaction({
+        source: ServiceSlug.BUILDERS,
+        activityType: "SALE",
+        activitySummary: `Yard Material Sale — ${itemsSummary}`,
+        customer: custName,
+        amountKobo: totalKobo,
+        location: "Builders Yard",
+        status: paidKobo >= totalKobo ? "PAID" : paidKobo > 0 ? "PART_PAID" : "UNPAID",
+        actor: "Sales Staff (Builders Yard)",
+      });
       const res = await fetch("/api/builders/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           source: ServiceSlug.BUILDERS,
-          customerName: isWalkIn ? walkInName || "Walk-In Customer" : customer,
+          customerName: custName,
           walkInPhone: isWalkIn ? walkInPhone : undefined,
           lines: cart.map((item) => ({
             productCode: item.product.code,
@@ -156,15 +170,15 @@ export default function TopBuildersNewSalePage() {
       });
       const data = await res.json();
       if (res.ok && data.ok) {
-        alert(`Sale recorded successfully! Invoice ${data.data?.invoiceNo || ""}\nTotal: ₦${subtotalNaira.toLocaleString()}`);
+        alert(`Sale recorded successfully! Invoice ${data.data?.invoiceNo || inv.invoiceNo}\nTotal: ₦${subtotalNaira.toLocaleString()}\nSynced to Unified Admin Dashboard.`);
         router.push("/admin/builders/sales");
       } else {
         // Fallback for demo mode
-        alert(`Sale recorded! Total: ₦${subtotalNaira.toLocaleString()}.\nGenerating receipt...`);
+        alert(`Sale recorded! Invoice: ${inv.invoiceNo}\nTotal: ₦${subtotalNaira.toLocaleString()}.\nSynced to Unified Admin Dashboard.`);
         router.push("/admin/builders/sales");
       }
     } catch {
-      alert(`Sale recorded! Total: ₦${subtotalNaira.toLocaleString()}.\nGenerating receipt...`);
+      alert(`Sale recorded! Total: ₦${subtotalNaira.toLocaleString()}.\nSynced to Unified Admin Dashboard.`);
       router.push("/admin/builders/sales");
     } finally {
       setIsSubmitting(false);

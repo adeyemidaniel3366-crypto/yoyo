@@ -1,0 +1,853 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { ServiceSlug } from "./constants";
+import { formatCurrency } from "./money";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export interface UnifiedProduct {
+  id: string;
+  source: ServiceSlug;
+  sku: string;
+  name: string;
+  label: string;
+  description: string;
+  priceKobo: number;
+  costKobo?: number;
+  priceDisplay: string;
+  imageUrl: string;
+  images: string[];
+  status: "ACTIVE" | "LOW_STOCK" | "OUT_OF_STOCK" | "PROMO" | "INACTIVE" | "ARCHIVED";
+  totalStock: number;
+  lowStockAt: number;
+  isFeatured?: boolean;
+  isNew?: boolean;
+  capacity?: string;
+  amenities?: string[];
+}
+
+export interface UnifiedInvoiceActivity {
+  id: string;
+  source: ServiceSlug;
+  activityType: "SALE" | "BOOKING" | "ORDER" | "INVOICE" | "EXPENSE" | "VISIT" | "PAYMENT";
+  activitySummary: string;
+  invoiceNo: string;
+  customer: string;
+  amountKobo: number;
+  amountDisplay: string;
+  status: string;
+  location: string;
+  createdAt: string;
+}
+
+export interface UnifiedActivityLogItem {
+  id: string;
+  source: ServiceSlug;
+  time: string;
+  actor: string;
+  action: string;
+  amount: string | null;
+  location: string | null;
+}
+
+export interface UnifiedPaymentDue {
+  id: string;
+  type: "SALES" | "PURCHASE";
+  source: ServiceSlug;
+  partyName: string;
+  referenceNo: string;
+  dueAmountKobo: number;
+}
+
+export interface UnifiedMonthlyTargets {
+  salesTargetKobo: number;
+  expenseBudgetKobo: number;
+  bookingsTarget: number;
+  visitorsTarget: number;
+}
+
+// ---------------------------------------------------------------------------
+// Default Seed Data Across All 6 Unified Services
+// ---------------------------------------------------------------------------
+
+export const DEFAULT_UNIFIED_PRODUCTS: UnifiedProduct[] = [
+  {
+    id: "p_spark_1",
+    source: ServiceSlug.SPARK,
+    sku: "SAM-990PRO-4TB",
+    name: "Samsung 990 PRO 4TB NVMe SSD",
+    label: "Best Seller",
+    description: "PCIe 4.0 NVMe M.2 Internal SSD with Heatsink — 7,450 MB/s Read Speed",
+    priceKobo: 48000000,
+    costKobo: 38000000,
+    priceDisplay: "₦480,000",
+    imageUrl: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=600&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=600&auto=format&fit=crop&q=80"],
+    status: "LOW_STOCK",
+    totalStock: 2,
+    lowStockAt: 5,
+    isFeatured: true,
+    isNew: false,
+  },
+  {
+    id: "p_spark_2",
+    source: ServiceSlug.SPARK,
+    sku: "APPLE-MBP16-M3MAX",
+    name: "Apple MacBook Pro 16\" M3 Max",
+    label: "Flagship POS",
+    description: "Apple M3 Max chip, 36GB Unified Memory, 1TB SSD Storage — Space Black",
+    priceKobo: 485000000,
+    costKobo: 420000000,
+    priceDisplay: "₦4,850,000",
+    imageUrl: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&auto=format&fit=crop&q=80"],
+    status: "ACTIVE",
+    totalStock: 6,
+    lowStockAt: 3,
+    isFeatured: true,
+    isNew: true,
+  },
+  {
+    id: "p_spark_3",
+    source: ServiceSlug.SPARK,
+    sku: "ZLT-S69M-13360",
+    name: "Zealot S69M 50W Portable Bluetooth Speaker",
+    label: "Computer Village Fast Mover",
+    description: "Deep Bass Waterproof Wireless Speaker with Dual Pairing & Powerbank",
+    priceKobo: 12000000,
+    costKobo: 8500000,
+    priceDisplay: "₦120,000",
+    imageUrl: "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=600&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=600&auto=format&fit=crop&q=80"],
+    status: "OUT_OF_STOCK",
+    totalStock: 0,
+    lowStockAt: 5,
+    isFeatured: false,
+    isNew: false,
+  },
+  {
+    id: "p_galaxy_1",
+    source: ServiceSlug.GALAXY,
+    sku: "LXR-SL500-2TB",
+    name: "Lexar SL500 Portable SSD 2TB",
+    label: "Hot E-Commerce Deal",
+    description: "Ultra-Slim Aluminum USB 3.2 Gen 2x2 Portable External SSD — 2000MB/s",
+    priceKobo: 22000000,
+    costKobo: 17000000,
+    priceDisplay: "₦220,000",
+    imageUrl: "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=600&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=600&auto=format&fit=crop&q=80"],
+    status: "LOW_STOCK",
+    totalStock: 2,
+    lowStockAt: 5,
+    isFeatured: true,
+    isNew: true,
+  },
+  {
+    id: "p_galaxy_2",
+    source: ServiceSlug.GALAXY,
+    sku: "SYN-RS1221RP",
+    name: "Synology 8 Bay Rackstation RS1221RP+",
+    label: "Enterprise Storage",
+    description: "2U Rackmount NAS Server with Redundant Power & AMD Ryzen V1500B",
+    priceKobo: 245000000,
+    costKobo: 200000000,
+    priceDisplay: "₦2,450,000",
+    imageUrl: "https://images.unsplash.com/photo-1544652478-6653e09f18a2?w=600&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1544652478-6653e09f18a2?w=600&auto=format&fit=crop&q=80"],
+    status: "ACTIVE",
+    totalStock: 4,
+    lowStockAt: 2,
+    isFeatured: true,
+    isNew: false,
+  },
+  {
+    id: "p_builders_1",
+    source: ServiceSlug.BUILDERS,
+    sku: "DAN-CEM-50KG",
+    name: "Dangote 3X Cement 50kg Bag",
+    label: "Wholesale Yard Supply",
+    description: "42.5R High Strength Portland Limestone Cement for Structural Concrete",
+    priceKobo: 980000,
+    costKobo: 820000,
+    priceDisplay: "₦9,800",
+    imageUrl: "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=600&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=600&auto=format&fit=crop&q=80"],
+    status: "ACTIVE",
+    totalStock: 240,
+    lowStockAt: 50,
+    isFeatured: true,
+    isNew: false,
+  },
+  {
+    id: "p_builders_2",
+    source: ServiceSlug.BUILDERS,
+    sku: "IRON-ROD-16MM",
+    name: "TMT High-Tensile Iron Rod 16mm (Length)",
+    label: "Structural Steel",
+    description: "BS4449 Grade 500B Thermo-Mechanically Treated Reinforcement Bar",
+    priceKobo: 1800000,
+    costKobo: 1400000,
+    priceDisplay: "₦18,000",
+    imageUrl: "https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?w=600&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?w=600&auto=format&fit=crop&q=80"],
+    status: "LOW_STOCK",
+    totalStock: 2,
+    lowStockAt: 10,
+    isFeatured: false,
+    isNew: false,
+  },
+  {
+    id: "p_builders_3",
+    source: ServiceSlug.BUILDERS,
+    sku: "BUA-CEM-50KG",
+    name: "BUA Sokoto Cement 50kg Bag",
+    label: "Construction Essential",
+    description: "Fast-Setting Multi-Purpose Construction Cement — Yard Batch ST-00021",
+    priceKobo: 950000,
+    costKobo: 790000,
+    priceDisplay: "₦9,500",
+    imageUrl: "https://images.unsplash.com/photo-1541888946425-d09bb18086f6?w=600&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1541888946425-d09bb18086f6?w=600&auto=format&fit=crop&q=80"],
+    status: "OUT_OF_STOCK",
+    totalStock: 0,
+    lowStockAt: 20,
+    isFeatured: false,
+    isNew: false,
+  },
+  {
+    id: "p_apt_1",
+    source: ServiceSlug.APARTMENTS,
+    sku: "APT-CLASSIC-STUDIO",
+    name: "Classic Studio Apartment",
+    label: "Cozy Lekki Stay",
+    description: "24/7 Power, High-Speed Fiber Wi-Fi, Air Conditioning & Water Heater",
+    priceKobo: 1000000,
+    costKobo: 300000,
+    priceDisplay: "₦10,000 / night",
+    imageUrl: "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&auto=format&fit=crop&q=80"],
+    status: "ACTIVE",
+    totalStock: 4,
+    lowStockAt: 1,
+    isFeatured: true,
+    capacity: "1 Adult",
+    amenities: ["AC", "Heater", "WiFi"],
+  },
+  {
+    id: "p_apt_2",
+    source: ServiceSlug.APARTMENTS,
+    sku: "APT-DELUXE-STUDIO",
+    name: "Deluxe Studio Suite",
+    label: "Most Popular Suite",
+    description: "Fitted Kitchenette, Smart 55\" 4K TV, King Bed & 24/7 Concierge",
+    priceKobo: 3000000,
+    costKobo: 800000,
+    priceDisplay: "₦30,000 / night",
+    imageUrl: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&auto=format&fit=crop&q=80"],
+    status: "ACTIVE",
+    totalStock: 4,
+    lowStockAt: 1,
+    isFeatured: true,
+    capacity: "2 Adults",
+    amenities: ["AC", "Kitchen", "Smart TV"],
+  },
+  {
+    id: "p_apt_3",
+    source: ServiceSlug.APARTMENTS,
+    sku: "APT-LUXURY-2BR",
+    name: "Luxury 2-Bedroom Executive Apartment",
+    label: "VIP Hospitality",
+    description: "Private Balcony Sitout, Full Chef Kitchen, 2 En-Suite Rooms & Lounge",
+    priceKobo: 5000000,
+    costKobo: 1200000,
+    priceDisplay: "₦50,000 / night",
+    imageUrl: "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=600&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=600&auto=format&fit=crop&q=80"],
+    status: "ACTIVE",
+    totalStock: 4,
+    lowStockAt: 1,
+    isFeatured: true,
+    capacity: "4 Adults",
+    amenities: ["Sitout", "AC", "Kitchen", "Bath Heater"],
+  },
+  {
+    id: "p_bill_1",
+    source: ServiceSlug.BILLSTACKS,
+    sku: "BILL-STANDARD-PLAN",
+    name: "Billstacks Standard Business Plan",
+    label: "SaaS Subscription",
+    description: "Unlimited Invoices, Automated Expense Tracking, Tax Reports & 5 Users",
+    priceKobo: 200000,
+    costKobo: 20000,
+    priceDisplay: "₦2,000 / month",
+    imageUrl: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=600&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=600&auto=format&fit=crop&q=80"],
+    status: "ACTIVE",
+    totalStock: 999,
+    lowStockAt: 0,
+    isFeatured: true,
+  },
+  {
+    id: "p_vis_1",
+    source: ServiceSlug.VISITORS,
+    sku: "VIS-KIOSK-ENTERPRISE",
+    name: "Enterprise Kiosk & Digital Badge Pass",
+    label: "Front Desk Security",
+    description: "QR Pre-Registration, Instant Visitor Pass Printing & Staff Clock-In",
+    priceKobo: 0,
+    costKobo: 0,
+    priceDisplay: "Included",
+    imageUrl: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&auto=format&fit=crop&q=80"],
+    status: "ACTIVE",
+    totalStock: 999,
+    lowStockAt: 0,
+    isFeatured: false,
+  },
+];
+
+export const DEFAULT_UNIFIED_INVOICES: UnifiedInvoiceActivity[] = [
+  {
+    id: "inv_1",
+    source: ServiceSlug.SPARK,
+    activityType: "SALE",
+    activitySummary: "POS Retail Sale — 2× Samsung 990 PRO 4TB NVMe",
+    invoiceNo: "SPK-9044",
+    customer: "Vertex Systems Ltd",
+    amountKobo: 120000000,
+    amountDisplay: "₦1,200,000",
+    status: "PAID",
+    location: "Medical Road",
+    createdAt: "2026-11-20",
+  },
+  {
+    id: "inv_2",
+    source: ServiceSlug.APARTMENTS,
+    activityType: "BOOKING",
+    activitySummary: "3-Night Reservation — Deluxe Studio Suite (Incl. 10% Tax)",
+    invoiceNo: "ZINO-482091",
+    customer: "Adaeze Okafor",
+    amountKobo: 9900000,
+    amountDisplay: "₦99,000",
+    status: "CONFIRMED",
+    location: "Zino Apartments Main",
+    createdAt: "2026-11-20",
+  },
+  {
+    id: "inv_3",
+    source: ServiceSlug.BUILDERS,
+    activityType: "SALE",
+    activitySummary: "Credit Yard Dispatch — 40 Bags Dangote Cement & Iron Rods",
+    invoiceNo: "INV-000104",
+    customer: "Mama Bose Ventures",
+    amountKobo: 28130000,
+    amountDisplay: "₦281,300",
+    status: "UNPAID",
+    location: "Builders Yard",
+    createdAt: "2026-11-19",
+  },
+  {
+    id: "inv_4",
+    source: ServiceSlug.GALAXY,
+    activityType: "ORDER",
+    activitySummary: "Online Storefront Checkout — Lexar SL500 2TB + Accessories",
+    invoiceNo: "DG-892104",
+    customer: "Chinedu Eze (Online)",
+    amountKobo: 24500000,
+    amountDisplay: "₦245,000",
+    status: "SHIPPED",
+    location: "Galaxy Online",
+    createdAt: "2026-11-19",
+  },
+  {
+    id: "inv_5",
+    source: ServiceSlug.BILLSTACKS,
+    activityType: "INVOICE",
+    activitySummary: "SaaS B2B Retainer Invoice — Enterprise Accounting Suite",
+    invoiceNo: "INV-000084",
+    customer: "Prime Technologies PLC",
+    amountKobo: 145000000,
+    amountDisplay: "₦1,450,000",
+    status: "PAID",
+    location: "Billstacks Cloud",
+    createdAt: "2026-11-18",
+  },
+  {
+    id: "inv_6",
+    source: ServiceSlug.VISITORS,
+    activityType: "VISIT",
+    activitySummary: "Front Desk Kiosk Check-In & Security Pass Issued",
+    invoiceNo: "VIS-00041",
+    customer: "Engr. Tunde Bakare",
+    amountKobo: 0,
+    amountDisplay: "Pass #041",
+    status: "CHECKED_IN",
+    location: "HQ Reception Desk",
+    createdAt: "2026-11-20",
+  },
+  {
+    id: "inv_7",
+    source: ServiceSlug.SPARK,
+    activityType: "SALE",
+    activitySummary: "Walk-in POS Sale — 2× Samsung 990 PRO 4TB SSD",
+    invoiceNo: "SPK-9039",
+    customer: "Walk-in Customer",
+    amountKobo: 96000000,
+    amountDisplay: "₦960,000",
+    status: "PAID",
+    location: "Adepele Shop",
+    createdAt: "2026-11-19",
+  },
+  {
+    id: "inv_8",
+    source: ServiceSlug.BUILDERS,
+    activityType: "SALE",
+    activitySummary: "Part-Paid Yard Supply — 20 Lengths 16mm Iron Rod",
+    invoiceNo: "INV-000105",
+    customer: "Chief Okonkwo Builders",
+    amountKobo: 19500000,
+    amountDisplay: "₦195,000",
+    status: "PART_PAID",
+    location: "Builders Yard",
+    createdAt: "2026-11-18",
+  },
+  {
+    id: "inv_9",
+    source: ServiceSlug.APARTMENTS,
+    activityType: "BOOKING",
+    activitySummary: "Guest Checked-In — Luxury 2-Bedroom Executive Suite",
+    invoiceNo: "ZINO-482100",
+    customer: "Mr. Femi Adeleke",
+    amountKobo: 18000000,
+    amountDisplay: "₦180,000",
+    status: "CHECKED_IN",
+    location: "Zino Apartments Main",
+    createdAt: "2026-11-17",
+  },
+  {
+    id: "inv_10",
+    source: ServiceSlug.GALAXY,
+    activityType: "ORDER",
+    activitySummary: "E-Commerce Delivery Completed — MacBook Pro 16\" M3 Max",
+    invoiceNo: "DG-892201",
+    customer: "TechHub Lagos",
+    amountKobo: 485000000,
+    amountDisplay: "₦4,850,000",
+    status: "DELIVERED",
+    location: "Galaxy Online",
+    createdAt: "2026-11-16",
+  },
+  {
+    id: "inv_11",
+    source: ServiceSlug.SPARK,
+    activityType: "EXPENSE",
+    activitySummary: "Diesel Generator & Power Maintenance — Computer Village",
+    invoiceNo: "EXP-2026-19",
+    customer: "Oando Energy Supply",
+    amountKobo: 8500000,
+    amountDisplay: "₦85,000",
+    status: "PAID",
+    location: "Olayeni Office",
+    createdAt: "2026-11-18",
+  },
+];
+
+export const DEFAULT_UNIFIED_ACTIVITIES: UnifiedActivityLogItem[] = [
+  {
+    id: "act_1",
+    source: ServiceSlug.SPARK,
+    time: "Just now",
+    actor: "Cashier (Medical Road)",
+    action: "sold 2 × Samsung 990 PRO 4TB (SPK-9044)",
+    amount: "₦1,200,000",
+    location: "Medical Road",
+  },
+  {
+    id: "act_2",
+    source: ServiceSlug.APARTMENTS,
+    time: "12 min ago",
+    actor: "Reception Desk",
+    action: "checked in Adaeze Okafor — Deluxe Studio Suite",
+    amount: "₦99,000",
+    location: "Zino Main",
+  },
+  {
+    id: "act_3",
+    source: ServiceSlug.BUILDERS,
+    time: "28 min ago",
+    actor: "Yard Supervisor",
+    action: "dispatched 40 bags Dangote Cement to Mama Bose Ventures",
+    amount: "₦281,300",
+    location: "Builders Yard",
+  },
+  {
+    id: "act_4",
+    source: ServiceSlug.GALAXY,
+    time: "45 min ago",
+    actor: "Online Customer",
+    action: "placed Order #DG-892104 (Lexar SL500 SSD + Hub)",
+    amount: "₦245,000",
+    location: "Galaxy Online",
+  },
+  {
+    id: "act_5",
+    source: ServiceSlug.VISITORS,
+    time: "1 hr ago",
+    actor: "Self Check-In Kiosk",
+    action: "issued visitor badge #VIS-00041 to Engr. Tunde Bakare",
+    amount: null,
+    location: "HQ Office",
+  },
+  {
+    id: "act_6",
+    source: ServiceSlug.BILLSTACKS,
+    time: "2 hrs ago",
+    actor: "Accountant",
+    action: "collected Invoice #INV-000084 from Prime Technologies",
+    amount: "₦1,450,000",
+    location: "Billstacks Cloud",
+  },
+];
+
+export const DEFAULT_PAYMENT_DUES: UnifiedPaymentDue[] = [
+  {
+    id: "spd_1",
+    type: "SALES",
+    source: ServiceSlug.BUILDERS,
+    partyName: "Mama Bose Ventures",
+    referenceNo: "INV-000104",
+    dueAmountKobo: 28130000,
+  },
+  {
+    id: "spd_2",
+    type: "SALES",
+    source: ServiceSlug.BUILDERS,
+    partyName: "Chief Okonkwo Builders",
+    referenceNo: "INV-000105",
+    dueAmountKobo: 19500000,
+  },
+  {
+    id: "spd_3",
+    type: "SALES",
+    source: ServiceSlug.SPARK,
+    partyName: "Vertex Systems Ltd",
+    referenceNo: "SPK-9042",
+    dueAmountKobo: 35820000,
+  },
+  {
+    id: "ppd_1",
+    type: "PURCHASE",
+    source: ServiceSlug.SPARK,
+    partyName: "SanDisk Official West Africa",
+    referenceNo: "PO-2026-881",
+    dueAmountKobo: 32000000,
+  },
+];
+
+export const DEFAULT_MONTHLY_TARGETS: UnifiedMonthlyTargets = {
+  salesTargetKobo: 5000000000, // ₦50,000,000
+  expenseBudgetKobo: 600000000, // ₦6,000,000
+  bookingsTarget: 15,
+  visitorsTarget: 20,
+};
+
+// ---------------------------------------------------------------------------
+// Storage Keys & Event Sync
+// ---------------------------------------------------------------------------
+
+const STORAGE_KEYS = {
+  PRODUCTS: "zino_unified_catalog_v2",
+  INVOICES: "zino_unified_invoices_v2",
+  ACTIVITIES: "zino_unified_activities_v2",
+  DUES: "zino_unified_dues_v2",
+  TARGETS: "zino_unified_targets_v2",
+  GLOBAL_SERVICE_FILTER: "zino_global_service_filter_v2",
+};
+
+const STORE_EVENT = "zino-platform-store-sync";
+
+function readStorage<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStorage<T>(key: string, value: T): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+    window.dispatchEvent(new CustomEvent(STORE_EVENT, { detail: { key } }));
+  } catch {
+    // Quota or SSR
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Direct Imperative Helpers (callable from any page or handler)
+// ---------------------------------------------------------------------------
+
+export function recordPlatformTransaction(params: {
+  source: ServiceSlug;
+  activityType: UnifiedInvoiceActivity["activityType"];
+  activitySummary: string;
+  invoiceNo?: string;
+  customer: string;
+  amountKobo: number;
+  status?: string;
+  location?: string;
+  actor?: string;
+}) {
+  const prefixMap: Record<ServiceSlug, string> = {
+    [ServiceSlug.SPARK]: "SPK",
+    [ServiceSlug.BUILDERS]: "INV",
+    [ServiceSlug.APARTMENTS]: "ZINO",
+    [ServiceSlug.GALAXY]: "DG",
+    [ServiceSlug.BILLSTACKS]: "INV",
+    [ServiceSlug.VISITORS]: "VIS",
+  };
+  const invoiceNo =
+    params.invoiceNo ||
+    `${prefixMap[params.source]}-${Math.floor(100000 + Math.random() * 900000)}`;
+  const amountDisplay =
+    params.amountKobo > 0 ? formatCurrency(params.amountKobo) : "Pass Issued";
+  const today = new Date().toISOString().slice(0, 10);
+
+  const newInvoice: UnifiedInvoiceActivity = {
+    id: `inv_${Date.now()}`,
+    source: params.source,
+    activityType: params.activityType,
+    activitySummary: params.activitySummary,
+    invoiceNo,
+    customer: params.customer,
+    amountKobo: params.amountKobo,
+    amountDisplay,
+    status: params.status || "PAID",
+    location: params.location || "Main Location",
+    createdAt: today,
+  };
+
+  const currentInvoices = readStorage(STORAGE_KEYS.INVOICES, DEFAULT_UNIFIED_INVOICES);
+  writeStorage(STORAGE_KEYS.INVOICES, [newInvoice, ...currentInvoices]);
+
+  const newActivity: UnifiedActivityLogItem = {
+    id: `act_${Date.now()}`,
+    source: params.source,
+    time: "Just now",
+    actor: params.actor || params.customer,
+    action: `${params.activitySummary} (${invoiceNo})`,
+    amount: params.amountKobo > 0 ? amountDisplay : null,
+    location: params.location || "Main Location",
+  };
+
+  const currentActivities = readStorage(STORAGE_KEYS.ACTIVITIES, DEFAULT_UNIFIED_ACTIVITIES);
+  writeStorage(STORAGE_KEYS.ACTIVITIES, [newActivity, ...currentActivities.slice(0, 29)]);
+
+  return newInvoice;
+}
+
+// ---------------------------------------------------------------------------
+// React Hook for Unified Platform State
+// ---------------------------------------------------------------------------
+
+export function usePlatformStore() {
+  const [products, setProducts] = useState<UnifiedProduct[]>(DEFAULT_UNIFIED_PRODUCTS);
+  const [invoices, setInvoices] = useState<UnifiedInvoiceActivity[]>(DEFAULT_UNIFIED_INVOICES);
+  const [activities, setActivities] = useState<UnifiedActivityLogItem[]>(DEFAULT_UNIFIED_ACTIVITIES);
+  const [paymentDues, setPaymentDues] = useState<UnifiedPaymentDue[]>(DEFAULT_PAYMENT_DUES);
+  const [targets, setTargets] = useState<UnifiedMonthlyTargets>(DEFAULT_MONTHLY_TARGETS);
+  const [globalServiceFilter, setGlobalServiceFilter] = useState<ServiceSlug | "ALL">("ALL");
+
+  const syncFromStorage = useCallback(() => {
+    setProducts(readStorage(STORAGE_KEYS.PRODUCTS, DEFAULT_UNIFIED_PRODUCTS));
+    setInvoices(readStorage(STORAGE_KEYS.INVOICES, DEFAULT_UNIFIED_INVOICES));
+    setActivities(readStorage(STORAGE_KEYS.ACTIVITIES, DEFAULT_UNIFIED_ACTIVITIES));
+    setPaymentDues(readStorage(STORAGE_KEYS.DUES, DEFAULT_PAYMENT_DUES));
+    setTargets(readStorage(STORAGE_KEYS.TARGETS, DEFAULT_MONTHLY_TARGETS));
+    setGlobalServiceFilter(readStorage(STORAGE_KEYS.GLOBAL_SERVICE_FILTER, "ALL"));
+  }, []);
+
+  useEffect(() => {
+    syncFromStorage();
+    const handleStorage = () => syncFromStorage();
+    window.addEventListener(STORE_EVENT, handleStorage);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener(STORE_EVENT, handleStorage);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [syncFromStorage]);
+
+  const saveProduct = useCallback(
+    (product: Partial<UnifiedProduct> & { name: string; source: ServiceSlug }) => {
+      const current = readStorage(STORAGE_KEYS.PRODUCTS, DEFAULT_UNIFIED_PRODUCTS);
+      const isExisting = Boolean(product.id && current.some((p) => p.id === product.id));
+      const priceKobo =
+        typeof product.priceKobo === "number" && product.priceKobo > 0
+          ? product.priceKobo
+          : Number(String(product.priceDisplay || "0").replace(/[^0-9]/g, "")) * 100 || 0;
+      const priceDisplay =
+        product.priceDisplay && product.priceDisplay.trim()
+          ? product.priceDisplay
+          : formatCurrency(priceKobo);
+      const primaryImage =
+        product.imageUrl ||
+        product.images?.[0] ||
+        "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=600&auto=format&fit=crop&q=80";
+
+      const normalized: UnifiedProduct = {
+        id: isExisting ? product.id! : `p_${Date.now()}`,
+        source: product.source,
+        sku: product.sku || `SKU-${Math.floor(1000 + Math.random() * 9000)}`,
+        name: product.name,
+        label: product.label || product.description || "Featured",
+        description: product.description || product.label || "",
+        priceKobo,
+        costKobo: product.costKobo ?? Math.round(priceKobo * 0.75),
+        priceDisplay,
+        imageUrl: primaryImage,
+        images: product.images && product.images.length > 0 ? product.images : [primaryImage],
+        status: product.status || "ACTIVE",
+        totalStock: typeof product.totalStock === "number" ? product.totalStock : 15,
+        lowStockAt: typeof product.lowStockAt === "number" ? product.lowStockAt : 5,
+        isFeatured: product.isFeatured ?? true,
+        isNew: product.isNew ?? false,
+        capacity: product.capacity,
+        amenities: product.amenities,
+      };
+
+      const updated = isExisting
+        ? current.map((p) => (p.id === normalized.id ? normalized : p))
+        : [normalized, ...current];
+
+      writeStorage(STORAGE_KEYS.PRODUCTS, updated);
+
+      // Also log activity
+      const currentActs = readStorage(STORAGE_KEYS.ACTIVITIES, DEFAULT_UNIFIED_ACTIVITIES);
+      const actItem: UnifiedActivityLogItem = {
+        id: `act_${Date.now()}`,
+        source: normalized.source,
+        time: "Just now",
+        actor: "Super Admin",
+        action: `${isExisting ? "updated" : "added"} product/service "${normalized.name}" (${normalized.label})`,
+        amount: normalized.priceDisplay,
+        location: "Admin Dashboard",
+      };
+      writeStorage(STORAGE_KEYS.ACTIVITIES, [actItem, ...currentActs.slice(0, 29)]);
+      return normalized;
+    },
+    []
+  );
+
+  const deleteProduct = useCallback((id: string) => {
+    const current = readStorage(STORAGE_KEYS.PRODUCTS, DEFAULT_UNIFIED_PRODUCTS);
+    const target = current.find((p) => p.id === id);
+    const updated = current.filter((p) => p.id !== id);
+    writeStorage(STORAGE_KEYS.PRODUCTS, updated);
+
+    if (target) {
+      const currentActs = readStorage(STORAGE_KEYS.ACTIVITIES, DEFAULT_UNIFIED_ACTIVITIES);
+      writeStorage(STORAGE_KEYS.ACTIVITIES, [
+        {
+          id: `act_${Date.now()}`,
+          source: target.source,
+          time: "Just now",
+          actor: "Super Admin",
+          action: `removed product/service "${target.name}" from website`,
+          amount: null,
+          location: "Admin Dashboard",
+        },
+        ...currentActs.slice(0, 29),
+      ]);
+    }
+  }, []);
+
+  const restockProduct = useCallback((id: string, addedQty = 25) => {
+    const current = readStorage(STORAGE_KEYS.PRODUCTS, DEFAULT_UNIFIED_PRODUCTS);
+    const updated = current.map((p) => {
+      if (p.id !== id) return p;
+      const newStock = (p.totalStock || 0) + addedQty;
+      return {
+        ...p,
+        totalStock: newStock,
+        status: "ACTIVE" as const,
+      };
+    });
+    writeStorage(STORAGE_KEYS.PRODUCTS, updated);
+
+    const target = current.find((p) => p.id === id);
+    if (target) {
+      recordPlatformTransaction({
+        source: target.source,
+        activityType: "EXPENSE",
+        activitySummary: `Inventory Restock (+${addedQty} units) — ${target.name}`,
+        customer: "Warehouse Restock",
+        amountKobo: (target.costKobo || Math.round(target.priceKobo * 0.7)) * addedQty,
+        status: "RECEIVED",
+        location: "Central Warehouse",
+        actor: "Storekeeper / Admin",
+      });
+    }
+  }, []);
+
+  const settlePaymentDue = useCallback((id: string) => {
+    const current = readStorage(STORAGE_KEYS.DUES, DEFAULT_PAYMENT_DUES);
+    const due = current.find((d) => d.id === id);
+    if (!due) return;
+
+    const remaining = current.filter((d) => d.id !== id);
+    writeStorage(STORAGE_KEYS.DUES, remaining);
+
+    // Update matching invoice if present
+    const currentInvoices = readStorage(STORAGE_KEYS.INVOICES, DEFAULT_UNIFIED_INVOICES);
+    const updatedInvoices = currentInvoices.map((inv) =>
+      inv.invoiceNo === due.referenceNo ? { ...inv, status: "PAID" } : inv
+    );
+    writeStorage(STORAGE_KEYS.INVOICES, updatedInvoices);
+
+    recordPlatformTransaction({
+      source: due.source,
+      activityType: due.type === "SALES" ? "SALE" : "EXPENSE",
+      activitySummary: `${due.type === "SALES" ? "Debtor Payment Received" : "Supplier Balance Settled"} — Ref ${due.referenceNo}`,
+      invoiceNo: `${due.referenceNo}-PAY`,
+      customer: due.partyName,
+      amountKobo: due.dueAmountKobo,
+      status: "PAID",
+      location: "Accounts Desk",
+      actor: "Accountant / Admin",
+    });
+  }, []);
+
+  const updateTargets = useCallback((newTargets: UnifiedMonthlyTargets) => {
+    writeStorage(STORAGE_KEYS.TARGETS, newTargets);
+  }, []);
+
+  const updateGlobalServiceFilter = useCallback((service: ServiceSlug | "ALL") => {
+    writeStorage(STORAGE_KEYS.GLOBAL_SERVICE_FILTER, service);
+  }, []);
+
+  return {
+    products,
+    invoices,
+    activities,
+    paymentDues,
+    targets,
+    globalServiceFilter,
+    saveProduct,
+    deleteProduct,
+    restockProduct,
+    settlePaymentDue,
+    updateTargets,
+    updateGlobalServiceFilter,
+    recordTransaction: recordPlatformTransaction,
+  };
+}

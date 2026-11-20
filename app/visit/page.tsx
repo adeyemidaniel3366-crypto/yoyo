@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { recordPlatformTransaction } from "@/lib/platform-store";
 
 export default function VisitorKioskPage() {
   const [tab, setTab] = useState<"APPOINTMENT" | "RETURNING" | "NEW">("APPOINTMENT");
@@ -32,6 +33,17 @@ export default function VisitorKioskPage() {
   const handleCheckIn = (e: React.FormEvent) => {
     e.preventDefault();
     const badge = `PASS-${Math.floor(1000 + Math.random() * 9000)}`;
+    recordPlatformTransaction({
+      source: ServiceSlug.VISITORS,
+      activityType: "VISIT",
+      activitySummary: `Visitor Kiosk Check-In (${purpose} with ${hostEmployee})`,
+      invoiceNo: badge,
+      customer: visitorName.trim() || phoneOrCode.trim() || "Walk-In Visitor",
+      amountKobo: 0,
+      location: "HQ Reception Kiosk",
+      status: "CHECKED_IN",
+      actor: "Front Desk Kiosk",
+    });
     setBadgeNumber(badge);
     setIsCheckedIn(true);
   };

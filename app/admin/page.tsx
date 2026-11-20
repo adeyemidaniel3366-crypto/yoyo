@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   ShoppingCart,
@@ -21,11 +21,18 @@ import {
   Trash2,
   X,
   Save,
-  Check,
-  Tag,
+  CheckCircle2,
   Image as ImageIcon,
   Filter,
   Target,
+  Sparkles,
+  ExternalLink,
+  Layers,
+  Cpu,
+  Smartphone,
+  Hammer,
+  Receipt,
+  UserCheck,
 } from "lucide-react";
 import {
   LineChart,
@@ -44,7 +51,13 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import { ChartCard } from "@/components/ui/chart-card";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
-import { formatCurrency, formatCurrencyCompact } from "@/lib/money";
+import { ImageDropzone } from "@/components/ui/image-dropzone";
+import {
+  usePlatformStore,
+  UnifiedProduct,
+  UnifiedInvoiceActivity,
+} from "@/lib/platform-store";
+import { formatCurrency } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -57,12 +70,18 @@ const ACTIVITY_TYPE_STYLES: Record<string, string> = {
   INVOICE: "bg-green-50 text-green-700 border border-green-200",
   EXPENSE: "bg-red-50 text-red-700 border border-red-200",
   VISIT: "bg-purple-50 text-purple-700 border border-purple-200",
+  PAYMENT: "bg-emerald-50 text-emerald-700 border border-emerald-200",
   ATTENDANCE: "bg-gray-50 text-gray-700 border border-gray-200",
 };
 
 function ActivityTypeBadge({ type }: { type: string }) {
   return (
-    <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide", ACTIVITY_TYPE_STYLES[type] ?? "bg-gray-50 text-gray-600 border border-gray-200")}>
+    <span
+      className={cn(
+        "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide",
+        ACTIVITY_TYPE_STYLES[type] ?? "bg-gray-50 text-gray-600 border border-gray-200"
+      )}
+    >
       {type}
     </span>
   );
@@ -71,7 +90,13 @@ function ActivityTypeBadge({ type }: { type: string }) {
 // ---------------------------------------------------------------------------
 // Monthly Target Progress Bar
 // ---------------------------------------------------------------------------
-function TargetBar({ label, current, target, unit = "", color = "#4F46E5" }: {
+function TargetBar({
+  label,
+  current,
+  target,
+  unit = "",
+  color = "#4F46E5",
+}: {
   label: string;
   current: number;
   target: number;
@@ -79,24 +104,23 @@ function TargetBar({ label, current, target, unit = "", color = "#4F46E5" }: {
   color?: string;
 }) {
   const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
-  const isGood = pct >= 70;
-  const isWarn = pct >= 40 && pct < 70;
-
   return (
-    <div>
-      <div className="flex items-center justify-between mb-1.5 text-xs">
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-xs">
         <span className="font-semibold text-heading">{label}</span>
-        <div className="flex items-center gap-2">
-          <span className="text-muted">{unit}{current.toLocaleString()} / {unit}{target.toLocaleString()}</span>
-          <span className={cn("font-bold", isGood ? "text-emerald-600" : isWarn ? "text-amber-600" : "text-rose-600")}>
-            {pct}%
-          </span>
-        </div>
+        <span className="text-muted">
+          <strong className="text-heading">
+            {unit}
+            {current.toLocaleString()}
+          </strong>{" "}
+          / {unit}
+          {target.toLocaleString()} ({pct}%)
+        </span>
       </div>
-      <div className="h-2.5 w-full rounded-full bg-gray-100 overflow-hidden">
+      <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
         <div
-          className={cn("h-full rounded-full transition-all duration-700", isGood ? "bg-emerald-500" : isWarn ? "bg-amber-400" : "bg-rose-400")}
-          style={{ width: `${pct}%` }}
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${pct}%`, backgroundColor: color }}
         />
       </div>
     </div>
@@ -106,7 +130,15 @@ function TargetBar({ label, current, target, unit = "", color = "#4F46E5" }: {
 // ---------------------------------------------------------------------------
 // Financial Summary Card
 // ---------------------------------------------------------------------------
-function FinancialCard({ title, value, delta, isPositive, accentColor, subtitle, children }: {
+function FinancialCard({
+  title,
+  value,
+  delta,
+  isPositive,
+  accentColor,
+  subtitle,
+  children,
+}: {
   title: string;
   value: string;
   delta?: number;
@@ -116,18 +148,32 @@ function FinancialCard({ title, value, delta, isPositive, accentColor, subtitle,
   children?: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-border shadow-2xs overflow-hidden flex">
-      <div className="w-1 shrink-0" style={{ backgroundColor: accentColor }} />
-      <div className="flex-1 p-5">
-        <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-1">{title}</p>
-        <p className="text-2xl font-extrabold text-heading">{value}</p>
+    <div className="bg-white rounded-xl border border-border shadow-2xs overflow-hidden flex min-w-0">
+      <div className="w-1.5 shrink-0" style={{ backgroundColor: accentColor }} />
+      <div className="flex-1 p-5 min-w-0">
+        <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-1 truncate">
+          {title}
+        </p>
+        <p className="text-2xl font-extrabold text-heading truncate">{value}</p>
         {delta !== undefined && (
-          <div className={cn("flex items-center gap-1 mt-1 text-xs font-semibold", isPositive ? "text-emerald-600" : "text-rose-600")}>
-            {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-            <span>{isPositive ? "+" : ""}{delta}% vs last month</span>
+          <div
+            className={cn(
+              "flex items-center gap-1 mt-1 text-xs font-semibold",
+              isPositive ? "text-emerald-600" : "text-rose-600"
+            )}
+          >
+            {isPositive ? (
+              <TrendingUp className="w-3.5 h-3.5 shrink-0" />
+            ) : (
+              <TrendingDown className="w-3.5 h-3.5 shrink-0" />
+            )}
+            <span>
+              {isPositive ? "+" : ""}
+              {delta}% vs last month
+            </span>
           </div>
         )}
-        {subtitle && <p className="text-[11px] text-muted mt-1">{subtitle}</p>}
+        {subtitle && <p className="text-[11px] text-muted mt-1 truncate">{subtitle}</p>}
         {children}
       </div>
     </div>
@@ -135,119 +181,302 @@ function FinancialCard({ title, value, delta, isPositive, accentColor, subtitle,
 }
 
 // ---------------------------------------------------------------------------
+// Visual Service Section Descriptions (Images + Architectural Visual Cards)
+// ---------------------------------------------------------------------------
+const VISUAL_SERVICE_SECTIONS = [
+  {
+    slug: ServiceSlug.SPARK,
+    title: "Zino Spark — Multi-Shop Retail POS",
+    tagline: "5 Electronics Stores across Computer Village, Ikeja",
+    description:
+      "Fast barcode POS billing, real-time stock alerts across 5 branches, inter-shop stock transfers, and wholesale/retail serial tracking.",
+    image:
+      "https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=700&auto=format&fit=crop&q=80",
+    adminHref: "/admin/spark",
+    publicHref: "/shop",
+    icon: Cpu,
+    metrics: "5 Branches • POS Terminal",
+  },
+  {
+    slug: ServiceSlug.APARTMENTS,
+    title: "Zino Apartments — Luxury Hospitality",
+    tagline: "12 Serviced Suites & Front Desk PMS in Lekki",
+    description:
+      "Public room booking engine, front-desk guest verification, room availability board, housekeeping status, and automated 10% hospitality tax.",
+    image:
+      "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=700&auto=format&fit=crop&q=80",
+    adminHref: "/admin/apartments",
+    publicHref: "/apartments",
+    icon: Building2,
+    metrics: "12 Luxury Rooms • 10% Tax Engine",
+  },
+  {
+    slug: ServiceSlug.BUILDERS,
+    title: "Top Builders — Construction Materials",
+    tagline: "Bulk Cement, Iron Rods & Daily Sales Book",
+    description:
+      "High-volume construction supply yard: daily sales book, batch stock sheets (ST-00021), waybill dispatches, and customer debtors ledger.",
+    image:
+      "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=700&auto=format&fit=crop&q=80",
+    adminHref: "/admin/builders",
+    publicHref: "/builders",
+    icon: Hammer,
+    metrics: "Yard Stock Sheets • Debtors Ledger",
+  },
+  {
+    slug: ServiceSlug.GALAXY,
+    title: "Device Galaxy — E-Commerce Storefront",
+    tagline: "Nationwide Online Gadgets & Storage Marketplace",
+    description:
+      "Online shopping storefront with 1:1 product cards, customer star ratings, cart & checkout pipeline, order tracking, and digital receipts.",
+    image:
+      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=700&auto=format&fit=crop&q=80",
+    adminHref: "/admin/galaxy",
+    publicHref: "/shop",
+    icon: Smartphone,
+    metrics: "Online Cart • Nationwide Shipping",
+  },
+  {
+    slug: ServiceSlug.BILLSTACKS,
+    title: "Billstacks — Cloud Invoicing & Accounting",
+    tagline: "Multi-Currency Invoicing, Expenses & Tax Engine",
+    description:
+      "Professional B2B invoicing (paid, unpaid, partial), recurring subscription billing, expense classification, purchase orders, and HRM.",
+    image:
+      "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=700&auto=format&fit=crop&q=80",
+    adminHref: "/admin/billstacks",
+    publicHref: "/billstacks",
+    icon: Receipt,
+    metrics: "SaaS Plans • Automated Billing",
+  },
+  {
+    slug: ServiceSlug.VISITORS,
+    title: "Visitor Management — Front Desk Kiosk",
+    tagline: "Enterprise Security Passes & Staff Attendance",
+    description:
+      "Self-service tablet check-in kiosk, QR pre-registered guest passes, instant visitor badge printing, and employee clock-in/clock-out.",
+    image:
+      "https://images.unsplash.com/photo-1497366216548-37526070297c?w=700&auto=format&fit=crop&q=80",
+    adminHref: "/admin/visitors",
+    publicHref: "/visit",
+    icon: UserCheck,
+    metrics: "Self-Check Kiosk • Staff Attendance",
+  },
+];
+
+// ---------------------------------------------------------------------------
 // Main Dashboard Page
 // ---------------------------------------------------------------------------
 export default function UnifiedAdminDashboard() {
+  const {
+    products,
+    invoices,
+    activities,
+    paymentDues,
+    targets,
+    globalServiceFilter,
+    updateGlobalServiceFilter,
+    saveProduct,
+    deleteProduct,
+    restockProduct,
+    settlePaymentDue,
+    updateTargets,
+    recordTransaction,
+  } = usePlatformStore();
+
   const [chartGrouping, setChartGrouping] = useState<"service" | "location">("service");
   const [dashboardData, setDashboardData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Invoice activity state
-  const [invoiceFilter, setInvoiceFilter] = useState({ service: "", type: "", from: "", to: "" });
-  const [invoiceRows, setInvoiceRows] = useState<any[]>([]);
-  const [invoiceLoading, setInvoiceLoading] = useState(false);
+  // Invoice activity filter state
+  const [invoiceFilter, setInvoiceFilter] = useState({
+    service: "",
+    type: "",
+    from: "",
+    to: "",
+  });
 
-  // Products & Services Live In-Dashboard Management
-  const [productsList, setProductsList] = useState<any[]>([
-    { id: "dp_1", source: ServiceSlug.SPARK, name: "Samsung 990 PRO 4TB NVMe SSD", label: "Best Seller", price: "₦480,000", imageUrl: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=200", status: "ACTIVE" },
-    { id: "dp_2", source: ServiceSlug.SPARK, name: "Apple MacBook Pro 16\" M3 Max", label: "Flagship POS", price: "₦4,850,000", imageUrl: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=200", status: "ACTIVE" },
-    { id: "dp_3", source: ServiceSlug.GALAXY, name: "Lexar SL500 Portable SSD 2TB", label: "Hot Deal", price: "₦220,000", imageUrl: "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=200", status: "ACTIVE" },
-    { id: "dp_4", source: ServiceSlug.BUILDERS, name: "Dangote Cement 50kg", label: "Wholesale Bag", price: "₦9,800", imageUrl: "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=200", status: "ACTIVE" },
-    { id: "dp_5", source: ServiceSlug.BUILDERS, name: "Iron Rod 16mm (Length)", label: "High Tensile", price: "₦18,000", imageUrl: "https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?w=200", status: "LOW_STOCK" },
-    { id: "dp_6", source: ServiceSlug.APARTMENTS, name: "Luxury 2-Bedroom Suite", label: "Executive Hospitality", price: "₦50,000 / night", imageUrl: "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=200", status: "ACTIVE" },
-    { id: "dp_7", source: ServiceSlug.APARTMENTS, name: "Deluxe Studio Apartment", label: "Popular Choice", price: "₦30,000 / night", imageUrl: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=200", status: "ACTIVE" },
-    { id: "dp_8", source: ServiceSlug.BILLSTACKS, name: "Billstacks Standard Plan", label: "SaaS Subscription", price: "₦2,000 / month", imageUrl: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=200", status: "ACTIVE" },
+  // Urgent attention items (interactive — can be resolved)
+  const [attentionItems, setAttentionItems] = useState([
+    {
+      id: "att_1",
+      source: ServiceSlug.SPARK,
+      severity: "high",
+      title: "Out of Stock: Zealot S69M (13360)",
+      detail: "Warehouse — Asset Corps Plaza (0.0 Pc remaining)",
+      href: "/admin/spark/stock-alert",
+    },
+    {
+      id: "att_2",
+      source: ServiceSlug.BUILDERS,
+      severity: "high",
+      title: "Debtor Overdue: Mama Bose Ventures",
+      detail: "₦281,300 overdue by 128 days (Invoice INV-000104)",
+      href: "/admin/builders/debtors",
+    },
+    {
+      id: "att_3",
+      source: ServiceSlug.APARTMENTS,
+      severity: "medium",
+      title: "Pending Booking Confirmation",
+      detail: "Booking ref #ZINO-482091 for Deluxe Studio Suite",
+      href: "/admin/apartments/bookings",
+    },
+    {
+      id: "att_4",
+      source: ServiceSlug.GALAXY,
+      severity: "medium",
+      title: "Product Review Pending Approval",
+      detail: 'MacBook Pro 16" review by Chinedu O. (5 stars)',
+      href: "/admin/galaxy",
+    },
+    {
+      id: "att_5",
+      source: ServiceSlug.VISITORS,
+      severity: "low",
+      title: "Expected Visitor Waiting",
+      detail: "Adaeze Okafor arrived for meeting with Accounts Dept",
+      href: "/admin/visitors",
+    },
   ]);
 
+  // Modals state
   const [productServiceTab, setProductServiceTab] = useState<string>("ALL");
   const [productModalOpen, setProductModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Partial<UnifiedProduct> | null>(null);
 
-  const handleOpenAddProduct = () => {
-    setEditingProduct({
-      id: "",
-      source: ServiceSlug.SPARK,
-      name: "",
-      label: "Featured",
-      price: "₦0",
-      imageUrl: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=200",
-      status: "ACTIVE",
-    });
-    setProductModalOpen(true);
-  };
+  const [targetModalOpen, setTargetModalOpen] = useState(false);
+  const [targetForm, setTargetForm] = useState({
+    salesNaira: Math.round(targets.salesTargetKobo / 100),
+    expenseNaira: Math.round(targets.expenseBudgetKobo / 100),
+    bookingsTarget: targets.bookingsTarget,
+    visitorsTarget: targets.visitorsTarget,
+  });
 
-  const handleOpenEditProduct = (item: any) => {
-    setEditingProduct({ ...item });
-    setProductModalOpen(true);
-  };
+  const [txModalOpen, setTxModalOpen] = useState(false);
+  const [txForm, setTxForm] = useState({
+    source: ServiceSlug.SPARK,
+    activityType: "SALE" as UnifiedInvoiceActivity["activityType"],
+    activitySummary: "",
+    customer: "",
+    amountNaira: "",
+    location: "Medical Road",
+    status: "PAID",
+  });
 
-  const handleDeleteProduct = (id: string) => {
-    if (confirm("Are you sure you want to remove this product or service from the website?")) {
-      setProductsList((prev) => prev.filter((p) => p.id !== id));
-    }
-  };
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const handleSaveProduct = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingProduct?.name?.trim()) return;
-
-    if (editingProduct.id) {
-      setProductsList((prev) =>
-        prev.map((p) => (p.id === editingProduct.id ? editingProduct : p))
-      );
-    } else {
-      const newItem = {
-        ...editingProduct,
-        id: `dp_${Date.now()}`,
-        source: editingProduct.source || ServiceSlug.SPARK,
-        label: editingProduct.label || "New",
-        price: editingProduct.price || "₦0",
-        imageUrl: editingProduct.imageUrl || "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=200",
-        status: editingProduct.status || "ACTIVE",
-      };
-      setProductsList((prev) => [newItem, ...prev]);
-    }
-    setProductModalOpen(false);
-    setEditingProduct(null);
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
   useEffect(() => {
-    setIsLoading(true);
     fetch("/api/dashboard/summary")
       .then((r) => (r.ok ? r.json() : null))
       .then((res) => {
         if (res?.ok && res?.data) setDashboardData(res.data);
       })
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
+      .catch(() => {});
   }, []);
 
-  // Load invoice activity
-  const loadInvoices = () => {
-    setInvoiceLoading(true);
-    const params = new URLSearchParams();
-    if (invoiceFilter.service) params.set("service", invoiceFilter.service);
-    if (invoiceFilter.type) params.set("type", invoiceFilter.type);
-    if (invoiceFilter.from) params.set("from", invoiceFilter.from);
-    if (invoiceFilter.to) params.set("to", invoiceFilter.to);
-    params.set("perPage", "50");
+  // Synchronize topbar global service filter with invoice & product tabs
+  const activeServiceScope = globalServiceFilter;
 
-    fetch(`/api/dashboard/invoices?${params.toString()}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((res) => {
-        if (res?.ok && res?.data?.rows) setInvoiceRows(res.data.rows);
-      })
-      .catch(() => {})
-      .finally(() => setInvoiceLoading(false));
-  };
+  // Compute dynamic financial totals from unified invoices
+  const financialTotals = useMemo(() => {
+    const scopedInvoices =
+      activeServiceScope === "ALL"
+        ? invoices
+        : invoices.filter((i) => i.source === activeServiceScope);
 
-  useEffect(() => {
-    // Load invoice activity on mount with mock fallback
-    loadInvoices();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const revenueFromInvoices = scopedInvoices
+      .filter((i) => i.activityType !== "EXPENSE" && i.activityType !== "VISIT")
+      .reduce((acc, i) => acc + (i.amountKobo || 0), 0);
 
-  // ── Mock data ──────────────────────────────────────────────────────────
+    const expensesFromInvoices = scopedInvoices
+      .filter((i) => i.activityType === "EXPENSE")
+      .reduce((acc, i) => acc + (i.amountKobo || 0), 0);
+
+    // Combine baseline monthly volume with live recorded transactions
+    const baseRevKobo = activeServiceScope === "ALL" ? 2048470000 : 340000000;
+    const baseExpKobo = activeServiceScope === "ALL" ? 413500000 : 68000000;
+
+    const totalRevenueKobo = baseRevKobo + revenueFromInvoices;
+    const totalExpenseKobo = baseExpKobo + expensesFromInvoices;
+    const netProfitKobo = totalRevenueKobo - totalExpenseKobo;
+
+    const bookingsCount = scopedInvoices.filter((i) => i.activityType === "BOOKING").length;
+    const visitorsCount = scopedInvoices.filter((i) => i.activityType === "VISIT").length + 4;
+
+    return {
+      totalRevenueKobo,
+      totalExpenseKobo,
+      netProfitKobo,
+      bookingsCount,
+      visitorsCount,
+    };
+  }, [invoices, activeServiceScope]);
+
+  // Compute dynamic dues
+  const salesPaymentDueRows = useMemo(
+    () =>
+      paymentDues.filter(
+        (d) =>
+          d.type === "SALES" &&
+          (activeServiceScope === "ALL" || d.source === activeServiceScope)
+      ),
+    [paymentDues, activeServiceScope]
+  );
+
+  const purchasePaymentDueRows = useMemo(
+    () =>
+      paymentDues.filter(
+        (d) =>
+          d.type === "PURCHASE" &&
+          (activeServiceScope === "ALL" || d.source === activeServiceScope)
+      ),
+    [paymentDues, activeServiceScope]
+  );
+
+  const totalSalesDueKobo = salesPaymentDueRows.reduce((s, d) => s + d.dueAmountKobo, 0);
+  const totalPurchaseDueKobo = purchasePaymentDueRows.reduce((s, d) => s + d.dueAmountKobo, 0);
+
+  // Compute dynamic Low Stock & Quality Alerts from Unified Products
+  const productAlertRows = useMemo(() => {
+    return products
+      .filter(
+        (p) =>
+          (activeServiceScope === "ALL" || p.source === activeServiceScope) &&
+          (p.status === "OUT_OF_STOCK" ||
+            p.status === "LOW_STOCK" ||
+            p.totalStock <= p.lowStockAt) &&
+          p.lowStockAt > 0
+      )
+      .map((p) => ({
+        id: p.id,
+        source: p.source,
+        sku: p.sku,
+        name: p.name,
+        imageUrl: p.imageUrl,
+        qty: p.totalStock,
+        lowStockAt: p.lowStockAt,
+        status: p.totalStock === 0 ? "OUT_OF_STOCK" : "LOW_STOCK",
+      }));
+  }, [products, activeServiceScope]);
+
+  // Filtered Unified Invoice Activity Rows
+  const displayInvoiceRows = useMemo(() => {
+    return invoices.filter((row) => {
+      if (activeServiceScope !== "ALL" && row.source !== activeServiceScope) return false;
+      if (invoiceFilter.service && row.source !== invoiceFilter.service) return false;
+      if (invoiceFilter.type && row.activityType !== invoiceFilter.type) return false;
+      if (invoiceFilter.from && row.createdAt < invoiceFilter.from) return false;
+      if (invoiceFilter.to && row.createdAt > invoiceFilter.to) return false;
+      return true;
+    });
+  }, [invoices, activeServiceScope, invoiceFilter]);
+
+  // ── 8 Stat Cards ──────────────────────────────────────────────────────
   const rawCards = dashboardData?.cards || [];
   const getCard = (key: string) => rawCards.find((c: any) => c.key === key);
 
@@ -258,7 +487,11 @@ export default function UnifiedAdminDashboard() {
       icon: ShoppingCart,
       iconColor: "#2563EB",
       iconBg: "#E8EEFB",
-      delta: { value: getCard("totalSales")?.deltaPct ?? 12.4, isPositive: (getCard("totalSales")?.deltaPct ?? 12.4) >= 0, period: "vs yesterday" },
+      delta: {
+        value: getCard("totalSales")?.deltaPct ?? 12.4,
+        isPositive: (getCard("totalSales")?.deltaPct ?? 12.4) >= 0,
+        period: "vs yesterday",
+      },
     },
     {
       title: "Net (Today)",
@@ -266,15 +499,19 @@ export default function UnifiedAdminDashboard() {
       icon: DollarSign,
       iconColor: "#28A745",
       iconBg: "#E8F5EE",
-      delta: { value: getCard("net")?.deltaPct ?? 8.1, isPositive: (getCard("net")?.deltaPct ?? 8.1) >= 0, period: "vs yesterday" },
+      delta: {
+        value: getCard("net")?.deltaPct ?? 8.1,
+        isPositive: (getCard("net")?.deltaPct ?? 8.1) >= 0,
+        period: "vs yesterday",
+      },
     },
     {
       title: "Invoice Due",
-      value: getCard("invoiceDue")?.display || "₦834,500",
+      value: formatCurrency(totalSalesDueKobo),
       icon: FileText,
       iconColor: "#FFB800",
       iconBg: "#FFF9E6",
-      subtitle: "Debtors in Builders & Spark",
+      subtitle: `${salesPaymentDueRows.length} open debtor invoice(s)`,
     },
     {
       title: "Total Sell Return",
@@ -294,15 +531,15 @@ export default function UnifiedAdminDashboard() {
     },
     {
       title: "Purchase Due",
-      value: getCard("purchaseDue")?.display || "₦320,000",
+      value: formatCurrency(totalPurchaseDueKobo),
       icon: AlertTriangle,
       iconColor: "#FFB800",
       iconBg: "#FFF9E6",
-      subtitle: "Supplier balances pending",
+      subtitle: `${purchasePaymentDueRows.length} supplier balance(s) pending`,
     },
     {
       title: "Active Bookings",
-      value: getCard("activeBookings")?.display || "2",
+      value: String(financialTotals.bookingsCount),
       icon: Building2,
       iconColor: "#1E3A5F",
       iconBg: "#E8EEF5",
@@ -311,7 +548,7 @@ export default function UnifiedAdminDashboard() {
     },
     {
       title: "Visitors Today",
-      value: getCard("visitorsToday")?.display || "5",
+      value: String(financialTotals.visitorsCount),
       icon: Users,
       iconColor: "#7C3AED",
       iconBg: "#F3EFFF",
@@ -320,21 +557,29 @@ export default function UnifiedAdminDashboard() {
     },
   ];
 
-  // 30 Days Chart
-  const sales30DaysData = [
+  // 30 Days Chart Data (Supports BOTH "By service" and "By location")
+  const sales30DaysByLocation = [
     { date: "20 Oct", Adepele: 800000, MedicalRoad: 5200000, Olayeni: 1000000, AllLocations: 7000000 },
-    { date: "22 Oct", Adepele: 5500000, MedicalRoad: 9800000, Olayeni: 200000, AllLocations: 15500000 },
-    { date: "24 Oct", Adepele: 200000, MedicalRoad: 100000, Olayeni: 0, AllLocations: 300000 },
-    { date: "26 Oct", Adepele: 2100000, MedicalRoad: 7500000, Olayeni: 0, AllLocations: 9600000 },
-    { date: "28 Oct", Adepele: 1500000, MedicalRoad: 500000, Olayeni: 8000000, AllLocations: 10000000 },
-    { date: "30 Oct", Adepele: 2500000, MedicalRoad: 4200000, Olayeni: 3000000, AllLocations: 9700000 },
-    { date: "04 Nov", Adepele: 7500000, MedicalRoad: 16200000, Olayeni: 800000, AllLocations: 24500000 },
-    { date: "06 Nov", Adepele: 2500000, MedicalRoad: 7200000, Olayeni: 400000, AllLocations: 10100000 },
-    { date: "10 Nov", Adepele: 1200000, MedicalRoad: 4600000, Olayeni: 100000, AllLocations: 5900000 },
-    { date: "12 Nov", Adepele: 5400000, MedicalRoad: 6800000, Olayeni: 200000, AllLocations: 12400000 },
-    { date: "14 Nov", Adepele: 2800000, MedicalRoad: 7400000, Olayeni: 0, AllLocations: 10200000 },
-    { date: "16 Nov", Adepele: 300000, MedicalRoad: 17200000, Olayeni: 400000, AllLocations: 17900000 },
-    { date: "18 Nov", Adepele: 2400000, MedicalRoad: 1500000, Olayeni: 300000, AllLocations: 4200000 },
+    { date: "24 Oct", Adepele: 2000000, MedicalRoad: 6100000, Olayeni: 1200000, AllLocations: 9300000 },
+    { date: "28 Oct", Adepele: 1500000, MedicalRoad: 5000000, Olayeni: 3500000, AllLocations: 10000000 },
+    { date: "02 Nov", Adepele: 4200000, MedicalRoad: 8400000, Olayeni: 1900000, AllLocations: 14500000 },
+    { date: "06 Nov", Adepele: 2500000, MedicalRoad: 7200000, Olayeni: 1400000, AllLocations: 11100000 },
+    { date: "10 Nov", Adepele: 3100000, MedicalRoad: 6800000, Olayeni: 2100000, AllLocations: 12000000 },
+    { date: "14 Nov", Adepele: 2800000, MedicalRoad: 7400000, Olayeni: 1600000, AllLocations: 11800000 },
+    { date: "18 Nov", Adepele: 3400000, MedicalRoad: 9200000, Olayeni: 2300000, AllLocations: 14900000 },
+    { date: "20 Nov", Adepele: 3900000, MedicalRoad: 10500000, Olayeni: 2800000, AllLocations: 17200000 },
+  ];
+
+  const sales30DaysByService = [
+    { date: "20 Oct", Spark: 4200000, Builders: 1800000, Galaxy: 650000, Apartments: 350000, Billstacks: 120000 },
+    { date: "24 Oct", Spark: 5100000, Builders: 2400000, Galaxy: 1100000, Apartments: 520000, Billstacks: 180000 },
+    { date: "28 Oct", Spark: 5800000, Builders: 2100000, Galaxy: 1300000, Apartments: 600000, Billstacks: 200000 },
+    { date: "02 Nov", Spark: 7900000, Builders: 3800000, Galaxy: 1750000, Apartments: 750000, Billstacks: 300000 },
+    { date: "06 Nov", Spark: 6100000, Builders: 2900000, Galaxy: 1200000, Apartments: 650000, Billstacks: 250000 },
+    { date: "10 Nov", Spark: 6800000, Builders: 3100000, Galaxy: 1350000, Apartments: 500000, Billstacks: 250000 },
+    { date: "14 Nov", Spark: 6400000, Builders: 3300000, Galaxy: 1250000, Apartments: 600000, Billstacks: 250000 },
+    { date: "18 Nov", Spark: 8200000, Builders: 4100000, Galaxy: 1600000, Apartments: 700000, Billstacks: 300000 },
+    { date: "20 Nov", Spark: 9400000, Builders: 4600000, Galaxy: 1950000, Apartments: 850000, Billstacks: 400000 },
   ];
 
   const financialYearData = [
@@ -351,193 +596,422 @@ export default function UnifiedAdminDashboard() {
     { month: "Nov", Spark: 146000000, Builders: 112000000, Galaxy: 34000000, Apartments: 16500000 },
   ];
 
-  const attentionItems = [
-    { id: "att_1", source: ServiceSlug.SPARK, severity: "high", title: "Out of Stock: Zealot S69M (13360)", detail: "Warehouse — Asset Corps Plaza (0.0 Pc remaining)", href: "/admin/spark/stock-alert" },
-    { id: "att_2", source: ServiceSlug.BUILDERS, severity: "high", title: "Debtor Overdue: Mama Bose Ventures", detail: "₦281,300 overdue by 128 days (Invoice INV-000104)", href: "/admin/builders/debtors" },
-    { id: "att_3", source: ServiceSlug.APARTMENTS, severity: "medium", title: "Pending Booking Confirmation", detail: "Booking ref #ZINO-482091 for Executive 1-Bedroom", href: "/admin/apartments/bookings" },
-    { id: "att_4", source: ServiceSlug.GALAXY, severity: "medium", title: "Product Review Pending Approval", detail: "MacBook Pro 16\" review by Chinedu O. (5 stars)", href: "/admin/galaxy/reviews" },
-    { id: "att_5", source: ServiceSlug.VISITORS, severity: "low", title: "Expected Visitor Waiting", detail: "Adaeze Okafor arrived for meeting with Accounts Dept", href: "/admin/visitors" },
-  ];
-
-  const recentActivities = [
-    { id: "act_1", source: ServiceSlug.SPARK, time: "2 min ago", actor: "Cashier (Medical Road)", action: "sold 2 × Samsung 990 PRO 4TB", amount: "₦960,000", location: "Medical Road" },
-    { id: "act_2", source: ServiceSlug.APARTMENTS, time: "15 min ago", actor: "Reception Desk", action: "checked in Guest #1042 — Deluxe Studio", amount: "₦30,000", location: "Zino Main" },
-    { id: "act_3", source: ServiceSlug.BUILDERS, time: "32 min ago", actor: "Sales Staff", action: "recorded sale to Adewumi Builders (40 bags Dangote)", amount: "₦392,000", location: "Builders Yard" },
-    { id: "act_4", source: ServiceSlug.GALAXY, time: "1 hr ago", actor: "Online Customer", action: "placed Order #DG-892104 (Lexar SSD + Accessories)", amount: "₦245,000", location: "Galaxy Online" },
-    { id: "act_5", source: ServiceSlug.VISITORS, time: "1 hr ago", actor: "Front Desk Kiosk", action: "issued visitor badge to Engr. Tunde Bakare", amount: null, location: "HQ Office" },
-    { id: "act_6", source: ServiceSlug.BILLSTACKS, time: "2 hrs ago", actor: "Accountant", action: "sent Invoice #INV-000084 to Prime Technologies", amount: "₦1,450,000", location: null },
-  ];
-
-  // Payment due tables
+  // ── Table Column Definitions ──────────────────────────────────────────
   const salesPaymentDueColumns: ColumnDef<any>[] = [
-    { key: "customer", header: "Customer", sortable: true },
-    { key: "invoiceNo", header: "Invoice No.", sortable: true },
-    { key: "dueAmount", header: "Due Amount", align: "right", sortable: true, cell: (row) => formatCurrency(row.dueAmountKobo) },
+    { key: "partyName", header: "Customer", sortable: true },
+    { key: "referenceNo", header: "Invoice No.", sortable: true },
     {
-      key: "action", header: "Action", align: "center",
+      key: "dueAmountKobo",
+      header: "Due Amount",
+      align: "right",
+      sortable: true,
+      cell: (row) => formatCurrency(row.dueAmountKobo),
+    },
+    {
+      key: "action",
+      header: "Action",
+      align: "center",
       cell: (row) => (
-        <button type="button" onClick={() => alert(`Recording payment for invoice ${row.invoiceNo}`)}
-          className="px-2.5 py-1 rounded bg-active hover:bg-indigo-700 text-white font-semibold text-[11px] transition-colors">
-          Pay
+        <button
+          type="button"
+          onClick={() => {
+            settlePaymentDue(row.id);
+            showToast(`Payment settled for ${row.partyName} (${row.referenceNo})`);
+          }}
+          className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition-colors shadow-2xs"
+        >
+          Settle Pay
         </button>
       ),
     },
   ];
 
   const purchasePaymentDueColumns: ColumnDef<any>[] = [
-    { key: "supplier", header: "Supplier", sortable: true },
+    { key: "partyName", header: "Supplier", sortable: true },
     { key: "referenceNo", header: "Reference No", sortable: true },
-    { key: "dueAmount", header: "Due Amount", align: "right", sortable: true, cell: (row) => formatCurrency(row.dueAmountKobo) },
     {
-      key: "action", header: "Action", align: "center",
+      key: "dueAmountKobo",
+      header: "Due Amount",
+      align: "right",
+      sortable: true,
+      cell: (row) => formatCurrency(row.dueAmountKobo),
+    },
+    {
+      key: "action",
+      header: "Action",
+      align: "center",
       cell: (row) => (
-        <button type="button" onClick={() => alert(`Settling supplier reference ${row.referenceNo}`)}
-          className="px-2.5 py-1 rounded bg-active hover:bg-indigo-700 text-white font-semibold text-[11px] transition-colors">
-          Pay
+        <button
+          type="button"
+          onClick={() => {
+            settlePaymentDue(row.id);
+            showToast(`Supplier balance settled for ${row.partyName} (${row.referenceNo})`);
+          }}
+          className="px-2.5 py-1 rounded bg-active hover:bg-indigo-700 text-white font-semibold text-[11px] transition-colors shadow-2xs"
+        >
+          Settle Pay
         </button>
       ),
     },
   ];
 
-  const salesPaymentDueRows = [
-    { id: "spd_1", source: ServiceSlug.BUILDERS, customer: "Mama Bose Ventures", invoiceNo: "INV-000104", dueAmountKobo: 28130000 },
-    { id: "spd_2", source: ServiceSlug.BUILDERS, customer: "Chief Okonkwo", invoiceNo: "INV-000105", dueAmountKobo: 19500000 },
-    { id: "spd_3", source: ServiceSlug.SPARK, customer: "Vertex Systems Ltd", invoiceNo: "SPK-9042", dueAmountKobo: 35820000 },
-  ];
-
-  const purchasePaymentDueRows = [
-    { id: "ppd_1", source: ServiceSlug.SPARK, supplier: "SanDisk Official West Africa", referenceNo: "PO-2026-881", dueAmountKobo: 32000000 },
-  ];
-
-  // Mock invoice rows for display if API not loaded
-  const mockInvoiceRows = [
-    { id: "inv_1", source: ServiceSlug.SPARK, activityType: "SALE", invoiceNo: "SPK-9044", customer: "Vertex Systems", amountDisplay: "₦1,200,000", status: "PAID", location: "Medical Road", createdAt: "2026-11-19" },
-    { id: "inv_2", source: ServiceSlug.APARTMENTS, activityType: "BOOKING", invoiceNo: "ZINO-482091", customer: "Adaeze Okafor", amountDisplay: "₦90,000", status: "CONFIRMED", location: "Zino Main", createdAt: "2026-11-19" },
-    { id: "inv_3", source: ServiceSlug.BUILDERS, activityType: "SALE", invoiceNo: "INV-000104", customer: "Mama Bose Ventures", amountDisplay: "₦281,300", status: "UNPAID", location: "Builders Yard", createdAt: "2026-11-18" },
-    { id: "inv_4", source: ServiceSlug.GALAXY, activityType: "ORDER", invoiceNo: "DG-892104", customer: "Online Customer", amountDisplay: "₦245,000", status: "SHIPPED", location: "Galaxy Online", createdAt: "2026-11-18" },
-    { id: "inv_5", source: ServiceSlug.BILLSTACKS, activityType: "INVOICE", invoiceNo: "INV-000084", customer: "Prime Technologies", amountDisplay: "₦1,450,000", status: "SENT", location: null, createdAt: "2026-11-17" },
-    { id: "inv_6", source: ServiceSlug.VISITORS, activityType: "VISIT", invoiceNo: "VIS-00041", customer: "Engr. Tunde Bakare", amountDisplay: null, status: "CHECKED_IN", location: "HQ Office", createdAt: "2026-11-19" },
-    { id: "inv_7", source: ServiceSlug.SPARK, activityType: "SALE", invoiceNo: "SPK-9039", customer: "Walk-in", amountDisplay: "₦960,000", status: "PAID", location: "Adepele Shop", createdAt: "2026-11-19" },
-    { id: "inv_8", source: ServiceSlug.BUILDERS, activityType: "SALE", invoiceNo: "INV-000105", customer: "Chief Okonkwo", amountDisplay: "₦195,000", status: "PART_PAID", location: "Builders Yard", createdAt: "2026-11-16" },
-    { id: "inv_9", source: ServiceSlug.APARTMENTS, activityType: "BOOKING", invoiceNo: "ZINO-482100", customer: "Mr. Femi Adeleke", amountDisplay: "₦180,000", status: "CHECKED_IN", location: "Zino Main", createdAt: "2026-11-15" },
-    { id: "inv_10", source: ServiceSlug.GALAXY, activityType: "ORDER", invoiceNo: "DG-892201", customer: "TechHub Lagos", amountDisplay: "₦485,000", status: "DELIVERED", location: "Galaxy Online", createdAt: "2026-11-14" },
-  ];
-
-  const displayInvoiceRows = invoiceRows.length > 0 ? invoiceRows : mockInvoiceRows;
-
-  // Invoice table columns
-  const invoiceColumns: ColumnDef<any>[] = [
+  const invoiceColumns: ColumnDef<UnifiedInvoiceActivity>[] = [
     {
-      key: "activityType", header: "Activity", sortable: true,
+      key: "activityType",
+      header: "Activity Type",
+      sortable: true,
       cell: (row) => <ActivityTypeBadge type={row.activityType} />,
     },
-    { key: "invoiceNo", header: "Invoice / Ref No.", sortable: true },
-    { key: "customer", header: "Customer", sortable: true },
     {
-      key: "location", header: "Location",
+      key: "activitySummary",
+      header: "Activity Carried Out",
+      sortable: true,
+      cell: (row) => (
+        <span className="text-xs font-medium text-heading">{row.activitySummary}</span>
+      ),
+    },
+    {
+      key: "invoiceNo",
+      header: "Invoice / Ref No.",
+      sortable: true,
+      cell: (row) => (
+        <span className="font-mono font-bold text-xs text-heading">{row.invoiceNo}</span>
+      ),
+    },
+    { key: "customer", header: "Customer / Guest", sortable: true },
+    {
+      key: "location",
+      header: "Location",
       cell: (row) => <span className="text-xs text-muted">{row.location ?? "—"}</span>,
     },
     {
-      key: "amountDisplay", header: "Amount", align: "right", sortable: true,
-      cell: (row) => <span className="font-semibold">{row.amountDisplay ?? "—"}</span>,
+      key: "amountDisplay",
+      header: "Amount",
+      align: "right",
+      sortable: true,
+      cell: (row) => <span className="font-semibold text-heading">{row.amountDisplay ?? "—"}</span>,
     },
     {
-      key: "status", header: "Status", align: "center",
+      key: "status",
+      header: "Status",
+      align: "center",
       cell: (row) => <StatusBadge status={row.status} />,
     },
     {
-      key: "createdAt", header: "Date", sortable: true,
-      cell: (row) => <span className="text-xs text-muted">{typeof row.createdAt === "string" ? row.createdAt.slice(0, 10) : row.createdAt}</span>,
-    },
-  ];
-
-  // Low stock / product alert columns
-  const productAlertColumns: ColumnDef<any>[] = [
-    { key: "sku", header: "SKU", sortable: true },
-    { key: "name", header: "Product Name", sortable: true },
-    { key: "qty", header: "Current Stock", align: "center", sortable: true },
-    { key: "lowStockAt", header: "Low Stock At", align: "center" },
-    {
-      key: "status", header: "Status", align: "center",
-      cell: (row) => <StatusBadge status={row.status} />,
-    },
-    {
-      key: "action", header: "Action", align: "center",
+      key: "createdAt",
+      header: "Date",
+      sortable: true,
       cell: (row) => (
-        <Link href="/admin/spark/stock-alert" className="px-2.5 py-1 rounded bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white font-semibold text-[11px] transition-colors border border-amber-200">
-          Restock
-        </Link>
+        <span className="text-xs text-muted">
+          {typeof row.createdAt === "string" ? row.createdAt.slice(0, 10) : row.createdAt}
+        </span>
       ),
     },
   ];
 
-  const productAlertRows = [
-    { id: "pa_1", source: ServiceSlug.SPARK, sku: "ZLT-S69M-13360", name: "Zealot S69M Speaker", qty: 0, lowStockAt: 5, status: "OUT_OF_STOCK" },
-    { id: "pa_2", source: ServiceSlug.SPARK, sku: "LXR-SL500-2TB", name: "Lexar SL500 Portable SSD 2TB", qty: 2, lowStockAt: 5, status: "LOW_STOCK" },
-    { id: "pa_3", source: ServiceSlug.BUILDERS, sku: "IRON-ROD-16MM", name: "Iron Rod 16mm (per length)", qty: 2, lowStockAt: 10, status: "LOW_STOCK" },
-    { id: "pa_4", source: ServiceSlug.SPARK, sku: "SAM-990PRO-4TB", name: "Samsung 990 PRO 4TB NVMe", qty: 1, lowStockAt: 3, status: "LOW_STOCK" },
-    { id: "pa_5", source: ServiceSlug.BUILDERS, sku: "BUA-CEM-50KG", name: "BUA Cement 50kg", qty: 0, lowStockAt: 20, status: "OUT_OF_STOCK" },
+  const productAlertColumns: ColumnDef<any>[] = [
+    {
+      key: "name",
+      header: "Product",
+      sortable: true,
+      cell: (row) => (
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-gray-100 border border-border overflow-hidden shrink-0">
+            {row.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={row.imageUrl} alt={row.name} className="w-full h-full object-cover" />
+            ) : null}
+          </div>
+          <div>
+            <p className="font-bold text-heading text-xs">{row.name}</p>
+            <p className="text-[10px] font-mono text-muted">{row.sku}</p>
+          </div>
+        </div>
+      ),
+    },
+    { key: "qty", header: "Current Stock", align: "center", sortable: true },
+    { key: "lowStockAt", header: "Low Stock Threshold", align: "center" },
+    {
+      key: "status",
+      header: "Status",
+      align: "center",
+      cell: (row) => <StatusBadge status={row.status} />,
+    },
+    {
+      key: "action",
+      header: "Action",
+      align: "center",
+      cell: (row) => (
+        <button
+          type="button"
+          onClick={() => {
+            restockProduct(row.id, 25);
+            showToast(`Restocked +25 units of "${row.name}" — status updated to ACTIVE`);
+          }}
+          className="px-2.5 py-1 rounded bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white font-semibold text-[11px] transition-colors border border-amber-200"
+        >
+          + Restock (25)
+        </button>
+      ),
+    },
   ];
 
-  // ── RENDER ─────────────────────────────────────────────────────────────
+  // ── Handlers for Product Modal ────────────────────────────────────────
+  const handleOpenAddProduct = (defaultService?: ServiceSlug) => {
+    setEditingProduct({
+      id: "",
+      source: defaultService || ServiceSlug.SPARK,
+      sku: `SKU-${Math.floor(1000 + Math.random() * 9000)}`,
+      name: "",
+      label: "Featured",
+      description: "",
+      priceDisplay: "₦0",
+      priceKobo: 0,
+      imageUrl: "",
+      images: [],
+      status: "ACTIVE",
+      totalStock: 20,
+      lowStockAt: 5,
+    });
+    setProductModalOpen(true);
+  };
+
+  const handleOpenEditProduct = (item: UnifiedProduct) => {
+    setEditingProduct({ ...item });
+    setProductModalOpen(true);
+  };
+
+  const handleDeleteProduct = (item: UnifiedProduct) => {
+    deleteProduct(item.id);
+    showToast(`Removed "${item.name}" from the website catalog`);
+  };
+
+  const handleSaveProductSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct?.name?.trim()) return;
+
+    const saved = saveProduct({
+      ...editingProduct,
+      name: editingProduct.name.trim(),
+      source: editingProduct.source || ServiceSlug.SPARK,
+    });
+    setProductModalOpen(false);
+    setEditingProduct(null);
+    showToast(`Saved "${saved.name}" — synced across Admin & Public Website`);
+  };
+
+  const handleSaveTargetsSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateTargets({
+      salesTargetKobo: Math.max(100000, Number(targetForm.salesNaira) * 100),
+      expenseBudgetKobo: Math.max(100000, Number(targetForm.expenseNaira) * 100),
+      bookingsTarget: Math.max(1, Number(targetForm.bookingsTarget)),
+      visitorsTarget: Math.max(1, Number(targetForm.visitorsTarget)),
+    });
+    setTargetModalOpen(false);
+    showToast("Monthly targets updated");
+  };
+
+  const handleCreateTransactionSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!txForm.customer.trim() || !txForm.activitySummary.trim()) return;
+    const amountKobo = Math.round(Number(txForm.amountNaira || 0) * 100);
+    const created = recordTransaction({
+      source: txForm.source,
+      activityType: txForm.activityType,
+      activitySummary: txForm.activitySummary.trim(),
+      customer: txForm.customer.trim(),
+      amountKobo,
+      location: txForm.location,
+      status: txForm.status,
+      actor: "Super Admin",
+    });
+    setTxModalOpen(false);
+    setTxForm({
+      source: ServiceSlug.SPARK,
+      activityType: "SALE",
+      activitySummary: "",
+      customer: "",
+      amountNaira: "",
+      location: "Medical Road",
+      status: "PAID",
+    });
+    showToast(`Recorded ${created.activityType} (${created.invoiceNo}) on Unified Dashboard`);
+  };
+
   return (
-    <div className="space-y-7">
-      {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-7 min-w-0 max-w-full">
+      {/* Live Feedback Toast */}
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#14142B] text-white text-xs font-bold shadow-2xl border border-indigo-500/40 animate-fade-in-up">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* ── Page Header & Global Service Scope Pill Bar ── */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-heading tracking-tight">Unified Business Dashboard</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-heading tracking-tight">
+              Unified Business &amp; Financial Dashboard
+            </h1>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live Synced
+            </span>
+          </div>
           <p className="text-xs text-muted mt-0.5">
-            Real-time multi-unit performance across all six Zino Group operations.
+            Every sale, booking, order, visitor check-in, and product change across all 6 website sections communicates directly with this dashboard.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setTxModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-active hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Record Activity / Invoice</span>
+          </button>
           <DateRangePicker align="right" />
         </div>
+      </div>
+
+      {/* ── Quick Service Scope Switcher Bar ── */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        <button
+          type="button"
+          onClick={() => updateGlobalServiceFilter("ALL")}
+          className={cn(
+            "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0",
+            activeServiceScope === "ALL"
+              ? "bg-[#14142B] text-white shadow-sm"
+              : "bg-white border border-border text-muted hover:text-heading"
+          )}
+        >
+          All 6 Unified Businesses
+        </button>
+        {Object.values(ServiceSlug).map((slug) => (
+          <button
+            key={slug}
+            type="button"
+            onClick={() => updateGlobalServiceFilter(slug)}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 border",
+              activeServiceScope === slug
+                ? "text-white shadow-sm border-transparent"
+                : "bg-white border-border text-heading hover:bg-gray-50"
+            )}
+            style={
+              activeServiceScope === slug
+                ? { backgroundColor: SERVICE_CONFIG[slug].color }
+                : undefined
+            }
+          >
+            <span
+              className="w-2 h-2 rounded-full"
+              style={{
+                backgroundColor:
+                  activeServiceScope === slug ? "#fff" : SERVICE_CONFIG[slug].color,
+              }}
+            />
+            <span>{SERVICE_CONFIG[slug].name}</span>
+          </button>
+        ))}
       </div>
 
       {/* ── A: Financial Summary (Revenue / Expenses / Net Profit) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <FinancialCard
           title="Revenue This Month"
-          value="₦28,450,000"
+          value={formatCurrency(financialTotals.totalRevenueKobo)}
           delta={18.4}
           isPositive={true}
           accentColor="#28A745"
-          subtitle="All 6 services combined"
+          subtitle={
+            activeServiceScope === "ALL"
+              ? "All 6 services combined"
+              : `${SERVICE_CONFIG[activeServiceScope].name} revenue`
+          }
         />
         <FinancialCard
           title="Total Expenses This Month"
-          value="₦4,220,000"
+          value={formatCurrency(financialTotals.totalExpenseKobo)}
           delta={-5.2}
-          isPositive={false}
+          isPositive={true}
           accentColor="#E74C3C"
-          subtitle="Ops, payroll & purchases"
+          subtitle="Ops, payroll, restocks & purchases"
         />
         <FinancialCard
           title="Net Profit This Month"
-          value="₦24,230,000"
+          value={formatCurrency(financialTotals.netProfitKobo)}
           delta={22.1}
           isPositive={true}
           accentColor="#4F46E5"
-          subtitle="Revenue minus all expenses"
+          subtitle="Revenue minus all recorded expenses"
         />
       </div>
 
-      {/* ── B: Monthly Targets ── */}
+      {/* ── B: Monthly Targets vs Actuals (Functional Edit Modal) ── */}
       <div className="bg-white rounded-xl border border-border p-5 shadow-2xs">
-        <div className="flex items-center gap-2 pb-3 mb-5 border-b border-border">
-          <Target className="w-4 h-4 text-active" />
-          <h3 className="text-base font-semibold text-heading">Monthly Targets vs Actuals</h3>
+        <div className="flex items-center justify-between gap-2 pb-3 mb-5 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Target className="w-4 h-4 text-active" />
+            <h3 className="text-base font-semibold text-heading">
+              Monthly Targets vs Live Actuals
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setTargetForm({
+                salesNaira: Math.round(targets.salesTargetKobo / 100),
+                expenseNaira: Math.round(targets.expenseBudgetKobo / 100),
+                bookingsTarget: targets.bookingsTarget,
+                visitorsTarget: targets.visitorsTarget,
+              });
+              setTargetModalOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-border text-xs font-semibold text-heading hover:bg-gray-50 transition-colors"
+          >
+            <Pencil className="w-3 h-3 text-active" />
+            <span>Edit Targets</span>
+          </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <TargetBar label="Sales Target" current={28450000} target={50000000} unit="₦" color="#4F46E5" />
-          <TargetBar label="Expense Budget" current={4220000} target={6000000} unit="₦" color="#E74C3C" />
-          <TargetBar label="Bookings Target" current={2} target={15} unit="" color="#1E3A5F" />
-          <TargetBar label="Visitor Target" current={5} target={20} unit="" color="#7C3AED" />
+          <TargetBar
+            label="Sales & Revenue Target"
+            current={Math.round(financialTotals.totalRevenueKobo / 100)}
+            target={Math.round(targets.salesTargetKobo / 100)}
+            unit="₦"
+            color="#4F46E5"
+          />
+          <TargetBar
+            label="Expense Budget Utilization"
+            current={Math.round(financialTotals.totalExpenseKobo / 100)}
+            target={Math.round(targets.expenseBudgetKobo / 100)}
+            unit="₦"
+            color="#E74C3C"
+          />
+          <TargetBar
+            label="Apartment Bookings Target"
+            current={financialTotals.bookingsCount}
+            target={targets.bookingsTarget}
+            unit=""
+            color="#1E3A5F"
+          />
+          <TargetBar
+            label="Visitor Check-In Target"
+            current={financialTotals.visitorsCount}
+            target={targets.visitorsTarget}
+            unit=""
+            color="#7C3AED"
+          />
         </div>
       </div>
 
-      {/* ── Row 1: Stat Cards ── */}
+      {/* ── Row 1: 8 KPI Stat Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {stats.map((st) => (
           <StatCard
@@ -554,51 +1028,262 @@ export default function UnifiedAdminDashboard() {
         ))}
       </div>
 
-      {/* ── Row 2: Charts ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ── VISUAL ECOSYSTEM SHOWCASE: Images & Visual Designs Describing All 6 Website Sections ── */}
+      <div className="bg-white rounded-2xl border border-border p-5 sm:p-6 shadow-2xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 text-active text-[10px] font-bold uppercase tracking-wider mb-1.5">
+              <Layers className="w-3 h-3" />
+              <span>Unified Platform Visual Architecture</span>
+            </div>
+            <h3 className="text-lg font-extrabold text-heading">
+              Six Unified Website Sections Connected to This Dashboard
+            </h3>
+            <p className="text-xs text-muted mt-0.5">
+              Visual overview of each business unit, what it is built for, and quick launch controls for both the public storefront and admin workspace.
+            </p>
+          </div>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-heading font-bold text-xs transition-colors shrink-0"
+          >
+            <span>Open Public Home Portal</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {VISUAL_SERVICE_SECTIONS.map((sec) => {
+            const cfg = SERVICE_CONFIG[sec.slug];
+            const serviceProductsCount = products.filter((p) => p.source === sec.slug).length;
+            const serviceInvoicesCount = invoices.filter((i) => i.source === sec.slug).length;
+            const Icon = sec.icon;
+
+            return (
+              <div
+                key={sec.slug}
+                className="group rounded-2xl border border-border overflow-hidden bg-white hover:shadow-xl transition-all duration-300 flex flex-col"
+              >
+                {/* Visual Photography Header with Overlay Design */}
+                <div className="relative h-40 w-full overflow-hidden bg-gray-900">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={sec.image}
+                    alt={sec.title}
+                    className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
+                    <SourceBadge source={sec.slug} size="sm" />
+                    <span className="px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold">
+                      {sec.metrics}
+                    </span>
+                  </div>
+                  <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-300">
+                        {sec.tagline}
+                      </p>
+                      <h4 className="text-sm font-extrabold text-white leading-snug">
+                        {sec.title}
+                      </h4>
+                    </div>
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md shrink-0"
+                      style={{ backgroundColor: cfg.color }}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card Body */}
+                <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
+                  <p className="text-xs text-muted leading-relaxed">{sec.description}</p>
+
+                  <div className="space-y-3">
+                    {/* Live Synced Counters */}
+                    <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-gray-50 border border-border/70 text-center">
+                      <div>
+                        <p className="text-sm font-extrabold text-heading">
+                          {serviceProductsCount}
+                        </p>
+                        <p className="text-[10px] text-muted font-medium">
+                          Active Products / Items
+                        </p>
+                      </div>
+                      <div className="border-l border-border">
+                        <p className="text-sm font-extrabold text-heading">
+                          {serviceInvoicesCount}
+                        </p>
+                        <p className="text-[10px] text-muted font-medium">
+                          Synced Invoices / Logs
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={sec.adminHref}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-white font-bold text-xs transition-opacity hover:opacity-90"
+                        style={{ backgroundColor: cfg.color }}
+                      >
+                        <span>Manage Module</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAddProduct(sec.slug)}
+                        className="inline-flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg border border-border text-xs font-bold text-heading hover:bg-gray-50 transition-colors"
+                        title={`Add item to ${cfg.name}`}
+                      >
+                        <Plus className="w-3.5 h-3.5 text-active" />
+                        <span>Add Item</span>
+                      </button>
+                      <Link
+                        href={sec.publicHref}
+                        className="inline-flex items-center justify-center p-2 rounded-lg border border-border text-muted hover:text-heading hover:bg-gray-50 transition-colors"
+                        title={`View public ${cfg.name} page`}
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Row 2: Interactive Charts ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
         <ChartCard
           title="Sales — Last 30 Days"
-          subtitle="Daily turnover breakdown (NGN)"
+          subtitle={
+            chartGrouping === "service"
+              ? "Daily revenue breakdown by business service (NGN)"
+              : "Daily turnover breakdown by branch location (NGN)"
+          }
           rightAction={
             <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg text-xs font-semibold">
-              <button type="button" onClick={() => setChartGrouping("service")}
-                className={`px-2.5 py-1 rounded-md transition-colors ${chartGrouping === "service" ? "bg-white text-heading shadow-2xs" : "text-muted hover:text-heading"}`}>
+              <button
+                type="button"
+                onClick={() => setChartGrouping("service")}
+                className={`px-2.5 py-1 rounded-md transition-colors ${
+                  chartGrouping === "service"
+                    ? "bg-white text-heading shadow-2xs"
+                    : "text-muted hover:text-heading"
+                }`}
+              >
                 By service
               </button>
-              <button type="button" onClick={() => setChartGrouping("location")}
-                className={`px-2.5 py-1 rounded-md transition-colors ${chartGrouping === "location" ? "bg-white text-heading shadow-2xs" : "text-muted hover:text-heading"}`}>
+              <button
+                type="button"
+                onClick={() => setChartGrouping("location")}
+                className={`px-2.5 py-1 rounded-md transition-colors ${
+                  chartGrouping === "location"
+                    ? "bg-white text-heading shadow-2xs"
+                    : "text-muted hover:text-heading"
+                }`}
+              >
                 By location
               </button>
             </div>
           }
         >
-          <div className="w-full h-72">
+          <div className="w-full h-72 min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={sales30DaysData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F1F3F5" />
-                <XAxis dataKey="date" stroke="#8A8A9A" fontSize={11} tickLine={false} />
-                <YAxis stroke="#8A8A9A" fontSize={11} tickLine={false} tickFormatter={(val) => `₦${(val / 1000000).toFixed(0)}M`} />
-                <Tooltip formatter={(value: any) => [formatCurrency(Number(value) * 100), "Sales"]}
-                  contentStyle={{ backgroundColor: "#1A1A2E", borderRadius: "8px", color: "#fff", fontSize: "12px" }} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
-                <Line type="monotone" dataKey="MedicalRoad" name="Medical Road" stroke="#10B981" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="Adepele" name="Adepele Shop" stroke="#2563EB" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="Olayeni" name="Olayeni Shop" stroke="#F59E0B" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="AllLocations" name="All Locations" stroke="#E11D48" strokeWidth={2.5} />
-              </LineChart>
+              {chartGrouping === "service" ? (
+                <LineChart
+                  data={sales30DaysByService}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F3F5" />
+                  <XAxis dataKey="date" stroke="#8A8A9A" fontSize={11} tickLine={false} />
+                  <YAxis
+                    stroke="#8A8A9A"
+                    fontSize={11}
+                    tickLine={false}
+                    tickFormatter={(val) => `₦${(val / 1000000).toFixed(1)}M`}
+                  />
+                  <Tooltip
+                    formatter={(value: any) => [formatCurrency(Number(value) * 100), "Sales"]}
+                    contentStyle={{
+                      backgroundColor: "#1A1A2E",
+                      borderRadius: "8px",
+                      color: "#fff",
+                      fontSize: "12px",
+                    }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
+                  <Line type="monotone" dataKey="Spark" name="Zino Spark" stroke="#2563EB" strokeWidth={2.5} dot={false} />
+                  <Line type="monotone" dataKey="Builders" name="Top Builders" stroke="#006B3F" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Galaxy" name="Device Galaxy" stroke="#E74C3C" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Apartments" name="Apartments" stroke="#1E3A5F" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Billstacks" name="Billstacks" stroke="#28A745" strokeWidth={2} dot={false} />
+                </LineChart>
+              ) : (
+                <LineChart
+                  data={sales30DaysByLocation}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F3F5" />
+                  <XAxis dataKey="date" stroke="#8A8A9A" fontSize={11} tickLine={false} />
+                  <YAxis
+                    stroke="#8A8A9A"
+                    fontSize={11}
+                    tickLine={false}
+                    tickFormatter={(val) => `₦${(val / 1000000).toFixed(0)}M`}
+                  />
+                  <Tooltip
+                    formatter={(value: any) => [formatCurrency(Number(value) * 100), "Sales"]}
+                    contentStyle={{
+                      backgroundColor: "#1A1A2E",
+                      borderRadius: "8px",
+                      color: "#fff",
+                      fontSize: "12px",
+                    }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
+                  <Line type="monotone" dataKey="MedicalRoad" name="Medical Road" stroke="#10B981" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Adepele" name="Adepele Shop" stroke="#2563EB" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Olayeni" name="Olayeni Shop" stroke="#F59E0B" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="AllLocations" name="All Locations" stroke="#E11D48" strokeWidth={2.5} />
+                </LineChart>
+              )}
             </ResponsiveContainer>
           </div>
         </ChartCard>
 
-        <ChartCard title="Sales — Current Financial Year" subtitle="Monthly revenue Jan – Dec 2026">
-          <div className="w-full h-72">
+        <ChartCard
+          title="Sales — Current Financial Year"
+          subtitle="Monthly revenue Jan – Nov 2026 across core services"
+        >
+          <div className="w-full h-72 min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={financialYearData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <LineChart
+                data={financialYearData}
+                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#F1F3F5" />
                 <XAxis dataKey="month" stroke="#8A8A9A" fontSize={11} tickLine={false} />
-                <YAxis stroke="#8A8A9A" fontSize={11} tickLine={false} tickFormatter={(val) => `₦${(val / 1000000).toFixed(0)}M`} />
-                <Tooltip formatter={(value: any) => [formatCurrency(Number(value) * 100), "Revenue"]}
-                  contentStyle={{ backgroundColor: "#1A1A2E", borderRadius: "8px", color: "#fff", fontSize: "12px" }} />
+                <YAxis
+                  stroke="#8A8A9A"
+                  fontSize={11}
+                  tickLine={false}
+                  tickFormatter={(val) => `₦${(val / 1000000).toFixed(0)}M`}
+                />
+                <Tooltip
+                  formatter={(value: any) => [formatCurrency(Number(value) * 100), "Revenue"]}
+                  contentStyle={{
+                    backgroundColor: "#1A1A2E",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    fontSize: "12px",
+                  }}
+                />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
                 <Line type="monotone" dataKey="Spark" name="Zino Spark" stroke="#2563EB" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="Builders" name="Top Builders" stroke="#006B3F" strokeWidth={2} dot={false} />
@@ -610,10 +1295,10 @@ export default function UnifiedAdminDashboard() {
         </ChartCard>
       </div>
 
-      {/* ── Row 3: Attention + Recent Activity ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ── Row 3: Needs Attention + Live Recent Activity ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
         {/* Needs Attention */}
-        <div className="bg-white rounded-xl border border-border p-5 shadow-2xs flex flex-col justify-between">
+        <div className="bg-white rounded-xl border border-border p-5 shadow-2xs flex flex-col justify-between min-w-0">
           <div>
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-border">
               <div className="flex items-center gap-2">
@@ -621,192 +1306,278 @@ export default function UnifiedAdminDashboard() {
                 <h3 className="text-base font-semibold text-heading">Needs Attention</h3>
               </div>
               <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-xs font-bold">
-                {attentionItems.length} Urgent
+                {attentionItems.length} Actionable
               </span>
             </div>
-            <div className="space-y-3">
-              {attentionItems.map((item) => (
-                <Link key={item.id} href={item.href}
-                  className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-border/70 hover:border-border block">
-                  <SourceBadge source={item.source} size="sm" className="mt-0.5 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-heading">{item.title}</p>
-                    <p className="text-[11px] text-muted truncate mt-0.5">{item.detail}</p>
+            {attentionItems.length === 0 ? (
+              <div className="py-12 text-center text-xs text-muted">
+                <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+                All urgent alerts have been resolved!
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {attentionItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-start justify-between gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-border/70"
+                  >
+                    <Link href={item.href} className="flex items-start gap-3 flex-1 min-w-0">
+                      <SourceBadge source={item.source} size="sm" className="mt-0.5 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-heading truncate">{item.title}</p>
+                        <p className="text-[11px] text-muted truncate mt-0.5">{item.detail}</p>
+                      </div>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAttentionItems((prev) => prev.filter((a) => a.id !== item.id));
+                        showToast(`Resolved alert: ${item.title}`);
+                      }}
+                      className="px-2 py-1 rounded bg-gray-100 hover:bg-emerald-600 hover:text-white text-[10px] font-bold text-muted transition-colors shrink-0"
+                    >
+                      Resolve
+                    </button>
                   </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-muted shrink-0 mt-1" />
-                </Link>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="pt-4 mt-4 border-t border-border flex items-center justify-between text-xs">
-            <span className="text-muted">Automated system health checks</span>
-            <span className="font-semibold text-active">All systems operational</span>
+            <span className="text-muted">Automated cross-service health checks</span>
+            <span className="font-semibold text-emerald-600">All 6 services online</span>
           </div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-white rounded-xl border border-border p-5 shadow-2xs flex flex-col justify-between">
+        {/* Recent Activity (Synced with usePlatformStore) */}
+        <div className="bg-white rounded-xl border border-border p-5 shadow-2xs flex flex-col justify-between min-w-0">
           <div>
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-border">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-active" />
-                <h3 className="text-base font-semibold text-heading">Recent Activity</h3>
+                <h3 className="text-base font-semibold text-heading">
+                  Live Cross-Service Activity Feed
+                </h3>
               </div>
-              <Link href="/admin/activity" className="text-xs font-bold text-active hover:underline flex items-center gap-1">
-                <span>View all</span><ArrowRight className="w-3.5 h-3.5" />
+              <Link
+                href="/admin/activity"
+                className="text-xs font-bold text-active hover:underline flex items-center gap-1"
+              >
+                <span>View all</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
-            <div className="space-y-3">
-              {recentActivities.map((act) => (
-                <div key={act.id}
-                  className="flex items-start gap-3 p-2.5 rounded-lg border-l-2 hover:bg-gray-50/70 transition-colors text-xs"
-                  style={{ borderLeftColor: SERVICE_CONFIG[act.source]?.color || "#4F46E5" }}>
-                  <SourceBadge source={act.source} size="sm" className="shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold text-heading truncate">{act.actor}</span>
-                      <span className="text-[11px] text-muted shrink-0">{act.time}</span>
+            <div className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
+              {activities
+                .filter(
+                  (act) => activeServiceScope === "ALL" || act.source === activeServiceScope
+                )
+                .slice(0, 7)
+                .map((act) => (
+                  <div
+                    key={act.id}
+                    className="flex items-start gap-3 p-2.5 rounded-lg border-l-2 hover:bg-gray-50/70 transition-colors text-xs"
+                    style={{
+                      borderLeftColor: SERVICE_CONFIG[act.source]?.color || "#4F46E5",
+                    }}
+                  >
+                    <SourceBadge source={act.source} size="sm" className="shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-heading truncate">{act.actor}</span>
+                        <span className="text-[11px] text-muted shrink-0">{act.time}</span>
+                      </div>
+                      <p className="text-body text-[11px] mt-0.5 break-words">{act.action}</p>
+                      {act.amount && (
+                        <span className="inline-block mt-1 font-bold text-heading text-[11px]">
+                          {act.amount}
+                        </span>
+                      )}
                     </div>
-                    <p className="text-body text-[11px] mt-0.5">{act.action}</p>
-                    {act.amount && <span className="inline-block mt-1 font-bold text-heading text-[11px]">{act.amount}</span>}
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
           <div className="pt-4 mt-4 border-t border-border text-center">
-            <Link href="/admin/activity" className="text-xs font-bold text-active hover:underline">
+            <Link
+              href="/admin/activity"
+              className="text-xs font-bold text-active hover:underline"
+            >
               Open Chronological Activity Audit Trail →
             </Link>
           </div>
         </div>
       </div>
 
-      {/* ── Row 4: Payment Due Tables ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <DataTable title="Sales Payment Due" columns={salesPaymentDueColumns} data={salesPaymentDueRows}
-          showExportButtons={true} showSourceColumn={true} searchPlaceholder="Search customer or invoice..." emptyMessage="No data available in table" />
-        <DataTable title="Purchase Payment Due" columns={purchasePaymentDueColumns} data={purchasePaymentDueRows}
-          showExportButtons={true} showSourceColumn={true} searchPlaceholder="Search supplier or reference..." emptyMessage="No data available in table" />
+      {/* ── Row 4: Payment Due Tables (Functional Settlement) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
+        <DataTable
+          title="Sales Payment Due"
+          columns={salesPaymentDueColumns}
+          data={salesPaymentDueRows}
+          showExportButtons={true}
+          showSourceColumn={true}
+          searchPlaceholder="Search customer or invoice..."
+          emptyMessage="All customer debtor invoices settled!"
+        />
+        <DataTable
+          title="Purchase Payment Due"
+          columns={purchasePaymentDueColumns}
+          data={purchasePaymentDueRows}
+          showExportButtons={true}
+          showSourceColumn={true}
+          searchPlaceholder="Search supplier or reference..."
+          emptyMessage="All supplier purchase balances settled!"
+        />
       </div>
 
-      {/* ── C: Low Stock / Product Alerts ── */}
+      {/* ── C: Low Stock & Quality Alerts (Dynamic + Instant Restock) ── */}
       <DataTable
-        title="⚠ Low Stock & Quality Alerts"
+        title="⚠ Existing Low Stock & Quality Alerts"
         columns={productAlertColumns}
         data={productAlertRows}
         showExportButtons={true}
         showSourceColumn={true}
         searchPlaceholder="Search product or SKU..."
-        emptyMessage="No low-stock alerts — all products well stocked!"
+        emptyMessage="No low-stock alerts — all products are well stocked!"
         rightAction={
-          <Link href="/admin/spark/stock-alert"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-bold text-heading hover:bg-gray-50 transition-colors">
+          <Link
+            href="/admin/spark/stock-alert"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-bold text-heading hover:bg-gray-50 transition-colors"
+          >
             View Full Stock Alert
           </Link>
         }
       />
 
-      {/* ── D: Unified Invoice Activity ── */}
-      <div className="space-y-3">
+      {/* ── D: Unified Invoice & Transaction Activity (All Sections Labeled + CSV/Excel/PDF/Column Visibility) ── */}
+      <div className="space-y-3 min-w-0">
         {/* Filter bar */}
         <div className="bg-white rounded-xl border border-border p-4 shadow-2xs">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs font-semibold text-muted">
-              <Filter className="w-4 h-4" />
-              <span>Filter Invoice Activity:</span>
+              <Filter className="w-4 h-4 text-active" />
+              <span>Filter All Website Invoice Activity:</span>
             </div>
             <div className="flex flex-wrap items-center gap-2 flex-1">
               <select
                 value={invoiceFilter.service}
-                onChange={(e) => setInvoiceFilter((f) => ({ ...f, service: e.target.value }))}
-                className="h-8 px-2 rounded border border-border text-xs text-heading bg-white focus:outline-none focus:border-active"
+                onChange={(e) =>
+                  setInvoiceFilter((f) => ({ ...f, service: e.target.value }))
+                }
+                className="h-8 px-2.5 rounded-lg border border-border text-xs text-heading bg-white focus:outline-none focus:border-active"
               >
-                <option value="">All Services</option>
-                <option value="SPARK">Zino Spark</option>
-                <option value="APARTMENTS">Apartments</option>
-                <option value="GALAXY">Device Galaxy</option>
-                <option value="BUILDERS">Top Builders</option>
-                <option value="BILLSTACKS">Billstacks</option>
-                <option value="VISITORS">Visitors</option>
+                <option value="">All Website Sections</option>
+                <option value="SPARK">Zino Spark (POS)</option>
+                <option value="APARTMENTS">Zino Apartments (Bookings)</option>
+                <option value="GALAXY">Device Galaxy (E-Commerce)</option>
+                <option value="BUILDERS">Top Builders (Yard Sales)</option>
+                <option value="BILLSTACKS">Billstacks (SaaS Invoicing)</option>
+                <option value="VISITORS">Visitor Management (Kiosk)</option>
               </select>
               <select
                 value={invoiceFilter.type}
-                onChange={(e) => setInvoiceFilter((f) => ({ ...f, type: e.target.value }))}
-                className="h-8 px-2 rounded border border-border text-xs text-heading bg-white focus:outline-none focus:border-active"
+                onChange={(e) =>
+                  setInvoiceFilter((f) => ({ ...f, type: e.target.value }))
+                }
+                className="h-8 px-2.5 rounded-lg border border-border text-xs text-heading bg-white focus:outline-none focus:border-active"
               >
-                <option value="">All Types</option>
+                <option value="">All Activity Types</option>
                 <option value="SALE">Sale</option>
                 <option value="BOOKING">Booking</option>
-                <option value="ORDER">Order</option>
-                <option value="INVOICE">Invoice</option>
-                <option value="EXPENSE">Expense</option>
-                <option value="VISIT">Visit</option>
+                <option value="ORDER">Online Order</option>
+                <option value="INVOICE">B2B Invoice</option>
+                <option value="EXPENSE">Expense / Restock</option>
+                <option value="VISIT">Visitor Check-In</option>
               </select>
-              <input type="date" value={invoiceFilter.from}
-                onChange={(e) => setInvoiceFilter((f) => ({ ...f, from: e.target.value }))}
-                className="h-8 px-2 rounded border border-border text-xs text-heading focus:outline-none focus:border-active" />
+              <input
+                type="date"
+                value={invoiceFilter.from}
+                onChange={(e) =>
+                  setInvoiceFilter((f) => ({ ...f, from: e.target.value }))
+                }
+                className="h-8 px-2 rounded-lg border border-border text-xs text-heading focus:outline-none focus:border-active"
+              />
               <span className="text-xs text-muted">to</span>
-              <input type="date" value={invoiceFilter.to}
-                onChange={(e) => setInvoiceFilter((f) => ({ ...f, to: e.target.value }))}
-                className="h-8 px-2 rounded border border-border text-xs text-heading focus:outline-none focus:border-active" />
-              <button type="button" onClick={loadInvoices} disabled={invoiceLoading}
-                className="h-8 px-4 rounded bg-active text-white text-xs font-bold hover:bg-indigo-700 transition-colors disabled:opacity-60">
-                {invoiceLoading ? "Loading..." : "Apply Filters"}
-              </button>
-              <button type="button"
-                onClick={() => { setInvoiceFilter({ service: "", type: "", from: "", to: "" }); setTimeout(loadInvoices, 50); }}
-                className="h-8 px-3 rounded border border-border text-xs font-medium text-muted hover:text-heading hover:bg-gray-50 transition-colors">
-                Reset
+              <input
+                type="date"
+                value={invoiceFilter.to}
+                onChange={(e) =>
+                  setInvoiceFilter((f) => ({ ...f, to: e.target.value }))
+                }
+                className="h-8 px-2 rounded-lg border border-border text-xs text-heading focus:outline-none focus:border-active"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  setInvoiceFilter({ service: "", type: "", from: "", to: "" })
+                }
+                className="h-8 px-3 rounded-lg border border-border text-xs font-semibold text-muted hover:text-heading hover:bg-gray-50 transition-colors"
+              >
+                Reset Filters
               </button>
             </div>
           </div>
         </div>
 
         <DataTable
-          title="All Invoice & Transaction Activity"
+          title="All Invoice & Transaction Activity (Labeled by Source Section & Activity)"
           columns={invoiceColumns}
           data={displayInvoiceRows}
           showExportButtons={true}
           showSourceColumn={true}
-          searchPlaceholder="Search invoice, customer, ref..."
+          searchPlaceholder="Search invoice, customer, activity carried out..."
           emptyMessage="No transaction activity found for selected filters."
           pageSize={10}
           rightAction={
-            <Link href="/admin/activity"
-              className="text-xs font-bold text-active hover:underline flex items-center gap-1">
-              Full Activity Audit <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setTxModalOpen(true)}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-active text-white text-xs font-bold hover:bg-indigo-700 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Invoice / Activity</span>
+              </button>
+              <Link
+                href="/admin/activity"
+                className="text-xs font-bold text-active hover:underline flex items-center gap-1"
+              >
+                Full Audit <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           }
         />
       </div>
 
-      {/* ── E: Products & Services Manager (Direct In-Dashboard Add, Remove, and Edit) ── */}
-      <div className="bg-white rounded-xl border border-border p-5 shadow-2xs space-y-5">
+      {/* ── E: Unified Products & Services Manager (Drag & Drop Local Image Upload + Live Sync) ── */}
+      <div className="bg-white rounded-2xl border border-border p-5 sm:p-6 shadow-2xs space-y-5 min-w-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
           <div>
             <div className="flex items-center gap-2">
-              <Package className="w-4 h-4 text-active" />
-              <h3 className="text-base font-semibold text-heading">Products &amp; Services Manager</h3>
+              <Package className="w-5 h-5 text-active" />
+              <h3 className="text-lg font-extrabold text-heading">
+                Website Products &amp; Services Studio
+              </h3>
             </div>
             <p className="text-xs text-muted mt-1">
-              Add, remove, or modify product and service labels, names, images, prices, and status across all sections of the website.
+              Add or remove products and services, drag-and-drop images from your device&apos;s local storage, and edit name labels or pricing across all 6 sections of the website.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={handleOpenAddProduct}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-active hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-sm"
+              onClick={() => handleOpenAddProduct()}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-active hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-sm"
             >
               <Plus className="w-4 h-4" />
               <span>Add Product / Service</span>
             </button>
             <Link
               href="/admin/products"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-semibold text-heading hover:bg-gray-50 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-border text-xs font-semibold text-heading hover:bg-gray-50 transition-colors"
             >
-              Advanced Catalog →
+              Full Catalog View →
             </Link>
           </div>
         </div>
@@ -814,19 +1585,38 @@ export default function UnifiedAdminDashboard() {
         {/* Service filter tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
           {[
-            { key: "ALL", label: "All Items" },
-            { key: ServiceSlug.SPARK, label: "Zino Spark" },
-            { key: ServiceSlug.GALAXY, label: "Device Galaxy" },
-            { key: ServiceSlug.BUILDERS, label: "Top Builders" },
-            { key: ServiceSlug.APARTMENTS, label: "Apartments" },
-            { key: ServiceSlug.BILLSTACKS, label: "Billstacks" },
+            { key: "ALL", label: `All Website Items (${products.length})` },
+            {
+              key: ServiceSlug.SPARK,
+              label: `Zino Spark (${products.filter((p) => p.source === ServiceSlug.SPARK).length})`,
+            },
+            {
+              key: ServiceSlug.GALAXY,
+              label: `Device Galaxy (${products.filter((p) => p.source === ServiceSlug.GALAXY).length})`,
+            },
+            {
+              key: ServiceSlug.BUILDERS,
+              label: `Top Builders (${products.filter((p) => p.source === ServiceSlug.BUILDERS).length})`,
+            },
+            {
+              key: ServiceSlug.APARTMENTS,
+              label: `Apartments (${products.filter((p) => p.source === ServiceSlug.APARTMENTS).length})`,
+            },
+            {
+              key: ServiceSlug.BILLSTACKS,
+              label: `Billstacks (${products.filter((p) => p.source === ServiceSlug.BILLSTACKS).length})`,
+            },
+            {
+              key: ServiceSlug.VISITORS,
+              label: `Visitors (${products.filter((p) => p.source === ServiceSlug.VISITORS).length})`,
+            },
           ].map((tab) => (
             <button
               key={tab.key}
               type="button"
               onClick={() => setProductServiceTab(tab.key)}
               className={cn(
-                "px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0",
+                "px-3.5 py-1.5 rounded-lg font-bold transition-colors shrink-0",
                 productServiceTab === tab.key
                   ? "bg-active text-white shadow-2xs"
                   : "bg-gray-100 text-muted hover:text-heading hover:bg-gray-200"
@@ -837,86 +1627,104 @@ export default function UnifiedAdminDashboard() {
           ))}
         </div>
 
-        {/* Live Products & Services Table */}
-        <div className="overflow-x-auto border border-border rounded-xl">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-border bg-gray-50/80 font-semibold text-heading">
-                <th className="py-3 px-4 w-14">Image</th>
-                <th className="py-3 px-4">Product / Service Name</th>
-                <th className="py-3 px-4">Custom Label</th>
-                <th className="py-3 px-4">Service</th>
-                <th className="py-3 px-4">Price</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {productsList
-                .filter((p) => productServiceTab === "ALL" || p.source === productServiceTab)
-                .map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50/60 transition-colors">
-                    <td className="py-2.5 px-4">
-                      <div className="w-10 h-10 rounded-lg bg-gray-100 border border-border overflow-hidden flex items-center justify-center">
-                        {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <ImageIcon className="w-4 h-4 text-muted" />
-                        )}
+        {/* Visual Product & Service Cards Grid + Actions */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {products
+            .filter(
+              (p) => productServiceTab === "ALL" || p.source === productServiceTab
+            )
+            .map((item) => (
+              <div
+                key={item.id}
+                className="group rounded-xl border border-border bg-white overflow-hidden hover:shadow-lg transition-all flex flex-col justify-between"
+              >
+                <div>
+                  {/* Product Visual Image Header */}
+                  <div className="relative h-36 w-full bg-gray-100 overflow-hidden">
+                    {item.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted">
+                        <ImageIcon className="w-8 h-8" />
                       </div>
-                    </td>
-                    <td className="py-2.5 px-4 font-bold text-heading">
-                      {item.name}
-                    </td>
-                    <td className="py-2.5 px-4">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    )}
+                    <div className="absolute top-2.5 left-2.5">
+                      <SourceBadge source={item.source} size="sm" />
+                    </div>
+                    <div className="absolute top-2.5 right-2.5">
+                      <StatusBadge status={item.status} size="sm" />
+                    </div>
+                    <div className="absolute bottom-2 left-2.5">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/75 text-white backdrop-blur-xs">
                         {item.label}
                       </span>
-                    </td>
-                    <td className="py-2.5 px-4">
-                      <SourceBadge source={item.source} size="sm" />
-                    </td>
-                    <td className="py-2.5 px-4 font-semibold text-heading">
-                      {item.price}
-                    </td>
-                    <td className="py-2.5 px-4 text-center">
-                      <StatusBadge status={item.status} size="sm" />
-                    </td>
-                    <td className="py-2.5 px-4 text-right">
-                      <div className="inline-flex items-center gap-1.5 justify-end">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditProduct(item)}
-                          className="p-1.5 rounded hover:bg-gray-100 text-muted hover:text-active transition-colors"
-                          title="Edit product"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteProduct(item.id)}
-                          className="p-1.5 rounded hover:bg-rose-50 text-muted hover:text-rose-600 transition-colors"
-                          title="Remove product from website"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+                    </div>
+                  </div>
+
+                  {/* Product Details */}
+                  <div className="p-3.5">
+                    <p className="text-[10px] font-mono text-muted">{item.sku}</p>
+                    <h4 className="text-xs font-extrabold text-heading mt-0.5 line-clamp-1">
+                      {item.name}
+                    </h4>
+                    <p className="text-[11px] text-muted mt-1 line-clamp-2 min-h-[28px]">
+                      {item.description || item.label}
+                    </p>
+                    <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border">
+                      <span className="text-sm font-black text-heading">
+                        {item.priceDisplay}
+                      </span>
+                      <span className="text-[10px] font-semibold text-muted">
+                        Stock: <strong className="text-heading">{item.totalStock}</strong>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Edit / Remove Footer */}
+                <div className="px-3.5 py-2.5 bg-gray-50 border-t border-border flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditProduct(item)}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-white border border-border hover:border-active text-xs font-bold text-heading hover:text-active transition-colors shadow-2xs"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Edit Image / Label</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteProduct(item)}
+                    className="p-1.5 rounded-lg bg-white border border-border hover:border-rose-300 hover:bg-rose-50 text-muted hover:text-rose-600 transition-colors"
+                    title="Remove from website"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
         </div>
       </div>
 
-      {/* ── Add / Edit Product Modal ── */}
+      {/* ── MODAL 1: Add / Edit Product or Service (with Drag & Drop Local Image Storage) ── */}
       {productModalOpen && editingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-border space-y-5 animate-fade-in-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-border space-y-5 animate-fade-in-up">
             <div className="flex items-center justify-between pb-3 border-b border-border">
-              <h3 className="text-lg font-extrabold text-heading">
-                {editingProduct.id ? "Edit Product or Service" : "Add New Product or Service"}
-              </h3>
+              <div>
+                <h3 className="text-lg font-extrabold text-heading">
+                  {editingProduct.id
+                    ? "Edit Website Product / Service"
+                    : "Add New Product / Service to Website"}
+                </h3>
+                <p className="text-xs text-muted">
+                  Changes sync live across the Admin Dashboard and Public Storefronts.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setProductModalOpen(false)}
@@ -926,7 +1734,20 @@ export default function UnifiedAdminDashboard() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct} className="space-y-4 text-xs">
+            <form onSubmit={handleSaveProductSubmit} className="space-y-4 text-xs">
+              {/* Drag and Drop Local Image Upload */}
+              <ImageDropzone
+                label="Product / Service Image (Drag & Drop from Device)"
+                value={editingProduct.imageUrl || ""}
+                onChange={(storedUrl) =>
+                  setEditingProduct({
+                    ...editingProduct,
+                    imageUrl: storedUrl,
+                    images: storedUrl ? [storedUrl] : [],
+                  })
+                }
+              />
+
               <div>
                 <label className="block font-semibold text-heading mb-1">
                   Product / Service Name *
@@ -935,7 +1756,9 @@ export default function UnifiedAdminDashboard() {
                   type="text"
                   required
                   value={editingProduct.name || ""}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                  onChange={(e) =>
+                    setEditingProduct({ ...editingProduct, name: e.target.value })
+                  }
                   placeholder="e.g. Samsung 990 PRO 4TB or Deluxe Studio Suite"
                   className="w-full h-9 px-3 rounded-lg border border-border text-heading focus:outline-none focus:border-active"
                 />
@@ -944,56 +1767,107 @@ export default function UnifiedAdminDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-heading mb-1">
-                    Service Section *
+                    Website Section / Service *
                   </label>
                   <select
                     value={editingProduct.source || ServiceSlug.SPARK}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, source: e.target.value as ServiceSlug })}
+                    onChange={(e) =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        source: e.target.value as ServiceSlug,
+                      })
+                    }
                     className="w-full h-9 px-2 rounded-lg border border-border text-heading bg-white focus:outline-none focus:border-active"
                   >
-                    <option value={ServiceSlug.SPARK}>Zino Spark</option>
-                    <option value={ServiceSlug.GALAXY}>Device Galaxy</option>
-                    <option value={ServiceSlug.BUILDERS}>Top Builders</option>
-                    <option value={ServiceSlug.APARTMENTS}>Zino Apartments</option>
-                    <option value={ServiceSlug.BILLSTACKS}>Billstacks</option>
+                    <option value={ServiceSlug.SPARK}>Zino Spark (POS)</option>
+                    <option value={ServiceSlug.GALAXY}>Device Galaxy (Shop)</option>
+                    <option value={ServiceSlug.BUILDERS}>Top Builders (Materials)</option>
+                    <option value={ServiceSlug.APARTMENTS}>Zino Apartments (Rooms)</option>
+                    <option value={ServiceSlug.BILLSTACKS}>Billstacks (Plans)</option>
                     <option value={ServiceSlug.VISITORS}>Visitor Management</option>
                   </select>
                 </div>
                 <div>
                   <label className="block font-semibold text-heading mb-1">
-                    Label / Tag Badge *
+                    Name Label / Tag Badge *
                   </label>
                   <input
                     type="text"
                     value={editingProduct.label || ""}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, label: e.target.value })}
-                    placeholder="e.g. Best Seller, Hot Deal, Promo"
+                    onChange={(e) =>
+                      setEditingProduct({ ...editingProduct, label: e.target.value })
+                    }
+                    placeholder="e.g. Best Seller, Hot Deal, VIP Suite"
                     className="w-full h-9 px-3 rounded-lg border border-border text-heading focus:outline-none focus:border-active"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-heading mb-1">
+                  Description
+                </label>
+                <input
+                  type="text"
+                  value={editingProduct.description || ""}
+                  onChange={(e) =>
+                    setEditingProduct({
+                      ...editingProduct,
+                      description: e.target.value,
+                    })
+                  }
+                  placeholder="Short description displayed on product cards..."
+                  className="w-full h-9 px-3 rounded-lg border border-border text-heading focus:outline-none focus:border-active"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block font-semibold text-heading mb-1">
-                    Price (Display) *
+                    Price Label *
                   </label>
                   <input
                     type="text"
                     required
-                    value={editingProduct.price || ""}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, price: e.target.value })}
-                    placeholder="e.g. ₦480,000 or ₦50,000 / night"
+                    value={editingProduct.priceDisplay || ""}
+                    onChange={(e) =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        priceDisplay: e.target.value,
+                      })
+                    }
+                    placeholder="e.g. ₦480,000"
                     className="w-full h-9 px-3 rounded-lg border border-border text-heading focus:outline-none focus:border-active"
                   />
                 </div>
                 <div>
                   <label className="block font-semibold text-heading mb-1">
-                    Stock / Availability Status
+                    Stock Qty
+                  </label>
+                  <input
+                    type="number"
+                    value={editingProduct.totalStock ?? 10}
+                    onChange={(e) =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        totalStock: Number(e.target.value),
+                      })
+                    }
+                    className="w-full h-9 px-3 rounded-lg border border-border text-heading focus:outline-none focus:border-active"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-heading mb-1">
+                    Status
                   </label>
                   <select
                     value={editingProduct.status || "ACTIVE"}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, status: e.target.value })}
+                    onChange={(e) =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        status: e.target.value as any,
+                      })
+                    }
                     className="w-full h-9 px-2 rounded-lg border border-border text-heading bg-white focus:outline-none focus:border-active"
                   >
                     <option value="ACTIVE">ACTIVE</option>
@@ -1001,26 +1875,6 @@ export default function UnifiedAdminDashboard() {
                     <option value="OUT_OF_STOCK">OUT_OF_STOCK</option>
                     <option value="PROMO">PROMO</option>
                   </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-heading mb-1">
-                  Image URL
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={editingProduct.imageUrl || ""}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, imageUrl: e.target.value })}
-                    placeholder="https://images.unsplash.com/..."
-                    className="flex-1 h-9 px-3 rounded-lg border border-border text-heading focus:outline-none focus:border-active"
-                  />
-                  {editingProduct.imageUrl && (
-                    <div className="w-9 h-9 rounded-lg border border-border overflow-hidden shrink-0">
-                      <img src={editingProduct.imageUrl} alt="preview" className="w-full h-full object-cover" />
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -1037,7 +1891,242 @@ export default function UnifiedAdminDashboard() {
                   className="px-5 py-2 rounded-lg bg-active hover:bg-indigo-700 text-white font-bold transition-colors shadow-sm flex items-center gap-1.5"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>Save Changes</span>
+                  <span>Save &amp; Sync Website</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL 2: Edit Monthly Targets ── */}
+      {targetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-border space-y-4 animate-fade-in-up">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <h3 className="text-base font-extrabold text-heading">
+                Adjust Monthly Targets
+              </h3>
+              <button
+                type="button"
+                onClick={() => setTargetModalOpen(false)}
+                className="p-1.5 rounded-lg text-muted hover:bg-gray-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleSaveTargetsSubmit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-semibold text-heading mb-1">
+                  Monthly Sales Revenue Target (₦)
+                </label>
+                <input
+                  type="number"
+                  required
+                  value={targetForm.salesNaira}
+                  onChange={(e) =>
+                    setTargetForm({ ...targetForm, salesNaira: Number(e.target.value) })
+                  }
+                  className="w-full h-9 px-3 rounded-lg border border-border text-heading"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-heading mb-1">
+                  Monthly Expense Budget (₦)
+                </label>
+                <input
+                  type="number"
+                  required
+                  value={targetForm.expenseNaira}
+                  onChange={(e) =>
+                    setTargetForm({ ...targetForm, expenseNaira: Number(e.target.value) })
+                  }
+                  className="w-full h-9 px-3 rounded-lg border border-border text-heading"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-heading mb-1">
+                    Bookings Target
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={targetForm.bookingsTarget}
+                    onChange={(e) =>
+                      setTargetForm({
+                        ...targetForm,
+                        bookingsTarget: Number(e.target.value),
+                      })
+                    }
+                    className="w-full h-9 px-3 rounded-lg border border-border text-heading"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-heading mb-1">
+                    Visitors Target
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={targetForm.visitorsTarget}
+                    onChange={(e) =>
+                      setTargetForm({
+                        ...targetForm,
+                        visitorsTarget: Number(e.target.value),
+                      })
+                    }
+                    className="w-full h-9 px-3 rounded-lg border border-border text-heading"
+                  />
+                </div>
+              </div>
+              <div className="pt-3 border-t border-border flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTargetModalOpen(false)}
+                  className="px-4 py-2 rounded-lg border border-border font-semibold text-muted"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-active text-white font-bold"
+                >
+                  Save Targets
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL 3: Record New Invoice / Website Activity ── */}
+      {txModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-border space-y-4 animate-fade-in-up">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <h3 className="text-base font-extrabold text-heading">
+                Record Website Activity / Invoice
+              </h3>
+              <button
+                type="button"
+                onClick={() => setTxModalOpen(false)}
+                className="p-1.5 rounded-lg text-muted hover:bg-gray-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateTransactionSubmit} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-heading mb-1">
+                    Source Website Section *
+                  </label>
+                  <select
+                    value={txForm.source}
+                    onChange={(e) =>
+                      setTxForm({ ...txForm, source: e.target.value as ServiceSlug })
+                    }
+                    className="w-full h-9 px-2 rounded-lg border border-border text-heading bg-white"
+                  >
+                    <option value={ServiceSlug.SPARK}>Zino Spark</option>
+                    <option value={ServiceSlug.APARTMENTS}>Zino Apartments</option>
+                    <option value={ServiceSlug.BUILDERS}>Top Builders</option>
+                    <option value={ServiceSlug.GALAXY}>Device Galaxy</option>
+                    <option value={ServiceSlug.BILLSTACKS}>Billstacks</option>
+                    <option value={ServiceSlug.VISITORS}>Visitors Kiosk</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-heading mb-1">
+                    Activity Type *
+                  </label>
+                  <select
+                    value={txForm.activityType}
+                    onChange={(e) =>
+                      setTxForm({ ...txForm, activityType: e.target.value as any })
+                    }
+                    className="w-full h-9 px-2 rounded-lg border border-border text-heading bg-white"
+                  >
+                    <option value="SALE">SALE</option>
+                    <option value="BOOKING">BOOKING</option>
+                    <option value="ORDER">ORDER</option>
+                    <option value="INVOICE">INVOICE</option>
+                    <option value="EXPENSE">EXPENSE</option>
+                    <option value="VISIT">VISIT</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block font-semibold text-heading mb-1">
+                  Activity Carried Out *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={txForm.activitySummary}
+                  onChange={(e) =>
+                    setTxForm({ ...txForm, activitySummary: e.target.value })
+                  }
+                  placeholder="e.g. Sold 50 bags Dangote Cement or 2-Night Deluxe Booking"
+                  className="w-full h-9 px-3 rounded-lg border border-border text-heading"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-heading mb-1">
+                  Customer / Guest / Supplier Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={txForm.customer}
+                  onChange={(e) => setTxForm({ ...txForm, customer: e.target.value })}
+                  placeholder="e.g. Chief Okonkwo or Walk-in Customer"
+                  className="w-full h-9 px-3 rounded-lg border border-border text-heading"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-heading mb-1">
+                    Amount (₦ Naira)
+                  </label>
+                  <input
+                    type="number"
+                    value={txForm.amountNaira}
+                    onChange={(e) =>
+                      setTxForm({ ...txForm, amountNaira: e.target.value })
+                    }
+                    placeholder="e.g. 250000"
+                    className="w-full h-9 px-3 rounded-lg border border-border text-heading"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-heading mb-1">
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    value={txForm.location}
+                    onChange={(e) =>
+                      setTxForm({ ...txForm, location: e.target.value })
+                    }
+                    className="w-full h-9 px-3 rounded-lg border border-border text-heading"
+                  />
+                </div>
+              </div>
+              <div className="pt-3 border-t border-border flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTxModalOpen(false)}
+                  className="px-4 py-2 rounded-lg border border-border font-semibold text-muted"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-active text-white font-bold"
+                >
+                  Record to Dashboard
                 </button>
               </div>
             </form>
