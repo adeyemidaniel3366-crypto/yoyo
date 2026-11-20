@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { ServiceSlug, SERVICE_CONFIG } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { usePlatformStore } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
 
 interface RoomTypeSeed {
@@ -35,13 +36,27 @@ interface RoomTypeSeed {
 }
 
 export default function ZinoApartmentsPublicPage() {
+  const { products, recordTransaction } = usePlatformStore();
   const [checkIn, setCheckIn] = useState("2026-11-19");
   const [checkOut, setCheckOut] = useState("2026-11-22");
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
+  const [bookingBanner, setBookingBanner] = useState<string | null>(null);
 
-  // Exact 5 Seed Room Types from spec with 10% tax
-  const rooms: RoomTypeSeed[] = [
+  const storeApartmentRooms: RoomTypeSeed[] = products
+    .filter((p) => p.source === ServiceSlug.APARTMENTS && p.status !== "INACTIVE")
+    .map((p) => ({
+      slug: p.id,
+      name: p.name,
+      basePriceKobo: p.priceKobo || 3000000,
+      adults: 2,
+      children: 1,
+      image: p.imageUrl,
+      amenities: p.amenities || [p.label || "Executive Suite", "24/7 Power", "High-Speed WiFi"],
+    }));
+
+  // Exact 5 Seed Room Types from spec with 10% tax (merged with Admin Dashboard items)
+  const defaultRooms: RoomTypeSeed[] = [
     {
       slug: "classic-studio",
       name: "Classic Studio",
@@ -89,6 +104,8 @@ export default function ZinoApartmentsPublicPage() {
     },
   ];
 
+  const rooms = storeApartmentRooms.length > 0 ? storeApartmentRooms : defaultRooms;
+
   // FAQ Items from spec
   const faqs = [
     { q: "What are the check-in and check-out times?", a: "Standard check-in begins at 23:00 (11:00 PM) and check-out is by 10:00 AM." },
@@ -100,11 +117,27 @@ export default function ZinoApartmentsPublicPage() {
 
   const handleBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`Checking room availability for ${checkIn} to ${checkOut} for ${adults} adults...`);
+    const inv = recordTransaction({
+      source: ServiceSlug.APARTMENTS,
+      activityType: "BOOKING",
+      activitySummary: `Apartment Availability Reservation (${checkIn} → ${checkOut}, ${adults} Adults)`,
+      customer: "Website Guest",
+      amountKobo: 3300000,
+      location: "Zino Apartments Main",
+      status: "CONFIRMED",
+    });
+    setBookingBanner(`Reservation ${inv.invoiceNo} confirmed & logged to Unified Admin Dashboard!`);
+    setTimeout(() => setBookingBanner(null), 4000);
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col overflow-x-hidden max-w-full">
+      {bookingBanner && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#14142B] text-white text-xs font-bold shadow-2xl border border-indigo-500/40">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{bookingBanner}</span>
+        </div>
+      )}
       {/* Top Strip */}
       <div className="bg-[#1A1A2E] text-white text-xs py-2 px-4 sm:px-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -315,7 +348,21 @@ export default function ZinoApartmentsPublicPage() {
                 <div className="p-6 pt-0">
                   <button
                     type="button"
-                    onClick={() => alert(`Initiating booking for ${room.name} (${formatCurrency(totalPerNightKobo)} incl. tax)...`)}
+                    onClick={() => {
+                      const inv = recordTransaction({
+                        source: ServiceSlug.APARTMENTS,
+                        activityType: "BOOKING",
+                        activitySummary: `Room Booking — ${room.name} (incl. 10% tax)`,
+                        customer: "Apartments Portal Guest",
+                        amountKobo: totalPerNightKobo,
+                        location: "Zino Apartments Main",
+                        status: "CONFIRMED",
+                      });
+                      setBookingBanner(
+                        `Booked ${room.name} (${inv.invoiceNo}) for ${formatCurrency(totalPerNightKobo)} — synced to Admin Dashboard!`
+                      );
+                      setTimeout(() => setBookingBanner(null), 4000);
+                    }}
                     className="w-full py-2.5 rounded-xl border-2 border-apartments-accent text-apartments-accent hover:bg-apartments-accent hover:text-white font-bold text-xs uppercase tracking-wider transition-colors"
                   >
                     Book Now

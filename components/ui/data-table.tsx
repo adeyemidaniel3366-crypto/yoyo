@@ -61,10 +61,32 @@ export function DataTable<T extends Record<string, any>>({
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
-    new Set(columns.map((c) => c.key))
-  );
+  const storageKey = title ? `zino_dt_cols_${title.replace(/\s+/g, "_").toLowerCase()}` : null;
+
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() => {
+    if (typeof window !== "undefined" && storageKey) {
+      try {
+        const saved = window.localStorage.getItem(storageKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return new Set(parsed);
+          }
+        }
+      } catch {}
+    }
+    return new Set(columns.map((c) => c.key));
+  });
   const [showColMenu, setShowColMenu] = useState(false);
+
+  const updateVisibleColumns = (next: Set<string>) => {
+    setVisibleColumns(next);
+    if (typeof window !== "undefined" && storageKey) {
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
+      } catch {}
+    }
+  };
 
   // Filter
   const filteredData = useMemo(() => {
@@ -117,12 +139,21 @@ export function DataTable<T extends Record<string, any>>({
     }
   };
 
+  const getExportColumns = () => {
+    const visibleCols = columns.filter((c) => visibleColumns.has(c.key));
+    const hasSourceCol = visibleCols.some((c) => c.key === "source");
+    if (showSourceColumn && !hasSourceCol) {
+      return [{ key: "source", header: "Source" } as ColumnDef<T>, ...visibleCols];
+    }
+    return visibleCols;
+  };
+
   // Export handlers
   const handleExportCSV = () => {
     if (!sortedData.length) return;
     // UTF-8 BOM so Excel opens ₦ correctly
     const BOM = "\uFEFF";
-    const visibleCols = columns.filter((c) => visibleColumns.has(c.key));
+    const visibleCols = getExportColumns();
     const headers = visibleCols.map((c) => `"${c.header}"`).join(",");
     const rows = sortedData.map((row) =>
       visibleCols.map((c) => {
@@ -145,7 +176,7 @@ export function DataTable<T extends Record<string, any>>({
   const handleExportExcel = () => {
     if (!sortedData.length) return;
     // Build a simple HTML table that Excel can open (XLSX-like via data URI)
-    const visibleCols = columns.filter((c) => visibleColumns.has(c.key));
+    const visibleCols = getExportColumns();
     const headerRow = `<tr>${visibleCols.map((c) => `<th style="background:#1E3A5F;color:#fff;font-weight:bold;padding:4px 8px">${c.header}</th>`).join("")}</tr>`;
     const dataRows = sortedData.map((row, i) =>
       `<tr style="background:${i % 2 === 0 ? "#fff" : "#F4F6FB"}">${visibleCols.map((c) => `<td style="padding:4px 8px;border:1px solid #E9ECEF">${String(row[c.key] ?? "")}</td>`).join("")}</tr>`
@@ -164,7 +195,7 @@ export function DataTable<T extends Record<string, any>>({
 
   const handleExportPDF = () => {
     if (!sortedData.length) return;
-    const visibleCols = columns.filter((c) => visibleColumns.has(c.key));
+    const visibleCols = getExportColumns();
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
     const headerRow = `<tr>${visibleCols.map((c) => `<th style="background:#1E3A5F;color:#fff;padding:6px 10px;text-align:left;font-size:11px">${c.header}</th>`).join("")}</tr>`;
@@ -182,7 +213,7 @@ export function DataTable<T extends Record<string, any>>({
   };
 
   return (
-    <div className={cn("rounded-xl border border-border overflow-hidden shadow-2xs", className, "dark:bg-gray-800 dark:border-gray-700")}>
+    <div className={cn("bg-white rounded-xl border border-border shadow-2xs min-w-0 max-w-full", className, "dark:bg-gray-800 dark:border-gray-700")}>
       {/* Title & Top Toolbar */}
       <div className="p-4 sm:p-5 border-b border-border space-y-3">
         {(title || rightAction) && (
@@ -240,7 +271,7 @@ export function DataTable<T extends Record<string, any>>({
                 {showColMenu && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setShowColMenu(false)} />
-                    <div className="absolute left-0 mt-1 z-40 bg-white border border-border rounded-lg shadow-lg p-2 min-w-[160px] space-y-1">
+                    <div className="absolute left-0 mt-1 z-40 bg-white border border-border rounded-lg shadow-xl p-2 min-w-[180px] max-h-64 overflow-y-auto space-y-1">
                       {columns.map((col) => (
                         <label
                           key={col.key}
@@ -253,7 +284,7 @@ export function DataTable<T extends Record<string, any>>({
                               const next = new Set(visibleColumns);
                               if (e.target.checked) next.add(col.key);
                               else if (next.size > 1) next.delete(col.key);
-                              setVisibleColumns(next);
+                              updateVisibleColumns(next);
                             }}
                             className="rounded border-border text-active focus:ring-active"
                           />
@@ -264,14 +295,6 @@ export function DataTable<T extends Record<string, any>>({
                   </>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={handleExportPDF}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-border bg-white text-muted hover:text-heading hover:bg-gray-50 transition-colors shadow-2xs"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Export PDF</span>
-              </button>
             </div>
           )}
 

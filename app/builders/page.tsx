@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import {
   HardHat,
@@ -14,19 +14,41 @@ import {
 } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { usePlatformStore } from "@/lib/platform-store";
 
 export default function TopBuildersPublicPage() {
-  const catalogTeaser = [
-    { code: "001", name: "Dangote Cement 50kg", price: "₦9,800", unit: "bag", stock: "In Stock" },
-    { code: "002", name: "BUA Cement 50kg", price: "₦9,500", unit: "bag", stock: "In Stock" },
-    { code: "003", name: "Iron Rod 12mm", price: "₦12,500", unit: "length", stock: "In Stock" },
-    { code: "004", name: "Iron Rod 16mm", price: "₦21,500", unit: "length", stock: "In Stock" },
-    { code: "008", name: "Aluminium Roofing Sheet 0.45mm", price: "₦8,500", unit: "sheet", stock: "In Stock" },
-    { code: "010", name: "PVC Pipe 4 inch", price: "₦6,800", unit: "length", stock: "In Stock" },
+  const { products, recordTransaction } = usePlatformStore();
+  const [builderToast, setBuilderToast] = useState<string | null>(null);
+
+  const storeBuilders = products
+    .filter((p) => p.source === ServiceSlug.BUILDERS && p.status !== "INACTIVE")
+    .map((p) => ({
+      code: p.sku,
+      name: p.name,
+      label: p.label,
+      price: p.priceDisplay,
+      priceKobo: p.priceKobo,
+      image: p.imageUrl,
+      unit: "unit",
+      stock: p.status === "OUT_OF_STOCK" ? "Out of Stock" : `${p.totalStock} in Stock`,
+    }));
+
+  const defaultCatalog = [
+    { code: "DAN-CEM-50KG", name: "Dangote Cement 50kg", label: "Wholesale Bag", price: "₦9,800", priceKobo: 980000, image: "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=600", unit: "bag", stock: "In Stock" },
+    { code: "BUA-CEM-50KG", name: "BUA Cement 50kg", label: "Construction Essential", price: "₦9,500", priceKobo: 950000, image: "https://images.unsplash.com/photo-1541888946425-d09bb18086f6?w=600", unit: "bag", stock: "In Stock" },
+    { code: "IRON-ROD-16MM", name: "Iron Rod 16mm", label: "Structural Steel", price: "₦18,000", priceKobo: 1800000, image: "https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?w=600", unit: "length", stock: "In Stock" },
   ];
 
+  const catalogTeaser = storeBuilders.length > 0 ? storeBuilders : defaultCatalog;
+
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col overflow-x-hidden max-w-full">
+      {builderToast && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#14142B] text-white text-xs font-bold shadow-2xl border border-indigo-500/40">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{builderToast}</span>
+        </div>
+      )}
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-border shadow-xs">
         <div className="max-w-7xl mx-auto h-20 px-4 sm:px-8 flex items-center justify-between">
@@ -96,27 +118,65 @@ export default function TopBuildersPublicPage() {
           {catalogTeaser.map((item) => (
             <div
               key={item.code}
-              className="bg-white rounded-2xl border border-border p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+              className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-col justify-between group"
             >
               <div>
-                <span className="text-[10px] font-bold text-muted uppercase">Code #{item.code}</span>
-                <h3 className="font-bold text-heading text-base mt-1">{item.name}</h3>
-                <p className="text-xl font-black text-builders mt-2">
-                  {item.price} <span className="text-xs font-normal text-muted">/{item.unit}</span>
-                </p>
+                {item.image && (
+                  <div className="relative h-44 w-full bg-gray-100 overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute top-3 left-3">
+                      <SourceBadge source={ServiceSlug.BUILDERS} size="sm" />
+                    </div>
+                    {item.label && (
+                      <div className="absolute bottom-2.5 left-3 px-2.5 py-0.5 rounded bg-black/75 text-white text-[10px] font-bold">
+                        {item.label}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="p-6">
+                  <span className="text-[10px] font-mono font-bold text-muted uppercase">
+                    Code #{item.code}
+                  </span>
+                  <h3 className="font-bold text-heading text-base mt-1">{item.name}</h3>
+                  <p className="text-xl font-black text-builders mt-2">
+                    {item.price}{" "}
+                    <span className="text-xs font-normal text-muted">/{item.unit}</span>
+                  </p>
+                </div>
               </div>
 
-              <div className="mt-5 pt-3 border-t border-border flex items-center justify-between text-xs">
+              <div className="px-6 py-4 bg-gray-50 border-t border-border flex items-center justify-between text-xs">
                 <span className="text-emerald-700 font-bold flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>{item.stock}</span>
                 </span>
-                <Link
-                  href="/admin/builders/sales/new"
-                  className="font-bold text-builders hover:underline"
+                <button
+                  type="button"
+                  onClick={() => {
+                    const inv = recordTransaction({
+                      source: ServiceSlug.BUILDERS,
+                      activityType: "SALE",
+                      activitySummary: `Yard Material Order — ${item.name}`,
+                      customer: "Builders Portal Contractor",
+                      amountKobo: item.priceKobo || 980000,
+                      location: "Builders Yard",
+                      status: "PAID",
+                    });
+                    setBuilderToast(
+                      `Ordered "${item.name}" (${inv.invoiceNo}) — synced to Admin Dashboard!`
+                    );
+                    setTimeout(() => setBuilderToast(null), 4000);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-builders text-white font-bold hover:opacity-90 transition-opacity"
                 >
-                  Order via POS →
-                </Link>
+                  Quick Order →
+                </button>
               </div>
             </div>
           ))}

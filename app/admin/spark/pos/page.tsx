@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { ServiceSlug, LOCATIONS } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { recordPlatformTransaction } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
 
 interface SparkProduct {
@@ -105,6 +106,18 @@ export default function ZinoSparkPosPage() {
     setIsSubmitting(true);
     try {
       const paidKobo = amountPaidKobo !== "" ? Number(amountPaidKobo) : totalKobo;
+      const itemsSummary = cart.map((i) => `${i.qty}× ${i.product.name}`).join(", ");
+      const locName = LOCATIONS.find((l) => l.id === selectedLocation)?.name || "Medical Road";
+      const inv = recordPlatformTransaction({
+        source: ServiceSlug.SPARK,
+        activityType: "SALE",
+        activitySummary: `POS Retail Sale — ${itemsSummary}`,
+        customer,
+        amountKobo: totalKobo,
+        location: locName,
+        status: paidKobo >= totalKobo ? "PAID" : "PART_PAID",
+        actor: `Cashier (${locName})`,
+      });
       const res = await fetch("/api/spark/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -125,12 +138,12 @@ export default function ZinoSparkPosPage() {
       });
       const data = await res.json();
       if (res.ok && data.ok) {
-        alert(`POS Sale completed! Invoice: ${data.data?.invoiceNo || ""}\nAmount: ${formatCurrency(totalKobo)}.\nThermal receipt generated.`);
+        alert(`POS Sale completed! Invoice: ${data.data?.invoiceNo || inv.invoiceNo}\nAmount: ${formatCurrency(totalKobo)}.\nSynced to Unified Admin Dashboard.`);
       } else {
-        alert(`POS Sale completed! Amount: ${formatCurrency(totalKobo)}.\nPrinting receipt on thermal printer...`);
+        alert(`POS Sale completed! Invoice: ${inv.invoiceNo}\nAmount: ${formatCurrency(totalKobo)}.\nSynced to Unified Admin Dashboard.`);
       }
     } catch {
-      alert(`POS Sale completed! Amount: ${formatCurrency(totalKobo)}.\nPrinting receipt on thermal printer...`);
+      alert(`POS Sale completed! Amount: ${formatCurrency(totalKobo)}.\nSynced to Unified Admin Dashboard.`);
     } finally {
       setCart([]);
       setAmountPaidKobo("");

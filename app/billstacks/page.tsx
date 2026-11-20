@@ -14,9 +14,11 @@ import {
 } from "lucide-react";
 import { ServiceSlug, SERVICE_CONFIG } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { recordPlatformTransaction } from "@/lib/platform-store";
 
 export default function BillstacksPublicPage() {
   const [billingCycle, setBillingCycle] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
+  const [billToast, setBillToast] = useState<string | null>(null);
 
   const plans = [
     {
@@ -62,7 +64,13 @@ export default function BillstacksPublicPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col overflow-x-hidden max-w-full">
+      {billToast && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#14142B] text-white text-xs font-bold shadow-2xl border border-indigo-500/40">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{billToast}</span>
+        </div>
+      )}
       {/* Top Navbar */}
       <header className="sticky top-0 z-40 bg-white border-b border-border shadow-xs">
         <div className="max-w-7xl mx-auto h-20 px-4 sm:px-8 flex items-center justify-between">
@@ -114,7 +122,7 @@ export default function BillstacksPublicPage() {
               Get Started Now
             </a>
             <Link
-              href="/admin/billstacks/invoices"
+              href="/admin/billstacks"
               className="px-6 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider transition-colors border border-white/20"
             >
               Demo Workspace
@@ -197,17 +205,32 @@ export default function BillstacksPublicPage() {
                 </div>
 
                 <div className="mt-8 pt-4">
-                  <Link
-                    href="/admin/billstacks/invoices"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const inv = recordPlatformTransaction({
+                        source: ServiceSlug.BILLSTACKS,
+                        activityType: "INVOICE",
+                        activitySummary: `Billstacks ${p.name} Plan (${billingCycle}) Subscription`,
+                        customer: "Billstacks Cloud Subscriber",
+                        amountKobo: price * 100,
+                        location: "Billstacks Cloud",
+                        status: "PAID",
+                      });
+                      setBillToast(
+                        `Subscribed to Billstacks ${p.name} Plan (${inv.invoiceNo}) — logged to Admin Dashboard!`
+                      );
+                      setTimeout(() => setBillToast(null), 4000);
+                    }}
                     className={`w-full py-3 rounded-full font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 ${
                       p.popular
                         ? "bg-billstacks hover:bg-billstacks-dark text-white shadow-sm"
                         : "bg-gray-100 hover:bg-gray-200 text-heading"
                     }`}
                   >
-                    <span>Get Started</span>
+                    <span>Subscribe &amp; Start</span>
                     <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
+                  </button>
                 </div>
               </div>
             );

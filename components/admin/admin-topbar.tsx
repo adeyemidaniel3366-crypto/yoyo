@@ -88,7 +88,7 @@ export function AdminTopbar({
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/admin/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      router.push(`/admin/products?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 
@@ -96,6 +96,8 @@ export function AdminTopbar({
     try {
       await fetch("/api/auth/signout", { method: "POST" });
     } catch {}
+    document.cookie = "authjs.session-token=; path=/; max-age=0; SameSite=Lax";
+    document.cookie = "__Secure-authjs.session-token=; path=/; max-age=0; SameSite=Lax";
     router.push("/login");
     router.refresh();
   };

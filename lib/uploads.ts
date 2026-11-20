@@ -14,7 +14,7 @@ import { logger } from "./logger";
 const ALLOWED_PURPOSES = ["products", "rooms", "receipts", "avatars", "imports"] as const;
 export type UploadPurpose = (typeof ALLOWED_PURPOSES)[number];
 
-const IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const IMAGE_MIMES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif", "image/svg+xml"]);
 const DOC_MIMES = new Set(["application/pdf", "text/csv", "application/vnd.ms-excel"]);
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB

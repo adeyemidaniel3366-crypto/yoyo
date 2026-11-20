@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { ServiceSlug, SERVICE_CONFIG, PLATFORM_NAME } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { usePlatformStore } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
 
 // ---------------------------------------------------------------------------
@@ -93,17 +94,25 @@ function AnimatedCounter({ target, suffix = "", duration = 1800 }: { target: num
 // Main Page
 // ---------------------------------------------------------------------------
 export default function HomePortalPage() {
+  const { products, recordTransaction } = usePlatformStore();
   const [searchQuery, setSearchQuery] = useState("");
-  const [cartCount] = useState(2);
+  const [cartCount, setCartCount] = useState(2);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [homeToast, setHomeToast] = useState<string | null>(null);
+
+  const showHomeToast = (msg: string) => {
+    setHomeToast(msg);
+    setTimeout(() => setHomeToast(null), 3500);
+  };
 
   useScrollReveal();
 
-  // 6 Services in LOCKED order
+  // 6 Services in LOCKED order — each with visual photography & design banner
   const servicesList = [
     {
       slug: ServiceSlug.APARTMENTS,
       config: SERVICE_CONFIG[ServiceSlug.APARTMENTS],
+      image: "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=700&auto=format&fit=crop&q=80",
       desc: "Luxury serviced apartments in Lekki, Lagos. Daily, weekly & monthly bookings with 24/7 power, security and hotel amenities.",
       links: [
         { label: "Book a Room", href: "/apartments" },
@@ -111,12 +120,13 @@ export default function HomePortalPage() {
         { label: "Check Availability", href: "/apartments#booking" },
       ],
       publicHref: "/apartments",
-      badgeText: "Hospitality",
+      badgeText: "12 Luxury Suites",
       Icon: Building2,
     },
     {
       slug: ServiceSlug.GALAXY,
       config: SERVICE_CONFIG[ServiceSlug.GALAXY],
+      image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=700&auto=format&fit=crop&q=80",
       desc: "Electronics & gadgets e-commerce storefront. Fast nationwide delivery for laptops, smartphones, SSDs, and smart accessories.",
       links: [
         { label: "Shop Laptops", href: "/shop" },
@@ -124,25 +134,27 @@ export default function HomePortalPage() {
         { label: "Best Sellers", href: "/shop" },
       ],
       publicHref: "/shop",
-      badgeText: "E-Commerce",
+      badgeText: "Online Storefront",
       Icon: Smartphone,
     },
     {
       slug: ServiceSlug.SPARK,
       config: SERVICE_CONFIG[ServiceSlug.SPARK],
+      image: "https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=700&auto=format&fit=crop&q=80",
       desc: "Multi-shop electronics retail & wholesale across Computer Village, Ikeja. Stock transfers, POS, and immediate pickup.",
       links: [
-        { label: "Store Locations", href: "/spark" },
-        { label: "Retail Deals", href: "/spark" },
+        { label: "Store Locations", href: "/admin/locations" },
+        { label: "Retail Catalog", href: "/shop" },
         { label: "POS Terminal", href: "/admin/spark/pos" },
       ],
-      publicHref: "/spark",
-      badgeText: "Retail POS",
+      publicHref: "/admin/spark",
+      badgeText: "5 Computer Village Shops",
       Icon: Cpu,
     },
     {
       slug: ServiceSlug.BUILDERS,
       config: SERVICE_CONFIG[ServiceSlug.BUILDERS],
+      image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=700&auto=format&fit=crop&q=80",
       desc: "Premium construction materials: Dangote & BUA cement, iron rods, roofing, tiles, and plumbing supplies in Lagos.",
       links: [
         { label: "Materials Catalog", href: "/builders" },
@@ -150,98 +162,74 @@ export default function HomePortalPage() {
         { label: "Request a Quote", href: "/builders#contact" },
       ],
       publicHref: "/builders",
-      badgeText: "Construction",
+      badgeText: "Construction Yard",
       Icon: Hammer,
     },
     {
       slug: ServiceSlug.BILLSTACKS,
       config: SERVICE_CONFIG[ServiceSlug.BILLSTACKS],
+      image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=700&auto=format&fit=crop&q=80",
       desc: "SaaS invoicing, automated expense tracking, recurring bills, and financial accounting for growing businesses.",
       links: [
-        { label: "Create Invoice", href: "/admin/billstacks/invoices" },
+        { label: "Invoicing Workspace", href: "/admin/billstacks" },
         { label: "See Pricing Plans", href: "/billstacks" },
         { label: "Platform Features", href: "/billstacks" },
       ],
       publicHref: "/billstacks",
-      badgeText: "Accounting",
+      badgeText: "SaaS Accounting",
       Icon: Receipt,
     },
     {
       slug: ServiceSlug.VISITORS,
       config: SERVICE_CONFIG[ServiceSlug.VISITORS],
+      image: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=700&auto=format&fit=crop&q=80",
       desc: "Enterprise visitor registration, badge issuance, employee attendance, and security front-desk kiosk.",
       links: [
         { label: "Pre-Register Visit", href: "/visit" },
         { label: "Self Check-In Kiosk", href: "/visit" },
-        { label: "Employee Clock-In", href: "/admin/visitors/attendance" },
+        { label: "Employee Clock-In", href: "/admin/visitors" },
       ],
       publicHref: "/visit",
-      badgeText: "Front Desk",
+      badgeText: "Front Desk Kiosk",
       Icon: UserCheck,
     },
   ];
 
-  const featuredRooms = [
-    {
-      name: "Classic Studio",
-      priceKobo: 1000000,
-      image: "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&auto=format&fit=crop&q=80",
-      capacity: "1 Adult",
-      amenities: ["AC", "Heater", "WiFi"],
-      slug: "classic-studio",
-    },
-    {
-      name: "Deluxe Studio",
-      priceKobo: 3000000,
-      image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&auto=format&fit=crop&q=80",
-      capacity: "2 Adults",
-      amenities: ["AC", "Kitchen", "Smart TV"],
-      slug: "deluxe-studio",
-    },
-    {
-      name: "Luxury 2-Bedroom",
-      priceKobo: 5000000,
-      image: "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=600&auto=format&fit=crop&q=80",
-      capacity: "4 Adults",
-      amenities: ["Sitout", "AC", "Kitchen", "Bath Heater"],
-      slug: "luxury-2-bedroom",
-    },
-  ];
+  // Dynamically synced with Admin Dashboard Products & Services Studio!
+  const featuredRooms = products
+    .filter((p) => p.source === ServiceSlug.APARTMENTS && p.status !== "INACTIVE")
+    .slice(0, 4)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      label: p.label,
+      priceKobo: p.priceKobo || 3000000,
+      priceDisplay: p.priceDisplay,
+      image: p.imageUrl,
+      capacity: p.capacity || "2 Adults",
+      amenities: p.amenities || ["AC", "WiFi", "24/7 Power"],
+    }));
 
-  const bestSellers = [
-    {
-      name: "Samsung 990 PRO 4TB NVMe SSD",
-      priceKobo: 48000000,
-      originalKobo: 52000000,
-      image: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=400&auto=format&fit=crop&q=80",
+  const bestSellers = products
+    .filter(
+      (p) =>
+        (p.source === ServiceSlug.GALAXY ||
+          p.source === ServiceSlug.SPARK ||
+          p.source === ServiceSlug.BUILDERS) &&
+        p.status !== "INACTIVE"
+    )
+    .slice(0, 5)
+    .map((p) => ({
+      id: p.id,
+      source: p.source,
+      name: p.name,
+      label: p.label,
+      priceKobo: p.priceKobo,
+      priceDisplay: p.priceDisplay,
+      originalKobo: Math.round(p.priceKobo * 1.12),
+      image: p.imageUrl,
       rating: 5,
-      slug: "samsung-990-pro-4tb",
-    },
-    {
-      name: "Apple MacBook Pro 16\" M3 Max",
-      priceKobo: 485000000,
-      originalKobo: 510000000,
-      image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&auto=format&fit=crop&q=80",
-      rating: 5,
-      slug: "macbook-pro-16-m3-max",
-    },
-    {
-      name: "Synology 8 Bay Rackstation RS1221RP+",
-      priceKobo: 245000000,
-      originalKobo: 260000000,
-      image: "https://images.unsplash.com/photo-1544652478-6653e09f18a2?w=400&auto=format&fit=crop&q=80",
-      rating: 5,
-      slug: "synology-8-bay-rs1221rp",
-    },
-    {
-      name: "Lexar SL500 Portable SSD 2TB",
-      priceKobo: 22000000,
-      originalKobo: 25000000,
-      image: "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400&auto=format&fit=crop&q=80",
-      rating: 5,
-      slug: "lexar-sl500-2tb",
-    },
-  ];
+    }));
 
   const articles = [
     {
@@ -267,54 +255,66 @@ export default function HomePortalPage() {
     },
   ];
 
-  // What We Do features
+  // What We Do features — with visual imagery & capabilities
   const platformFeatures = [
     {
       icon: Building2,
       color: SERVICE_CONFIG[ServiceSlug.APARTMENTS].color,
       tint: SERVICE_CONFIG[ServiceSlug.APARTMENTS].tintBg,
+      image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&auto=format&fit=crop&q=80",
+      badge: "Hotel PMS & Booking",
       title: "Hospitality Management",
-      desc: "Full hotel PMS: booking engine, front desk check-in/out, room calendar, guest profiles, and nightly reports.",
+      desc: "Full hotel PMS: booking engine, front desk check-in/out, room calendar, guest profiles, and 10% hospitality tax math.",
       href: "/apartments",
     },
     {
       icon: Smartphone,
       color: SERVICE_CONFIG[ServiceSlug.GALAXY].color,
       tint: SERVICE_CONFIG[ServiceSlug.GALAXY].tintBg,
+      image: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=600&auto=format&fit=crop&q=80",
+      badge: "Online Marketplace",
       title: "E-Commerce Storefront",
-      desc: "Device Galaxy online shop: product listings, shopping cart, secure payment, and nationwide shipping tracking.",
+      desc: "Device Galaxy online shop: product listings, shopping cart, secure checkout, and nationwide delivery tracking.",
       href: "/shop",
     },
     {
       icon: Cpu,
       color: SERVICE_CONFIG[ServiceSlug.SPARK].color,
       tint: SERVICE_CONFIG[ServiceSlug.SPARK].tintBg,
+      image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&auto=format&fit=crop&q=80",
+      badge: "Multi-Branch POS",
       title: "Retail POS System",
-      desc: "Multi-shop Zino Spark: POS terminal, stock transfers between locations, barcode, receipt printing.",
-      href: "/spark",
+      desc: "Multi-shop Zino Spark across Computer Village: POS terminal, stock transfers between 5 locations, barcode & receipt printing.",
+      href: "/admin/spark",
     },
     {
       icon: Hammer,
       color: SERVICE_CONFIG[ServiceSlug.BUILDERS].color,
       tint: SERVICE_CONFIG[ServiceSlug.BUILDERS].tintBg,
+      image: "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=600&auto=format&fit=crop&q=80",
+      badge: "Yard & Wholesale",
       title: "Construction Supply",
-      desc: "Top Builders: cement, iron rods, materials invoicing, debtors management, and daily sales book.",
+      desc: "Top Builders: cement, iron rods, materials invoicing, stock sheet ST-00021, debtors ledger, and daily sales book.",
       href: "/builders",
     },
     {
       icon: Receipt,
       color: SERVICE_CONFIG[ServiceSlug.BILLSTACKS].color,
       tint: SERVICE_CONFIG[ServiceSlug.BILLSTACKS].tintBg,
+      image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&auto=format&fit=crop&q=80",
+      badge: "Financial Engine",
       title: "Cloud Accounting",
-      desc: "Billstacks: professional invoicing, recurring bills, expense tracking, and financial reports.",
+      desc: "Billstacks: professional invoicing, recurring bills, expense tracking, tax reporting, and consolidated P&L.",
       href: "/billstacks",
     },
     {
       icon: UserCheck,
       color: SERVICE_CONFIG[ServiceSlug.VISITORS].color,
       tint: SERVICE_CONFIG[ServiceSlug.VISITORS].tintBg,
-      title: "Visitor & Security",
-      desc: "Front desk kiosk, visitor badge printing, employee attendance clock-in/out, and pre-registration.",
+      image: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=600&auto=format&fit=crop&q=80",
+      badge: "Security & Attendance",
+      title: "Visitor & Security Kiosk",
+      desc: "Front desk tablet kiosk, visitor badge printing, employee attendance clock-in/out, and VIP pre-registration.",
       href: "/visit",
     },
   ];
@@ -327,7 +327,13 @@ export default function HomePortalPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col overflow-x-hidden max-w-full">
+      {homeToast && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#14142B] text-white text-xs font-bold shadow-2xl border border-indigo-500/40 animate-fade-in-up">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{homeToast}</span>
+        </div>
+      )}
 
       {/* ─── TOP STRIP ─── */}
       <div className="bg-topbar text-gray-300 text-xs py-2 px-4 sm:px-8 border-b border-[#292948]">
@@ -355,10 +361,10 @@ export default function HomePortalPage() {
               Sign in
             </Link>
             <Link
-              href="/register"
+              href="/login"
               className="bg-active px-2.5 py-1 rounded text-white font-semibold text-[11px] hover:bg-indigo-700 transition-colors"
             >
-              Create account
+              Demo Access
             </Link>
           </div>
         </div>
@@ -421,7 +427,7 @@ export default function HomePortalPage() {
               Admin Workspace
             </Link>
             <Link
-              href="/shop/cart"
+              href="/shop"
               className="relative p-2 rounded-lg text-heading hover:bg-gray-100 transition-colors"
               title="Cart"
             >
@@ -432,7 +438,7 @@ export default function HomePortalPage() {
                 </span>
               )}
             </Link>
-            <Link href="/account" className="p-2 rounded-lg text-heading hover:bg-gray-100 transition-colors" title="My Account">
+            <Link href="/admin" className="p-2 rounded-lg text-heading hover:bg-gray-100 transition-colors" title="Admin Account">
               <User className="w-5 h-5" />
             </Link>
             {/* Mobile menu toggle */}
@@ -630,19 +636,19 @@ export default function HomePortalPage() {
         </div>
       </div>
 
-      {/* ─── WHAT WE DO SECTION ─── */}
+      {/* ─── WHAT WE DO SECTION (With Visual Imagery & Designs) ─── */}
       <section className="py-20 px-4 sm:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center max-w-2xl mx-auto mb-14 scroll-reveal">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-active text-xs font-bold uppercase tracking-wider mb-4">
               <Zap className="w-3.5 h-3.5" />
-              <span>What We Do</span>
+              <span>What This Website Is Built For &amp; What Can Be Done</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-heading tracking-tight">
               Built to Power Real Nigerian Businesses
             </h2>
             <p className="text-sm text-muted mt-3 leading-relaxed">
-              Zino One is not just software — it&apos;s the operational backbone for 6 distinct businesses running under one ownership, sharing one admin, one financial engine.
+              Zino One is the unified operational backbone for 6 distinct businesses running under one ownership, sharing one admin dashboard, one contacts directory, and one real-time financial engine.
             </p>
           </div>
 
@@ -651,23 +657,46 @@ export default function HomePortalPage() {
               <Link
                 key={feat.title}
                 href={feat.href}
-                className={`scroll-reveal scroll-reveal-delay-${Math.min(idx + 1, 6)} group p-6 rounded-2xl border border-border hover:border-gray-300 hover:shadow-xl transition-all duration-300 bg-white`}
+                className={`scroll-reveal scroll-reveal-delay-${Math.min(idx + 1, 6)} group rounded-2xl border border-border hover:border-gray-300 hover:shadow-xl transition-all duration-300 bg-white overflow-hidden flex flex-col`}
               >
-                <div
-                  className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110"
-                  style={{ backgroundColor: feat.tint }}
-                >
-                  <feat.icon className="w-7 h-7" style={{ color: feat.color }} />
+                {/* Visual Photography Header */}
+                <div className="relative h-40 w-full overflow-hidden bg-gray-900">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={feat.image}
+                    alt={feat.title}
+                    className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
+                  <div className="absolute top-3 left-3">
+                    <span
+                      className="px-2.5 py-1 rounded-full text-[10px] font-bold text-white shadow-sm"
+                      style={{ backgroundColor: feat.color }}
+                    >
+                      {feat.badge}
+                    </span>
+                  </div>
+                  <div
+                    className="absolute bottom-3 right-3 w-11 h-11 rounded-xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110"
+                    style={{ backgroundColor: feat.tint }}
+                  >
+                    <feat.icon className="w-5 h-5" style={{ color: feat.color }} />
+                  </div>
                 </div>
-                <h3 className="font-bold text-heading text-base mb-2 group-hover:text-active transition-colors">
-                  {feat.title}
-                </h3>
-                <p className="text-xs text-muted leading-relaxed">
-                  {feat.desc}
-                </p>
-                <div className="flex items-center gap-1 mt-4 text-xs font-bold text-muted group-hover:text-active transition-colors">
-                  <span>Learn more</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-bold text-heading text-base mb-2 group-hover:text-active transition-colors">
+                      {feat.title}
+                    </h3>
+                    <p className="text-xs text-muted leading-relaxed">
+                      {feat.desc}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 mt-4 pt-3 border-t border-border/60 text-xs font-bold text-muted group-hover:text-active transition-colors">
+                    <span>Explore section</span>
+                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                  </div>
                 </div>
               </Link>
             ))}
@@ -675,7 +704,7 @@ export default function HomePortalPage() {
         </div>
       </section>
 
-      {/* ─── SERVICES GRID ─── */}
+      {/* ─── SERVICES GRID (With Photography Headers & Live Product Counts) ─── */}
       <section id="services" className="py-20 px-4 sm:px-8 bg-gray-50/70">
         <div className="max-w-7xl mx-auto">
           <div className="text-center max-w-xl mx-auto mb-12 scroll-reveal">
@@ -683,7 +712,7 @@ export default function HomePortalPage() {
               Our Six Core Services
             </h2>
             <p className="text-xs sm:text-sm text-muted mt-2">
-              Each business functions seamlessly on its own while sharing a single unified admin, contacts backbone, and financial engine.
+              Each business functions seamlessly on its own while communicating every transaction, product, and alert directly to the unified admin dashboard.
             </p>
           </div>
 
@@ -694,27 +723,42 @@ export default function HomePortalPage() {
                 id={`service-${svc.slug.toLowerCase()}`}
                 className={`scroll-reveal scroll-reveal-delay-${Math.min(idx + 1, 6)} group bg-white rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-xl hover:border-gray-300 transition-all duration-300 flex flex-col`}
               >
-                {/* Service accent bar */}
-                <div className="h-1.5 w-full" style={{ backgroundColor: svc.config.color }} />
-
-                <div className="p-6 sm:p-7 flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-5">
-                      <div
-                        className="w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105"
-                        style={{ backgroundColor: svc.config.tintBg, color: svc.config.darkColor }}
-                      >
-                        <svc.Icon className="w-7 h-7" />
-                      </div>
-                      <SourceBadge source={svc.slug} size="md" />
-                    </div>
-
-                    <h3 className="text-xl font-bold text-heading group-hover:text-active transition-colors">
+                {/* Service Visual Photography Header */}
+                <div className="relative h-44 w-full overflow-hidden bg-gray-900">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={svc.image}
+                    alt={svc.config.name}
+                    className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                    <SourceBadge source={svc.slug} size="md" />
+                    <span className="px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold">
+                      {svc.badgeText}
+                    </span>
+                  </div>
+                  <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
+                    <h3 className="text-lg font-extrabold text-white">
                       {svc.config.name}
                     </h3>
-                    <p className="text-xs text-muted leading-relaxed mt-2.5">{svc.desc}</p>
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shadow-md"
+                      style={{ backgroundColor: svc.config.tintBg, color: svc.config.darkColor }}
+                    >
+                      <svc.Icon className="w-5 h-5" />
+                    </div>
+                  </div>
+                </div>
 
-                    <div className="mt-6 pt-5 border-t border-border space-y-2">
+                {/* Service accent bar */}
+                <div className="h-1 w-full" style={{ backgroundColor: svc.config.color }} />
+
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div>
+                    <p className="text-xs text-muted leading-relaxed">{svc.desc}</p>
+
+                    <div className="mt-5 pt-4 border-t border-border space-y-2">
                       <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                         Most Used Functions:
                       </p>
@@ -731,7 +775,7 @@ export default function HomePortalPage() {
                     </div>
                   </div>
 
-                  <div className="mt-8 pt-4">
+                  <div className="mt-6 pt-3">
                     <Link
                       href={svc.publicHref}
                       className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-xl font-bold text-xs uppercase tracking-wider text-white shadow-sm transition-all hover:opacity-90"
@@ -872,21 +916,36 @@ export default function HomePortalPage() {
                 </div>
                 <div className="space-y-4">
                   {featuredRooms.map((room) => (
-                    <div key={room.name} className="flex items-center gap-3.5 p-2 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-border">
+                    <div key={room.id || room.name} className="flex items-center gap-3.5 p-2 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-border">
                       <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden shrink-0">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={room.image} alt={room.name} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="font-bold text-heading text-xs truncate">{room.name}</h4>
-                        <p className="text-[11px] text-muted">{room.capacity}</p>
+                        <p className="text-[10px] font-semibold text-indigo-600 truncate">{room.label} • {room.capacity}</p>
                         <p className="text-xs font-extrabold text-apartments-accent mt-0.5">
-                          {formatCurrency(room.priceKobo)} <span className="font-normal text-muted text-[10px]">/ night</span>
+                          {room.priceDisplay || formatCurrency(room.priceKobo)}
                         </p>
                       </div>
-                      <Link href={`/apartments`} className="px-2.5 py-1.5 rounded-lg bg-apartments-accent/15 hover:bg-apartments-accent text-apartments-accent hover:text-white font-bold text-[11px] transition-colors shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const inv = recordTransaction({
+                            source: ServiceSlug.APARTMENTS,
+                            activityType: "BOOKING",
+                            activitySummary: `Room Reservation from Home Portal — ${room.name}`,
+                            customer: "Online Guest (Portal)",
+                            amountKobo: room.priceKobo,
+                            location: "Zino Apartments Main",
+                            status: "CONFIRMED",
+                          });
+                          showHomeToast(`Booked "${room.name}" (${inv.invoiceNo}) — sent to Admin Dashboard!`);
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg bg-apartments-accent/15 hover:bg-apartments-accent text-apartments-accent hover:text-white font-bold text-[11px] transition-colors shrink-0"
+                      >
                         Book
-                      </Link>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -900,29 +959,42 @@ export default function HomePortalPage() {
             <div className="scroll-reveal scroll-reveal-delay-1 bg-white rounded-2xl border border-border p-6 shadow-sm flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-5 pb-3 border-b border-border">
-                  <h3 className="font-bold text-heading text-base">Best Sellers</h3>
+                  <h3 className="font-bold text-heading text-base">Best Sellers &amp; Catalog</h3>
                   <SourceBadge source={ServiceSlug.GALAXY} size="sm" />
                 </div>
                 <div className="space-y-4">
                   {bestSellers.map((item) => (
-                    <div key={item.name} className="flex items-center gap-3.5 p-2 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-border">
+                    <div key={item.id || item.name} className="flex items-center gap-3.5 p-2 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-border">
                       <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden shrink-0">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="font-bold text-heading text-xs truncate">{item.name}</h4>
-                        <div className="flex items-center gap-0.5 text-amber-400 mt-0.5">
-                          {[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 fill-amber-400" />)}
-                        </div>
+                        <p className="text-[10px] font-semibold text-active truncate">{item.label}</p>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs font-extrabold text-heading">{formatCurrency(item.priceKobo)}</span>
-                          <span className="text-[10px] text-muted line-through">{formatCurrency(item.originalKobo)}</span>
+                          <span className="text-xs font-extrabold text-heading">{item.priceDisplay || formatCurrency(item.priceKobo)}</span>
                         </div>
                       </div>
-                      <Link href="/shop" className="px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-active hover:text-white text-heading font-bold text-[11px] transition-colors shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCartCount((c) => c + 1);
+                          const inv = recordTransaction({
+                            source: item.source || ServiceSlug.GALAXY,
+                            activityType: item.source === ServiceSlug.GALAXY ? "ORDER" : "SALE",
+                            activitySummary: `Customer Purchase from Home Portal — ${item.name}`,
+                            customer: "Online Shopper",
+                            amountKobo: item.priceKobo,
+                            location: item.source === ServiceSlug.GALAXY ? "Galaxy Online" : "Main Store",
+                            status: "PAID",
+                          });
+                          showHomeToast(`Purchased "${item.name}" (${inv.invoiceNo}) — logged on Admin Dashboard!`);
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-active hover:text-white text-heading font-bold text-[11px] transition-colors shrink-0"
+                      >
                         Buy
-                      </Link>
+                      </button>
                     </div>
                   ))}
                 </div>
