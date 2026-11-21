@@ -180,7 +180,7 @@ export async function getDashboardSummary(
         status: { not: SaleStatus.VOID },
         createdAt: { gte: last30Start },
       },
-      select: { source: true, totalKobo: true, createdAt: true },
+      select: { source: true, totalKobo: true, createdAt: true, locationId: true, location: { select: { name: true } } },
     }),
     prisma.sale.findMany({
       where: {
@@ -252,6 +252,22 @@ export async function getDashboardSummary(
         data: labels30.map((d) => byDay.get(d) ?? 0),
       };
     });
+
+  const locationRows = new Map<string, { name: string; byDay: Map<string, number> }>();
+  for (const row of salesLast30Raw) {
+    const key = row.locationId || "unknown";
+    const entry = locationRows.get(key) || { name: row.location?.name || "Unknown location", byDay: new Map<string, number>() };
+    const day = toLagosDateString(row.createdAt);
+    entry.byDay.set(day, addKobo(entry.byDay.get(day) ?? 0, row.totalKobo));
+    locationRows.set(key, entry);
+  }
+  const locationColors = ["#10B981", "#2563EB", "#F59E0B", "#E11D48", "#8B5CF6", "#0891B2"];
+  const locationSeries = Array.from(locationRows.entries()).map(([locationId, location], index) => ({
+    locationId,
+    name: location.name,
+    color: locationColors[index % locationColors.length],
+    data: labels30.map((day) => location.byDay.get(day) ?? 0),
+  }));
 
   // Build Financial Year (Jan-Dec) chart series
   const monthLabels = [
@@ -408,7 +424,7 @@ export async function getDashboardSummary(
 
   return {
     cards,
-    salesLast30Days: { labels: labels30, series: series30 },
+    salesLast30Days: { labels: labels30, series: series30, locations: locationSeries },
     salesFinancialYear: { labels: monthLabels, series: seriesYear },
     attention,
     recentActivity: await withSourceLabels(recentActivityRaw),
@@ -423,13 +439,14 @@ export async function getDashboardSummary(
   };
   } catch {
     return {
+      isUnavailable: true,
       cards: [
         {
           key: "totalSales",
           label: "Total Sales",
-          valueKobo: 184250000,
-          display: "₦1.8M",
-          deltaPct: 12.4,
+          valueKobo: 0,
+          display: "Unavailable",
+          deltaPct: 0,
           sources: allowedServices.filter((s) =>
             ([ServiceSlug.SPARK, ServiceSlug.BUILDERS, ServiceSlug.GALAXY] as ServiceSlug[]).includes(s)
           ),
@@ -437,16 +454,16 @@ export async function getDashboardSummary(
         {
           key: "net",
           label: "Net",
-          valueKobo: 142000000,
-          display: "₦1.4M",
-          deltaPct: 8.1,
+          valueKobo: 0,
+          display: "Unavailable",
+          deltaPct: 0,
           sources: allowedServices,
         },
         {
           key: "invoiceDue",
           label: "Invoice Due",
-          valueKobo: 28130000,
-          display: "₦281.3K",
+          valueKobo: 0,
+          display: "Unavailable",
           deltaPct: 0,
           sources: [ServiceSlug.BILLSTACKS, ServiceSlug.BUILDERS],
         },
@@ -461,52 +478,39 @@ export async function getDashboardSummary(
         {
           key: "totalPurchase",
           label: "Total Purchase",
-          valueKobo: 65000000,
-          display: "₦650.0K",
+          valueKobo: 0,
+          display: "Unavailable",
           deltaPct: 0,
           sources: [ServiceSlug.SPARK, ServiceSlug.BILLSTACKS],
         },
         {
           key: "purchaseDue",
           label: "Purchase Due",
-          valueKobo: 14500000,
-          display: "₦145.0K",
+          valueKobo: 0,
+          display: "Unavailable",
           deltaPct: 0,
           sources: [ServiceSlug.SPARK, ServiceSlug.BILLSTACKS],
         },
         {
           key: "activeBookings",
           label: "Active Bookings",
-          valueKobo: 9,
-          display: "9",
+          valueKobo: 0,
+          display: "Unavailable",
           deltaPct: 0,
           sources: [ServiceSlug.APARTMENTS],
         },
         {
           key: "visitorsToday",
           label: "Visitors Today",
-          valueKobo: 4,
-          display: "4",
+          valueKobo: 0,
+          display: "Unavailable",
           deltaPct: 0,
           sources: [ServiceSlug.VISITORS],
         },
       ],
       salesLast30Days: { labels: [], series: [] },
       salesFinancialYear: { labels: [], series: [] },
-      attention: [
-        {
-          severity: "medium" as const,
-          source: ServiceSlug.SPARK,
-          title: "3 low-stock products need restocking",
-          href: "/admin/spark/stock-alert",
-        },
-        {
-          severity: "high" as const,
-          source: ServiceSlug.BUILDERS,
-          title: "Debtor Overdue: Mama Bose Ventures (₦281,300)",
-          href: "/admin/builders/debtors",
-        },
-      ],
+      attention: [],
       recentActivity: [],
       salesPaymentDue: { rows: [], totalKobo: 0 },
       purchasePaymentDue: { rows: [], totalKobo: 0 },

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Search,
   ShoppingCart,
@@ -24,10 +25,10 @@ import { formatCurrency } from "@/lib/money";
 import { CATALOG_PRODUCTS, type StoreProduct } from "@/lib/shop-data";
 
 export default function DeviceGalaxyShopPage() {
-  const { products: storeProducts, recordTransaction } = usePlatformStore();
+  const { products: storeProducts, cartItems, addToCart } = usePlatformStore();
   const [activeTab, setActiveTab] = useState<"FEATURED" | "SPECIAL" | "NEW_ARRIVAL" | "LATEST">("FEATURED");
   const [searchQuery, setSearchQuery] = useState("");
-  const [cartCount, setCartCount] = useState(2);
+  const cartCount = cartItems.reduce((acc, it) => acc + it.qty, 0);
   const [shopBanner, setShopBanner] = useState<string | null>(null);
   const [previewProduct, setPreviewProduct] = useState<StoreProduct | null>(null);
 
@@ -79,19 +80,16 @@ export default function DeviceGalaxyShopPage() {
   const handleAddToCart = (p: StoreProduct, e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!p.inStock) return;
-    setCartCount((c) => c + 1);
-
-    const inv = recordTransaction({
-      source: ServiceSlug.GALAXY,
-      activityType: "ORDER",
-      activitySummary: `Online Storefront Item Added — ${p.name}`,
-      customer: "Device Galaxy Shopper",
-      amountKobo: p.priceKobo,
-      location: "Galaxy Online",
-      status: "PAID",
+    addToCart({
+      productId: p.id,
+      name: p.name,
+      sku: p.sku,
+      priceKobo: p.priceKobo,
+      qty: 1,
+      image: p.image,
     });
 
-    setShopBanner(`Added "${p.name}" to cart! Logged to central platform.`);
+    setShopBanner(`Added "${p.name}" to your cart.`);
     setTimeout(() => setShopBanner(null), 4000);
   };
 
@@ -125,8 +123,8 @@ export default function DeviceGalaxyShopPage() {
       <header className="sticky top-0 z-40 bg-white border-b border-border shadow-xs">
         <div className="max-w-7xl mx-auto h-20 px-4 sm:px-8 flex items-center justify-between gap-6">
           <Link href="/shop" className="flex items-center gap-2.5 shrink-0">
-            <div className="w-10 h-10 rounded-xl bg-galaxy flex items-center justify-center font-black text-white text-lg shadow-sm">
-              DG
+            <div className="w-10 h-10 rounded-xl bg-white border border-border p-0.5 flex items-center justify-center shadow-sm overflow-hidden">
+              <Image src="/logos/device-galaxy.png" alt="Device Galaxy" width={40} height={40} className="w-full h-full object-contain" priority />
             </div>
             <div>
               <span className="font-black text-heading text-xl tracking-tight block leading-tight">

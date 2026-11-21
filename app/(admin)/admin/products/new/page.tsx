@@ -11,6 +11,7 @@ import {
   Eye,
   CheckCircle2,
   Upload,
+  X,
 } from "lucide-react";
 import { ServiceSlug, SERVICE_CONFIG } from "@/lib/constants";
 import { usePlatformStore } from "@/lib/platform-store";
@@ -36,13 +37,15 @@ export default function NewProductPage() {
   });
 
   const [isSaved, setIsSaved] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.sku.trim()) {
-      alert("Product name and SKU are required.");
+      setErrorMsg("Product name and SKU are required.");
       return;
     }
+    setErrorMsg(null);
 
     const priceKobo = Math.round(Number(form.priceNgn) * 100);
     const costKobo = Math.round(Number(form.costNgn) * 100);
@@ -100,6 +103,15 @@ export default function NewProductPage() {
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Form Fields (8 cols) */}
         <div className="lg:col-span-8 space-y-6">
+          {errorMsg && (
+            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between">
+              <span>{errorMsg}</span>
+              <button type="button" onClick={() => setErrorMsg(null)} className="text-rose-400 hover:text-rose-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           <div className="bg-white p-6 rounded-2xl border border-border shadow-2xs space-y-4">
             <h2 className="text-xs font-black text-heading uppercase tracking-wider">
               1. Basic Information &amp; Service Classification
@@ -112,7 +124,7 @@ export default function NewProductPage() {
               <select
                 value={form.source}
                 onChange={(e) => setForm({ ...form, source: e.target.value as ServiceSlug })}
-                className="w-full h-10 px-3 rounded-xl border border-border text-xs text-heading focus:outline-none focus:border-active"
+                className="w-full h-10 px-3 rounded-xl border border-border text-xs text-gray-900 bg-white focus:outline-none focus:border-active"
               >
                 <option value={ServiceSlug.GALAXY}>Device Galaxy (Online Storefront)</option>
                 <option value={ServiceSlug.SPARK}>Zino Spark (Computer Village POS &amp; Wholesale)</option>

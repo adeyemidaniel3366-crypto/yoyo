@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Cpu,
   ShoppingCart,
@@ -67,6 +68,9 @@ export default function ZinoSparkDashboardPage() {
       <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 text-white shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
+            <span className="w-8 h-8 rounded-lg bg-white p-0.5 overflow-hidden shrink-0">
+              <Image src="/logos/zino-spark.png" alt="Zino Spark" width={32} height={32} className="w-full h-full object-contain" />
+            </span>
             <SourceBadge source={ServiceSlug.SPARK} size="sm" className="bg-white/20 text-white" />
             <span className="text-xs text-blue-100 font-semibold uppercase tracking-wider">Multi-Shop Retail POS</span>
           </div>
@@ -85,11 +89,11 @@ export default function ZinoSparkDashboardPage() {
             onChange={(e) => setSelectedLocation(e.target.value)}
             className="h-9 px-3 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-white/40 cursor-pointer"
           >
-            <option value="Oga's Office (Olayeni)" className="text-gray-900">Oga's Office (Olayeni)</option>
-            <option value="Zino Spark Medical Road" className="text-gray-900">Zino Spark Medical Road</option>
-            <option value="Zino Spark Adepele" className="text-gray-900">Zino Spark Adepele</option>
-            <option value="Zino Spark Olayeni Shop" className="text-gray-900">Zino Spark Olayeni Shop</option>
-            <option value="Warehouse — Asset Corps Plaza" className="text-gray-900">Warehouse — Asset Corps Plaza</option>
+            <option value="Oga's Office (Olayeni)" className="bg-slate-900 text-white">Oga's Office (Olayeni)</option>
+            <option value="Zino Spark Medical Road" className="bg-slate-900 text-white">Zino Spark Medical Road</option>
+            <option value="Zino Spark Adepele" className="bg-slate-900 text-white">Zino Spark Adepele</option>
+            <option value="Zino Spark Olayeni Shop" className="bg-slate-900 text-white">Zino Spark Olayeni Shop</option>
+            <option value="Warehouse — Asset Corps Plaza" className="bg-slate-900 text-white">Warehouse — Asset Corps Plaza</option>
           </select>
 
           <Link

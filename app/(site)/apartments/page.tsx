@@ -212,7 +212,7 @@ export default function ZinoApartmentsPublicPage() {
           <Link href="/apartments" className="flex items-center gap-3.5 group shrink-0">
             <div className="w-11 h-11 rounded-xl bg-white border border-slate-200/90 p-1 flex items-center justify-center shadow-xs overflow-hidden group-hover:scale-105 transition-transform">
               <Image
-                src="/logos/apartments-logo.png"
+                src="/logos/zino-spark.png"
                 alt="Zino Luxury Apartments Logo"
                 width={145}
                 height={103}
@@ -697,7 +697,7 @@ export default function ZinoApartmentsPublicPage() {
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-white p-1">
               <Image
-                src="/logos/apartments-logo.png"
+                src="/logos/zino-spark.png"
                 alt="Zino Apartments"
                 width={32}
                 height={32}

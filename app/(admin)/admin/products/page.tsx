@@ -100,12 +100,16 @@ function ProductModal({
     ...product,
   });
   const [imageUrl, setImageUrl] = useState("");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const set = (key: keyof Product, val: any) => setForm((f) => ({ ...f, [key]: val }));
+  const set = (key: keyof Product, val: any) => {
+    setErrorMsg(null);
+    setForm((f) => ({ ...f, [key]: val }));
+  };
 
   const handleSave = () => {
     if (!form.name?.trim() || !form.sku?.trim()) {
-      alert("Name and SKU are required.");
+      setErrorMsg("Product Name and SKU are required fields.");
       return;
     }
     onSave({
@@ -150,12 +154,20 @@ function ProductModal({
 
         {/* Body */}
         <div className="p-5 space-y-5">
+          {errorMsg && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between">
+              <span>{errorMsg}</span>
+              <button type="button" onClick={() => setErrorMsg(null)} className="text-rose-400 hover:text-rose-600">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
           {/* Service selector (new only) */}
           {isNew && (
             <div>
               <label className="text-xs font-semibold text-heading block mb-1.5">Service / Section</label>
               <select value={form.source} onChange={(e) => set("source", e.target.value as ServiceSlug)}
-                className="w-full h-9 px-3 rounded-lg border border-border text-sm text-heading focus:outline-none focus:border-active">
+                className="w-full h-9 px-3 rounded-lg border border-border text-sm text-gray-900 bg-white focus:outline-none focus:border-active">
                 <option value={ServiceSlug.SPARK}>Zino Spark</option>
                 <option value={ServiceSlug.GALAXY}>Device Galaxy</option>
                 <option value={ServiceSlug.BUILDERS}>Top Builders</option>
@@ -210,7 +222,7 @@ function ProductModal({
           <div>
             <label className="text-xs font-semibold text-heading block mb-1.5">Status</label>
             <select value={form.status ?? "ACTIVE"} onChange={(e) => set("status", e.target.value)}
-              className="w-full h-9 px-3 rounded-lg border border-border text-sm text-heading focus:outline-none focus:border-active">
+              className="w-full h-9 px-3 rounded-lg border border-border text-sm text-gray-900 bg-white focus:outline-none focus:border-active">
               <option value="ACTIVE">Active — visible on website</option>
               <option value="INACTIVE">Inactive — hidden from website</option>
               <option value="OUT_OF_STOCK">Out of Stock</option>

@@ -443,7 +443,7 @@ export default function ApartmentRoomsPage() {
                     onChange={(e) =>
                       setCategory(e.target.value as ApartmentSuite["category"])
                     }
-                    className="w-full px-3 py-2 rounded-xl border border-border bg-gray-50 focus:bg-white focus:outline-none focus:border-apartment text-xs"
+                    className="w-full px-3 py-2 rounded-xl border border-border bg-gray-50 focus:bg-white focus:outline-none focus:border-apartment text-xs text-gray-900"
                   >
                     <option value="Studio">Studio Suite</option>
                     <option value="1-Bedroom">1-Bedroom Suite</option>

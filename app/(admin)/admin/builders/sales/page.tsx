@@ -12,6 +12,7 @@ import {
   Lock,
   ArrowRight,
   FileText,
+  CheckCircle2,
 } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
@@ -45,78 +46,92 @@ interface DaySheet {
   sales: DaySaleRecord[];
 }
 
+const DEFAULT_DAYS: DaySheet[] = [
+  {
+    date: "Wed, 18 Nov 2026",
+    salesCount: 1,
+    income: 392000,
+    expenses: 0,
+    cashReceived: 392000,
+    transferred: 0,
+    balance: 392000,
+    isClosed: false,
+    sales: [
+      {
+        id: "s106",
+        invoiceNo: "INV-000106",
+        time: "10:45 AM",
+        customer: "Adewumi Builders",
+        items: [{ name: "Dangote Cement 50kg", qty: 40, unit: "bag", total: 392000 }],
+        total: 392000,
+        paid: 392000,
+        outstanding: 0,
+        status: "PAID",
+        paymentMethod: "CASH",
+        remarks: "Delivered to Okokomaiko site",
+        signedBy: "Cashier CE",
+      },
+    ],
+  },
+  {
+    date: "Tue, 17 Nov 2026",
+    salesCount: 2,
+    income: 480000,
+    expenses: 25000,
+    cashReceived: 285000,
+    transferred: 195000,
+    balance: 260000,
+    isClosed: true,
+    sales: [
+      {
+        id: "s105",
+        invoiceNo: "INV-000105",
+        time: "02:15 PM",
+        customer: "Chief Okonkwo",
+        items: [
+          { name: "Iron Rod 16mm", qty: 10, unit: "lgth", total: 215000 },
+          { name: "Binding Wire", qty: 15, unit: "kg", total: 24000 },
+        ],
+        total: 239000,
+        paid: 100000,
+        outstanding: 139000,
+        status: "PART_PAID",
+        paymentMethod: "MONIEPOINT_POS",
+        remarks: "Balance promised on Friday",
+        signedBy: "Cashier CE",
+      },
+    ],
+  },
+  {
+    date: "Mon, 16 Nov 2026",
+    salesCount: 3,
+    income: 750000,
+    expenses: 12000,
+    cashReceived: 500000,
+    transferred: 250000,
+    balance: 488000,
+    isClosed: true,
+    sales: [],
+  },
+];
+
 export default function DailySalesBookPage() {
   const [viewMode, setViewMode] = useState<"cards" | "ledger">("cards");
   const [expandedDay, setExpandedDay] = useState<string | null>("2026-11-18");
+  const [dayList, setDayList] = useState<DaySheet[]>(DEFAULT_DAYS);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  const days: DaySheet[] = [
-    {
-      date: "Wed, 18 Nov 2026",
-      salesCount: 1,
-      income: 392000,
-      expenses: 0,
-      cashReceived: 392000,
-      transferred: 0,
-      balance: 392000,
-      isClosed: false,
-      sales: [
-        {
-          id: "s106",
-          invoiceNo: "INV-000106",
-          time: "10:45 AM",
-          customer: "Adewumi Builders",
-          items: [{ name: "Dangote Cement 50kg", qty: 40, unit: "bag", total: 392000 }],
-          total: 392000,
-          paid: 392000,
-          outstanding: 0,
-          status: "PAID",
-          paymentMethod: "CASH",
-          remarks: "Delivered to Okokomaiko site",
-          signedBy: "Cashier CE",
-        },
-      ],
-    },
-    {
-      date: "Tue, 17 Nov 2026",
-      salesCount: 2,
-      income: 480000,
-      expenses: 25000,
-      cashReceived: 285000,
-      transferred: 195000,
-      balance: 260000,
-      isClosed: true,
-      sales: [
-        {
-          id: "s105",
-          invoiceNo: "INV-000105",
-          time: "02:15 PM",
-          customer: "Chief Okonkwo",
-          items: [
-            { name: "Iron Rod 16mm", qty: 10, unit: "lgth", total: 215000 },
-            { name: "Binding Wire", qty: 15, unit: "kg", total: 24000 },
-          ],
-          total: 239000,
-          paid: 100000,
-          outstanding: 139000,
-          status: "PART_PAID",
-          paymentMethod: "MONIEPOINT_POS",
-          remarks: "Balance promised on Friday",
-          signedBy: "Cashier CE",
-        },
-      ],
-    },
-    {
-      date: "Mon, 16 Nov 2026",
-      salesCount: 3,
-      income: 750000,
-      expenses: 12000,
-      cashReceived: 500000,
-      transferred: 250000,
-      balance: 488000,
-      isClosed: true,
-      sales: [],
-    },
-  ];
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  const handleCloseDay = (dateStr: string) => {
+    setDayList((prev) =>
+      prev.map((d) => (d.date === dateStr ? { ...d, isClosed: true } : d))
+    );
+    showToast(`Daily sales book for ${dateStr} reconciled and locked.`);
+  };
 
   const toggleDay = (d: string) => {
     setExpandedDay(expandedDay === d ? null : d);
@@ -124,6 +139,14 @@ export default function DailySalesBookPage() {
 
   return (
     <div className="space-y-6">
+      {/* Toast Feedback */}
+      {toastMsg && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-gray-900 text-white text-xs font-bold shadow-2xl border border-emerald-500/40 animate-fade-in-up">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -182,7 +205,7 @@ export default function DailySalesBookPage() {
 
       {/* Day Cards List */}
       <div className="space-y-4">
-        {days.map((day) => {
+        {dayList.map((day) => {
           const isExpanded = expandedDay === day.date;
 
           return (
@@ -252,7 +275,7 @@ export default function DailySalesBookPage() {
                       {!day.isClosed ? (
                         <button
                           type="button"
-                          onClick={() => alert(`Closing daily sales book for ${day.date}...`)}
+                          onClick={() => handleCloseDay(day.date)}
                           className="w-full py-1.5 rounded-md bg-active text-white font-bold text-[11px] hover:bg-indigo-700 transition-colors"
                         >
                           Close Day

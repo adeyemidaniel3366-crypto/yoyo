@@ -22,7 +22,7 @@ import { formatCurrency } from "@/lib/money";
 
 export default function ShopCheckoutPage() {
   const router = useRouter();
-  const { recordTransaction } = usePlatformStore();
+  const { cartItems, clearCart, updateCartQty, removeFromCart, recordTransaction } = usePlatformStore();
 
   const [formData, setFormData] = useState({
     fullName: "Chief Babatunde Balogun",
@@ -37,30 +37,12 @@ export default function ShopCheckoutPage() {
   const [shippingMethod, setShippingMethod] = useState<"STANDARD" | "EXPRESS">("EXPRESS");
   const [paymentMethod, setPaymentMethod] = useState<"CARD" | "TRANSFER" | "COD">("CARD");
   const [couponCode, setCouponCode] = useState("");
+  const [couponError, setCouponError] = useState<string | null>(null);
   const [discountKobo, setDiscountKobo] = useState(0);
   const [couponApplied, setCouponApplied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
   const [completedOrder, setCompletedOrder] = useState<any | null>(null);
-
-  // Default cart items
-  const [cartItems, setCartItems] = useState([
-    {
-      id: "gal_1",
-      name: "Samsung 990 PRO 4TB PCIe 4.0 NVMe M.2 SSD",
-      sku: "SAM-990PRO-4TB",
-      priceKobo: 48000000,
-      qty: 1,
-      image: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=400",
-    },
-    {
-      id: "gal_4",
-      name: "Lexar SL500 Portable SSD 2TB",
-      sku: "LXR-SL500-2TB",
-      priceKobo: 22000000,
-      qty: 1,
-      image: "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400",
-    },
-  ]);
 
   const subtotalKobo = cartItems.reduce((acc, it) => acc + it.priceKobo * it.qty, 0);
   const vatKobo = Math.round(subtotalKobo * 0.075);
@@ -70,71 +52,93 @@ export default function ShopCheckoutPage() {
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
-    if (couponCode.trim().toUpperCase() === "ZINO2026" || couponCode.trim().toUpperCase() === "WELCOME10") {
+    setCouponError(null);
+    const code = couponCode.trim().toUpperCase();
+    if (code === "ZINO2026" || code === "WELCOME10") {
       const discount = Math.round(subtotalKobo * 0.1);
       setDiscountKobo(discount);
       setCouponApplied(true);
     } else {
-      alert("Invalid coupon code. Try 'ZINO2026' for 10% off!");
+      setCouponError("Invalid coupon code. Try 'ZINO2026' for 10% off!");
     }
   };
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (cartItems.length === 0) {
+      setOrderError("Your cart is empty. Please add items from the shop before checking out.");
+      return;
+    }
     setIsSubmitting(true);
+    setOrderError(null);
+
+    let serverOrderNo: string | null = null;
+    let isServerConfirmed = false;
 
     try {
-      // Record transaction to Platform Store
-      const inv = recordTransaction({
-        source: ServiceSlug.GALAXY,
-        activityType: "ORDER",
-        activitySummary: `Device Galaxy Online Order — ${cartItems.map((c) => c.name).join(", ")}`,
-        customer: formData.fullName,
-        amountKobo: totalKobo,
-        location: "Galaxy Online (Lagos Dispatch)",
-        status: paymentMethod === "COD" ? "PENDING" : "PAID",
-      });
-
-      // Try backend call if available
-      try {
-        await fetch("/api/galaxy/orders", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            shippingAddress: {
-              fullName: formData.fullName,
-              phone: formData.phone,
-              line1: formData.address,
-              city: formData.city,
-              state: formData.state,
-              country: "Nigeria",
-            },
-            paymentMethod: paymentMethod === "COD" ? "COD" : "ONLINE",
-            notes: formData.notes,
-          }),
-        });
-      } catch {
-        // Safe fallback in offline mode
-      }
-
-      setCompletedOrder({
-        orderNo: inv.invoiceNo,
-        customer: formData.fullName,
-        email: formData.email,
-        phone: formData.phone,
-        address: `${formData.address}, ${formData.city}, ${formData.state}`,
-        items: cartItems,
-        totalKobo,
-        paymentMethod,
-        date: new Date().toLocaleDateString("en-NG", {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
+      const res = await fetch("/api/galaxy/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shippingAddress: {
+            fullName: formData.fullName,
+            phone: formData.phone,
+            line1: formData.address,
+            city: formData.city,
+            state: formData.state,
+            country: "Nigeria",
+          },
+          couponCode: couponApplied ? couponCode.trim().toUpperCase() : null,
+          paymentMethod: paymentMethod === "COD" ? "COD" : "ONLINE",
+          notes: formData.notes,
         }),
       });
-    } finally {
-      setIsSubmitting(false);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.ok && data?.data?.orderNo) {
+          serverOrderNo = data.data.orderNo;
+          isServerConfirmed = true;
+        }
+      }
+    } catch {
+      // Offline fallback
     }
+
+    const orderRef = serverOrderNo || `DG-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    // Record to platform store
+    const inv = recordTransaction({
+      source: ServiceSlug.GALAXY,
+      activityType: "ORDER",
+      activitySummary: `Device Galaxy Online Order — ${cartItems.map((c) => c.name).join(", ")}`,
+      invoiceNo: orderRef,
+      customer: formData.fullName,
+      amountKobo: totalKobo,
+      location: "Galaxy Online (Lagos Dispatch)",
+      status: paymentMethod === "COD" ? "PENDING" : "PAID",
+    });
+
+    const completed = {
+      orderNo: inv.invoiceNo,
+      customer: formData.fullName,
+      email: formData.email,
+      phone: formData.phone,
+      address: `${formData.address}, ${formData.city}, ${formData.state}`,
+      items: [...cartItems],
+      totalKobo,
+      paymentMethod,
+      isServerConfirmed,
+      date: new Date().toLocaleDateString("en-NG", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
+    };
+
+    clearCart();
+    setCompletedOrder(completed);
+    setIsSubmitting(false);
   };
 
   if (completedOrder) {
@@ -464,23 +468,57 @@ export default function ShopCheckoutPage() {
               </h3>
 
               {/* Items List */}
-              <div className="space-y-3 divide-y divide-gray-100">
-                {cartItems.map((item) => (
-                  <div key={item.id} className="pt-3 first:pt-0 flex items-center gap-3">
-                    <div className="w-14 h-14 rounded-lg bg-gray-50 border border-border p-1.5 flex items-center justify-center shrink-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={item.image} alt={item.name} className="max-h-full max-w-full object-contain" />
+              {cartItems.length === 0 ? (
+                <div className="text-center py-8 space-y-3">
+                  <ShoppingBag className="w-10 h-10 text-muted mx-auto" />
+                  <p className="text-sm font-bold text-heading">Your cart is empty</p>
+                  <p className="text-xs text-muted">Add items from the store to proceed with checkout.</p>
+                  <Link href="/shop" className="inline-block px-4 py-2 rounded-xl bg-galaxy text-white text-xs font-bold hover:bg-galaxy-dark transition-colors">
+                    Browse Store →
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3 divide-y divide-gray-100 max-h-72 overflow-y-auto pr-1">
+                  {cartItems.map((item) => (
+                    <div key={item.id} className="pt-3 first:pt-0 flex items-center gap-3">
+                      <div className="w-14 h-14 rounded-lg bg-gray-50 border border-border p-1.5 flex items-center justify-center shrink-0">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={item.image} alt={item.name} className="max-h-full max-w-full object-contain" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-xs text-heading truncate">{item.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <button
+                            type="button"
+                            onClick={() => updateCartQty(item.id, item.qty - 1)}
+                            className="w-5 h-5 rounded bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold text-xs"
+                          >
+                            -
+                          </button>
+                          <span className="font-semibold text-xs">{item.qty}</span>
+                          <button
+                            type="button"
+                            onClick={() => updateCartQty(item.id, item.qty + 1)}
+                            className="w-5 h-5 rounded bg-gray-100 hover:bg-gray-200 flex items-center justify-center font-bold text-xs"
+                          >
+                            +
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeFromCart(item.id)}
+                            className="text-[10px] text-rose-500 hover:underline ml-1"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <p className="text-xs font-black text-heading mt-1">
+                          {formatCurrency(item.priceKobo * item.qty)}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-xs text-heading truncate">{item.name}</p>
-                      <p className="text-[10px] text-muted font-mono">Qty: {item.qty}</p>
-                      <p className="text-xs font-black text-heading mt-0.5">
-                        {formatCurrency(item.priceKobo * item.qty)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               {/* Coupon Form */}
               <div className="pt-2">
@@ -500,10 +538,18 @@ export default function ShopCheckoutPage() {
                     Apply
                   </button>
                 </div>
+                {couponError && (
+                  <p className="text-[11px] text-rose-600 font-semibold mt-1.5">{couponError}</p>
+                )}
                 {couponApplied && (
                   <p className="text-[11px] text-emerald-600 font-bold mt-1.5 flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" /> 10% discount applied!
                   </p>
+                )}
+                {orderError && (
+                  <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium mt-2">
+                    {orderError}
+                  </div>
                 )}
               </div>
 

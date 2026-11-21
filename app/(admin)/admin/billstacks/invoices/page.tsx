@@ -10,11 +10,14 @@ import {
   Download,
   Send,
   Eye,
+  X,
+  CheckCircle2,
 } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCurrency } from "@/lib/money";
+import { usePlatformStore } from "@/lib/platform-store";
 
 interface InvoiceRow {
   id: string;
@@ -34,8 +37,69 @@ const INVOICES: InvoiceRow[] = [
 ];
 
 export default function BillstacksInvoicesPage() {
-  const [invoices] = useState<InvoiceRow[]>(INVOICES);
+  const { recordTransaction } = usePlatformStore();
+  const [invoices, setInvoices] = useState<InvoiceRow[]>(INVOICES);
   const [search, setSearch] = useState("");
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [newInv, setNewInv] = useState({
+    client: "",
+    amountNaira: "",
+    dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
+    description: "Cloud Accounting & Invoicing Services",
+    status: "UNPAID" as "PAID" | "UNPAID" | "OVERDUE" | "PARTIAL",
+  });
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  const handleCreateInvoiceSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newInv.client.trim() || !newInv.amountNaira.trim()) return;
+
+    const amountKobo = Math.round(Number(newInv.amountNaira) * 100);
+    const invoiceNo = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
+    const today = new Date().toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+
+    const created: InvoiceRow = {
+      id: `inv_${Date.now()}`,
+      invoiceNo,
+      client: newInv.client.trim(),
+      amountKobo,
+      issueDate: today,
+      dueDate: newInv.dueDate,
+      status: newInv.status,
+    };
+
+    setInvoices([created, ...invoices]);
+
+    recordTransaction({
+      source: ServiceSlug.BILLSTACKS,
+      activityType: "INVOICE",
+      activitySummary: `${newInv.description} for ${created.client}`,
+      invoiceNo,
+      customer: created.client,
+      amountKobo,
+      location: "Billstacks Cloud HQ",
+      status: created.status,
+    });
+
+    setCreateModalOpen(false);
+    setNewInv({
+      client: "",
+      amountNaira: "",
+      dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
+      description: "Cloud Accounting & Invoicing Services",
+      status: "UNPAID",
+    });
+    showToast(`Invoice ${invoiceNo} issued to ${created.client} and logged to dashboard.`);
+  };
+
+  const handleSendReminder = (inv: InvoiceRow) => {
+    showToast(`Payment reminder email dispatched to ${inv.client} for ${inv.invoiceNo}!`);
+  };
 
   const filtered = invoices.filter(
     (i) =>
@@ -45,6 +109,14 @@ export default function BillstacksInvoicesPage() {
 
   return (
     <div className="space-y-6">
+      {/* Toast */}
+      {toastMsg && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#14142B] text-white text-xs font-bold shadow-2xl border border-indigo-500/40 animate-fade-in-up">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -63,8 +135,8 @@ export default function BillstacksInvoicesPage() {
 
         <button
           type="button"
-          onClick={() => alert("Create Invoice dialog opened")}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-billstacks text-white text-xs font-bold shadow-sm"
+          onClick={() => setCreateModalOpen(true)}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-billstacks text-white text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
         >
           <Plus className="w-4 h-4" />
           <span>+ Create Invoice</span>
@@ -113,7 +185,7 @@ export default function BillstacksInvoicesPage() {
                     <div className="flex items-center justify-end gap-1.5">
                       <button
                         type="button"
-                        onClick={() => alert(`Sending payment reminder for ${inv.invoiceNo}`)}
+                        onClick={() => handleSendReminder(inv)}
                         className="p-1.5 rounded-lg text-muted hover:text-billstacks hover:bg-gray-100"
                         title="Send Reminder Email"
                       >
@@ -135,6 +207,119 @@ export default function BillstacksInvoicesPage() {
           </table>
         </div>
       </div>
+
+      {/* Create Invoice Modal */}
+      {createModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-5 animate-scale-in">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-billstacks/10 flex items-center justify-center text-billstacks">
+                  <Receipt className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Create New Invoice</h3>
+                  <p className="text-xs text-gray-500">Generate B2B invoice with unified platform logging</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCreateModalOpen(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateInvoiceSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Client / Company Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Dangote Cement PLC"
+                  value={newInv.client}
+                  onChange={(e) => setNewInv({ ...newInv, client: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Invoice Amount (₦) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    placeholder="e.g. 750000"
+                    value={newInv.amountNaira}
+                    onChange={(e) => setNewInv({ ...newInv, amountNaira: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Due Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newInv.dueDate}
+                    onChange={(e) => setNewInv({ ...newInv, dueDate: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Service / Billing Description
+                </label>
+                <input
+                  type="text"
+                  value={newInv.description}
+                  onChange={(e) => setNewInv({ ...newInv, description: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Initial Payment Status
+                </label>
+                <select
+                  value={newInv.status}
+                  onChange={(e) => setNewInv({ ...newInv, status: e.target.value as any })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks bg-white text-gray-900"
+                >
+                  <option value="UNPAID">UNPAID (Pending collection)</option>
+                  <option value="PAID">PAID (Instant receipt)</option>
+                  <option value="PARTIAL">PARTIAL (Split payment)</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setCreateModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-billstacks text-white text-xs font-bold hover:opacity-95 shadow-sm"
+                >
+                  Generate Invoice
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

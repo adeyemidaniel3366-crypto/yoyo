@@ -129,7 +129,7 @@ export default function GalaxyOrdersPage() {
                     <select
                       value={ord.status}
                       onChange={(e) => updateStatus(ord.id, e.target.value as Order["status"])}
-                      className="px-2 py-1 rounded-lg border border-border text-xs font-semibold text-heading"
+                      className="px-2 py-1 rounded-lg border border-border text-xs font-semibold text-gray-900 bg-white"
                     >
                       <option value="PENDING">PENDING</option>
                       <option value="CONFIRMED">CONFIRMED</option>

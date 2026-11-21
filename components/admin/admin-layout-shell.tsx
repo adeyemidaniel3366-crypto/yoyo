@@ -11,8 +11,7 @@ interface AdminLayoutShellProps {
 
 export function AdminLayoutShell({ children }: AdminLayoutShellProps) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const { globalServiceFilter, updateGlobalServiceFilter } = usePlatformStore();
-  const [selectedLocation, setSelectedLocation] = useState<string>("ALL");
+  const { globalServiceFilter, updateGlobalServiceFilter, globalLocationFilter, updateGlobalLocationFilter } = usePlatformStore();
   const [user, setUser] = useState<{ name: string; role: string } | null>(null);
   const [bookingRequestsCount, setBookingRequestsCount] = useState<number>(2);
 
@@ -60,15 +59,15 @@ export function AdminLayoutShell({ children }: AdminLayoutShellProps) {
           onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
           selectedService={globalServiceFilter}
           onSelectService={updateGlobalServiceFilter}
-          selectedLocation={selectedLocation}
-          onSelectLocation={setSelectedLocation}
+          selectedLocation={globalLocationFilter}
+          onSelectLocation={updateGlobalLocationFilter}
           bookingRequestsCount={bookingRequestsCount}
           userName={user?.name || "Admin"}
           userRole={user?.role || "Super Admin"}
         />
 
         {/* Page Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-7 max-w-7xl w-full min-w-0 mx-auto overflow-x-hidden">
+        <main className="flex-1 p-3 sm:p-6 lg:p-7 max-w-7xl w-full min-w-0 mx-auto overflow-x-hidden">
           {children}
         </main>
       </div>

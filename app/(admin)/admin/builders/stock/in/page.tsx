@@ -169,7 +169,7 @@ export default function TopBuildersStockInPage() {
             <select
               value={selectedProduct}
               onChange={(e) => setSelectedProduct(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-gray-900"
             >
               <option value="prod_tb_1">Dangote Cement 50kg (Grade 42.5N)</option>
               <option value="prod_tb_2">Elephant Supaset Cement 50kg</option>

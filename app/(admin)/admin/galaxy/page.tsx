@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Smartphone,
   Package,
@@ -93,8 +94,8 @@ export default function DeviceGalaxyDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-galaxy-tint flex items-center justify-center text-galaxy">
-              <Smartphone className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-lg bg-white border border-border p-0.5 flex items-center justify-center overflow-hidden shrink-0">
+              <Image src="/logos/device-galaxy.png" alt="Device Galaxy" width={36} height={36} className="w-full h-full object-contain" />
             </div>
             <h1 className="text-2xl font-bold text-heading tracking-tight">
               Device Galaxy E-Commerce

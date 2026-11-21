@@ -123,16 +123,16 @@ export default function TopBuildersDashboardPage() {
           </Link>
           <Link
             href="/admin/builders/sales"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-border bg-white text-heading hover:bg-gray-50 transition-colors shadow-2xs"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-gray-200 bg-white text-gray-900 hover:bg-gray-50 transition-colors shadow-2xs"
           >
-            <BookOpen className="w-4 h-4 text-muted" />
+            <BookOpen className="w-4 h-4 text-gray-500" />
             <span>Sales Book</span>
           </Link>
           <Link
             href="/admin/builders/stock"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-border bg-white text-heading hover:bg-gray-50 transition-colors shadow-2xs"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-gray-200 bg-white text-gray-900 hover:bg-gray-50 transition-colors shadow-2xs"
           >
-            <ClipboardList className="w-4 h-4 text-muted" />
+            <ClipboardList className="w-4 h-4 text-gray-500" />
             <span>Stock Sheet</span>
           </Link>
         </div>
@@ -158,63 +158,63 @@ export default function TopBuildersDashboardPage() {
       {/* 4 Financial Cards (Paid / On Credit / Total, etc.) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total Sales */}
-        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs">
-          <div className="flex items-center justify-between text-xs text-muted mb-1">
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-2xs">
+          <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
             <span>Total Sales</span>
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
           </div>
-          <h3 className="text-2xl font-bold text-heading">₦0.00</h3>
-          <div className="mt-3 pt-3 border-t border-border space-y-1 text-xs text-muted">
+          <h3 className="text-2xl font-bold text-gray-900">₦0.00</h3>
+          <div className="mt-3 pt-3 border-t border-gray-200 space-y-1 text-xs text-gray-600">
             <div className="flex justify-between">
               <span>Paid sales:</span>
-              <span className="font-semibold text-heading">₦0.00</span>
+              <span className="font-semibold text-gray-900">₦0.00</span>
             </div>
             <div className="flex justify-between">
               <span>On credit:</span>
-              <span className="font-semibold text-heading">₦0.00</span>
+              <span className="font-semibold text-gray-900">₦0.00</span>
             </div>
           </div>
         </div>
 
         {/* Card 2: Received */}
-        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs">
-          <div className="flex items-center justify-between text-xs text-muted mb-1">
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-2xs">
+          <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
             <span>Received</span>
             <span className="w-2 h-2 rounded-full bg-blue-500" />
           </div>
-          <h3 className="text-2xl font-bold text-heading">₦0.00</h3>
-          <div className="mt-3 pt-3 border-t border-border space-y-1 text-xs text-muted">
+          <h3 className="text-2xl font-bold text-gray-900">₦0.00</h3>
+          <div className="mt-3 pt-3 border-t border-gray-200 space-y-1 text-xs text-gray-600">
             <div className="flex justify-between">
               <span>Cash received:</span>
-              <span className="font-semibold text-heading">₦0.00</span>
+              <span className="font-semibold text-gray-900">₦0.00</span>
             </div>
             <div className="flex justify-between">
               <span>Bank / POS:</span>
-              <span className="font-semibold text-heading">₦0.00</span>
+              <span className="font-semibold text-gray-900">₦0.00</span>
             </div>
           </div>
         </div>
 
         {/* Card 3: Transferred (POS + Bank) */}
-        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs">
-          <div className="flex items-center justify-between text-xs text-muted mb-1">
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-2xs">
+          <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
             <span>Transferred (POS + bank)</span>
             <span className="w-2 h-2 rounded-full bg-purple-500" />
           </div>
-          <h3 className="text-2xl font-bold text-heading">₦0.00</h3>
-          <div className="mt-3 pt-3 border-t border-border text-xs text-muted">
+          <h3 className="text-2xl font-bold text-gray-900">₦0.00</h3>
+          <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500">
             <p className="italic">None yet today</p>
           </div>
         </div>
 
         {/* Card 4: Expenses */}
-        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs">
-          <div className="flex items-center justify-between text-xs text-muted mb-1">
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-2xs">
+          <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
             <span>Expenses</span>
             <span className="w-2 h-2 rounded-full bg-rose-500" />
           </div>
-          <h3 className="text-2xl font-bold text-heading">₦0.00</h3>
-          <div className="mt-3 pt-3 border-t border-border text-xs text-muted">
+          <h3 className="text-2xl font-bold text-gray-900">₦0.00</h3>
+          <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500">
             <p className="italic">None yet today</p>
           </div>
         </div>
@@ -223,29 +223,29 @@ export default function TopBuildersDashboardPage() {
       {/* Summary Cards: Drawer Balance & Outstanding Debts */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Balance After Expenses */}
-        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-2xs flex flex-col justify-between">
           <div>
-            <h4 className="text-xs font-semibold text-muted uppercase tracking-wider">
+            <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
               Balance After Expenses
             </h4>
-            <p className="text-2xl font-bold text-heading mt-1">₦0.00</p>
-            <p className="text-xs text-muted mt-0.5">
+            <p className="text-2xl font-bold text-gray-900 mt-1">₦0.00</p>
+            <p className="text-xs text-gray-600 mt-0.5">
               Cash that should be in the drawer: ₦0
             </p>
           </div>
-          <p className="text-[11px] text-muted mt-3">
+          <p className="text-[11px] text-gray-500 mt-3">
             Count drawer and close day at 6:00 PM.
           </p>
         </div>
 
         {/* Outstanding Debts */}
-        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-2xs flex flex-col justify-between">
           <div>
-            <h4 className="text-xs font-semibold text-muted uppercase tracking-wider">
+            <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
               Outstanding Debts
             </h4>
             <p className="text-2xl font-bold text-rose-600 mt-1">₦834,500</p>
-            <p className="text-xs text-muted mt-0.5">
+            <p className="text-xs text-gray-600 mt-0.5">
               Owed across 6 credit customers
             </p>
           </div>
@@ -261,11 +261,11 @@ export default function TopBuildersDashboardPage() {
       {/* Weekly Chart & Recent Sales Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Sales this week bar chart */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-border p-5 shadow-2xs">
+        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5 shadow-2xs">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-base font-semibold text-heading">Sales this week</h3>
-              <p className="text-xs text-muted">Mon – Sun daily revenue</p>
+              <h3 className="text-base font-semibold text-gray-900">Sales this week</h3>
+              <p className="text-xs text-gray-600">Mon – Sun daily revenue</p>
             </div>
             <button
               type="button"
@@ -300,18 +300,18 @@ export default function TopBuildersDashboardPage() {
             <div className="overflow-x-auto text-xs">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="border-b border-border text-muted">
+                  <tr className="border-b border-gray-200 text-gray-700 font-bold">
                     <th className="py-2">Day</th>
                     <th className="py-2 text-right">Sales Count</th>
                     <th className="py-2 text-right">Revenue</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-gray-200">
                   {weeklySalesData.map((d) => (
                     <tr key={d.day}>
-                      <td className="py-2 font-medium">{d.day}</td>
-                      <td className="py-2 text-right">{d.count}</td>
-                      <td className="py-2 text-right font-bold">{formatCurrency(d.sales * 100)}</td>
+                      <td className="py-2 font-medium text-gray-900">{d.day}</td>
+                      <td className="py-2 text-right text-gray-700">{d.count}</td>
+                      <td className="py-2 text-right font-bold text-gray-900">{formatCurrency(d.sales * 100)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -321,10 +321,10 @@ export default function TopBuildersDashboardPage() {
         </div>
 
         {/* Low Stock List (14 seed items, 5 low) */}
-        <div className="bg-white rounded-xl border border-border p-5 shadow-2xs flex flex-col justify-between">
+        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-2xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-2 mb-3 border-b border-border">
-              <h3 className="text-base font-semibold text-heading">Low Stock</h3>
+            <div className="flex items-center justify-between pb-2 mb-3 border-b border-gray-200">
+              <h3 className="text-base font-semibold text-gray-900">Low Stock</h3>
               <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-bold text-xs">
                 {lowStockItems.length} items
               </span>
@@ -332,10 +332,10 @@ export default function TopBuildersDashboardPage() {
 
             <div className="space-y-3 text-xs">
               {lowStockItems.map((item) => (
-                <div key={item.code} className="flex items-center justify-between py-1 border-b border-border/50">
+                <div key={item.code} className="flex items-center justify-between py-1 border-b border-gray-200">
                   <div className="min-w-0 pr-2">
-                    <p className="font-bold text-heading truncate">{item.name}</p>
-                    <p className="text-[10px] text-muted">Code #{item.code}</p>
+                    <p className="font-bold text-gray-900 truncate">{item.name}</p>
+                    <p className="text-[10px] text-gray-500">Code #{item.code}</p>
                   </div>
                   <span className="font-bold text-rose-600 shrink-0">
                     {item.stock} {item.unit}
@@ -355,9 +355,9 @@ export default function TopBuildersDashboardPage() {
       </div>
 
       {/* Recent Sales Table */}
-      <div className="bg-white rounded-xl border border-border overflow-hidden shadow-2xs p-5">
-        <div className="flex items-center justify-between pb-3 mb-3 border-b border-border">
-          <h3 className="text-base font-semibold text-heading">Recent Sales</h3>
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-2xs p-5">
+        <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-200">
+          <h3 className="text-base font-semibold text-gray-900">Recent Sales</h3>
           <Link href="/admin/builders/sales" className="text-xs font-bold text-builders hover:underline">
             View Sales Book →
           </Link>
@@ -366,7 +366,7 @@ export default function TopBuildersDashboardPage() {
         <div className="overflow-x-auto text-xs">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-border text-muted font-semibold">
+              <tr className="border-b border-gray-200 text-gray-700 font-bold">
                 <th className="py-2.5">Invoice</th>
                 <th className="py-2.5">Customer</th>
                 <th className="py-2.5">Date</th>
@@ -374,7 +374,7 @@ export default function TopBuildersDashboardPage() {
                 <th className="py-2.5 text-center">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-gray-200">
               {recentSales.map((sale) => (
                 <tr key={sale.id} className="hover:bg-gray-50/70">
                   <td className="py-3 font-bold text-builders">
@@ -382,9 +382,9 @@ export default function TopBuildersDashboardPage() {
                       {sale.invoiceNo}
                     </Link>
                   </td>
-                  <td className="py-3 font-medium text-heading">{sale.customer}</td>
-                  <td className="py-3 text-muted">{sale.date}</td>
-                  <td className="py-3 text-right font-bold text-heading">
+                  <td className="py-3 font-medium text-gray-900">{sale.customer}</td>
+                  <td className="py-3 text-gray-600">{sale.date}</td>
+                  <td className="py-3 text-right font-bold text-gray-900">
                     {formatCurrency(sale.amountKobo)}
                   </td>
                   <td className="py-3 text-center">

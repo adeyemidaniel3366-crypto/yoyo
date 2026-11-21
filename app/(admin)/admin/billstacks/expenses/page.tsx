@@ -2,10 +2,11 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { TrendingDown, Plus, ArrowLeft, Search, Filter } from "lucide-react";
+import { TrendingDown, Plus, ArrowLeft, Search, Filter, X, CheckCircle2 } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { formatCurrency } from "@/lib/money";
+import { usePlatformStore } from "@/lib/platform-store";
 
 interface ExpenseRow {
   id: string;
@@ -25,8 +26,65 @@ const EXPENSES: ExpenseRow[] = [
 ];
 
 export default function BillstacksExpensesPage() {
-  const [expenses] = useState<ExpenseRow[]>(EXPENSES);
+  const { recordTransaction } = usePlatformStore();
+  const [expenses, setExpenses] = useState<ExpenseRow[]>(EXPENSES);
   const [search, setSearch] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [newExp, setNewExp] = useState({
+    category: "Cloud Hosting",
+    description: "",
+    vendor: "",
+    amountNaira: "",
+    paymentMode: "Bank Transfer",
+  });
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  const handleCreateExpense = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newExp.description.trim() || !newExp.vendor.trim() || !newExp.amountNaira.trim()) return;
+
+    const amountKobo = Math.round(Number(newExp.amountNaira) * 100);
+    const today = new Date().toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+    const expenseId = `exp_${Date.now()}`;
+
+    const created: ExpenseRow = {
+      id: expenseId,
+      category: newExp.category,
+      description: newExp.description.trim(),
+      vendor: newExp.vendor.trim(),
+      amountKobo,
+      date: today,
+      paymentMode: newExp.paymentMode,
+    };
+
+    setExpenses([created, ...expenses]);
+
+    recordTransaction({
+      source: ServiceSlug.BILLSTACKS,
+      activityType: "EXPENSE",
+      activitySummary: `${created.category}: ${created.description} (${created.vendor})`,
+      invoiceNo: `EXP-${Math.floor(100000 + Math.random() * 900000)}`,
+      customer: created.vendor,
+      amountKobo,
+      location: "Billstacks Cloud HQ",
+      status: "PAID",
+    });
+
+    setModalOpen(false);
+    setNewExp({
+      category: "Cloud Hosting",
+      description: "",
+      vendor: "",
+      amountNaira: "",
+      paymentMode: "Bank Transfer",
+    });
+    showToast(`Expense of ₦${Number(created.amountKobo / 100).toLocaleString()} recorded and deducted from executive summary!`);
+  };
 
   const filtered = expenses.filter(
     (e) =>
@@ -39,6 +97,14 @@ export default function BillstacksExpensesPage() {
 
   return (
     <div className="space-y-6">
+      {/* Toast */}
+      {toastMsg && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-gray-900 text-white text-xs font-bold shadow-2xl border border-emerald-500/40 animate-fade-in-up">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -57,8 +123,8 @@ export default function BillstacksExpensesPage() {
 
         <button
           type="button"
-          onClick={() => alert("Log expense dialog")}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-billstacks text-white text-xs font-bold shadow-sm"
+          onClick={() => setModalOpen(true)}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-billstacks text-white text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
         >
           <Plus className="w-4 h-4" />
           <span>+ Log Expense</span>
@@ -67,11 +133,11 @@ export default function BillstacksExpensesPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-border">
-          <p className="text-xs text-muted">Total Expenses (MTD)</p>
+          <p className="text-xs text-muted">Total Expenses (Current)</p>
           <h3 className="text-2xl font-black text-rose-600 mt-1">
             {formatCurrency(totalExpenseKobo)}
           </h3>
-          <p className="text-[11px] text-muted mt-1">November 2026 Total</p>
+          <p className="text-[11px] text-muted mt-1">{expenses.length} Total Disbursements</p>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-border">
           <p className="text-xs text-muted">Cloud &amp; Infrastructure</p>
@@ -126,6 +192,123 @@ export default function BillstacksExpensesPage() {
           </table>
         </div>
       </div>
+
+      {/* Modal */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-5 animate-scale-in">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600">
+                  <TrendingDown className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Log Operating Expense</h3>
+                  <p className="text-xs text-gray-500">Record company overhead & deduction</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setModalOpen(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateExpense} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Category</label>
+                <select
+                  value={newExp.category}
+                  onChange={(e) => setNewExp({ ...newExp, category: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks bg-white text-gray-900"
+                >
+                  <option value="Cloud Hosting">Cloud Hosting & Infrastructure</option>
+                  <option value="Office & Power">Office & Power Utilities</option>
+                  <option value="Software Licensing">Software Licensing</option>
+                  <option value="Legal & Audit">Legal & Advisory</option>
+                  <option value="Marketing">Marketing & Ad Spend</option>
+                  <option value="Equipment & Repair">Equipment & Maintenance</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Expense Description *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. AWS server cluster payment"
+                  value={newExp.description}
+                  onChange={(e) => setNewExp({ ...newExp, description: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Vendor / Payee *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Amazon Web Services"
+                    value={newExp.vendor}
+                    onChange={(e) => setNewExp({ ...newExp, vendor: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Amount (₦) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    placeholder="e.g. 150000"
+                    value={newExp.amountNaira}
+                    onChange={(e) => setNewExp({ ...newExp, amountNaira: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Payment Mode</label>
+                <select
+                  value={newExp.paymentMode}
+                  onChange={(e) => setNewExp({ ...newExp, paymentMode: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks bg-white text-gray-900"
+                >
+                  <option value="Bank Transfer">Bank Transfer / NIP</option>
+                  <option value="Corporate Card">Corporate Debit / Credit Card</option>
+                  <option value="Cheque">Corporate Cheque</option>
+                  <option value="Petty Cash">Petty Cash</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-billstacks text-white text-xs font-bold hover:opacity-95 shadow-sm"
+                >
+                  Record Expense
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

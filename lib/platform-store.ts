@@ -62,6 +62,16 @@ export interface UnifiedPaymentDue {
   dueAmountKobo: number;
 }
 
+export interface UnifiedCartItem {
+  id: string;
+  productId: string;
+  name: string;
+  sku: string;
+  priceKobo: number;
+  qty: number;
+  image: string;
+}
+
 export interface UnifiedMonthlyTargets {
   salesTargetKobo: number;
   expenseBudgetKobo: number;
@@ -556,6 +566,27 @@ export const DEFAULT_MONTHLY_TARGETS: UnifiedMonthlyTargets = {
   visitorsTarget: 20,
 };
 
+export const DEFAULT_CART_ITEMS: UnifiedCartItem[] = [
+  {
+    id: "cart_item_1",
+    productId: "p_spark_1",
+    name: "Samsung 990 PRO 4TB PCIe 4.0 NVMe M.2 SSD",
+    sku: "SAM-990PRO-4TB",
+    priceKobo: 48000000,
+    qty: 1,
+    image: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=400",
+  },
+  {
+    id: "cart_item_2",
+    productId: "p_galaxy_1",
+    name: "Lexar SL500 Portable SSD 2TB",
+    sku: "LXR-SL500-2TB",
+    priceKobo: 22000000,
+    qty: 1,
+    image: "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400",
+  },
+];
+
 // ---------------------------------------------------------------------------
 // Storage Keys & Event Sync
 // ---------------------------------------------------------------------------
@@ -566,7 +597,9 @@ const STORAGE_KEYS = {
   ACTIVITIES: "zino_unified_activities_v2",
   DUES: "zino_unified_dues_v2",
   TARGETS: "zino_unified_targets_v2",
+  CART: "zino_unified_cart_v2",
   GLOBAL_SERVICE_FILTER: "zino_global_service_filter_v2",
+  GLOBAL_LOCATION_FILTER: "zino_global_location_filter_v2",
 };
 
 const STORE_EVENT = "zino-platform-store-sync";
@@ -665,7 +698,9 @@ export function usePlatformStore() {
   const [activities, setActivities] = useState<UnifiedActivityLogItem[]>(DEFAULT_UNIFIED_ACTIVITIES);
   const [paymentDues, setPaymentDues] = useState<UnifiedPaymentDue[]>(DEFAULT_PAYMENT_DUES);
   const [targets, setTargets] = useState<UnifiedMonthlyTargets>(DEFAULT_MONTHLY_TARGETS);
+  const [cartItems, setCartItems] = useState<UnifiedCartItem[]>(DEFAULT_CART_ITEMS);
   const [globalServiceFilter, setGlobalServiceFilter] = useState<ServiceSlug | "ALL">("ALL");
+  const [globalLocationFilter, setGlobalLocationFilter] = useState<string>("ALL");
 
   const syncFromStorage = useCallback(() => {
     setProducts(readStorage(STORAGE_KEYS.PRODUCTS, DEFAULT_UNIFIED_PRODUCTS));
@@ -673,7 +708,9 @@ export function usePlatformStore() {
     setActivities(readStorage(STORAGE_KEYS.ACTIVITIES, DEFAULT_UNIFIED_ACTIVITIES));
     setPaymentDues(readStorage(STORAGE_KEYS.DUES, DEFAULT_PAYMENT_DUES));
     setTargets(readStorage(STORAGE_KEYS.TARGETS, DEFAULT_MONTHLY_TARGETS));
+    setCartItems(readStorage(STORAGE_KEYS.CART, DEFAULT_CART_ITEMS));
     setGlobalServiceFilter(readStorage(STORAGE_KEYS.GLOBAL_SERVICE_FILTER, "ALL"));
+    setGlobalLocationFilter(readStorage(STORAGE_KEYS.GLOBAL_LOCATION_FILTER, "ALL"));
   }, []);
 
   useEffect(() => {
@@ -835,19 +872,90 @@ export function usePlatformStore() {
     writeStorage(STORAGE_KEYS.GLOBAL_SERVICE_FILTER, service);
   }, []);
 
+  const updateGlobalLocationFilter = useCallback((locationId: string) => {
+    writeStorage(STORAGE_KEYS.GLOBAL_LOCATION_FILTER, locationId);
+  }, []);
+
+  const addToCart = useCallback(
+    (item: { productId: string; name: string; sku: string; priceKobo: number; qty?: number; image: string }) => {
+      const current = readStorage(STORAGE_KEYS.CART, DEFAULT_CART_ITEMS);
+      const existing = current.find((c) => c.productId === item.productId || c.sku === item.sku);
+      const qtyToAdd = item.qty || 1;
+
+      let updated: UnifiedCartItem[];
+      if (existing) {
+        updated = current.map((c) =>
+          c.id === existing.id ? { ...c, qty: c.qty + qtyToAdd } : c
+        );
+      } else {
+        const newItem: UnifiedCartItem = {
+          id: `cart_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+          productId: item.productId,
+          name: item.name,
+          sku: item.sku,
+          priceKobo: item.priceKobo,
+          qty: qtyToAdd,
+          image: item.image,
+        };
+        updated = [...current, newItem];
+      }
+      writeStorage(STORAGE_KEYS.CART, updated);
+      return updated;
+    },
+    []
+  );
+
+  const updateCartQty = useCallback((id: string, qty: number) => {
+    const current = readStorage(STORAGE_KEYS.CART, DEFAULT_CART_ITEMS);
+    if (qty <= 0) {
+      const filtered = current.filter((c) => c.id !== id);
+      writeStorage(STORAGE_KEYS.CART, filtered);
+      return filtered;
+    }
+    const updated = current.map((c) => (c.id === id ? { ...c, qty } : c));
+    writeStorage(STORAGE_KEYS.CART, updated);
+    return updated;
+  }, []);
+
+  const removeFromCart = useCallback((id: string) => {
+    const current = readStorage(STORAGE_KEYS.CART, DEFAULT_CART_ITEMS);
+    const filtered = current.filter((c) => c.id !== id);
+    writeStorage(STORAGE_KEYS.CART, filtered);
+    return filtered;
+  }, []);
+
+  const clearCart = useCallback(() => {
+    writeStorage(STORAGE_KEYS.CART, []);
+  }, []);
+
   return {
     products,
     invoices,
     activities,
     paymentDues,
     targets,
+    cartItems,
     globalServiceFilter,
+    globalLocationFilter,
     saveProduct,
     deleteProduct,
     restockProduct,
     settlePaymentDue,
     updateTargets,
     updateGlobalServiceFilter,
+    updateGlobalLocationFilter,
+    addToCart,
+    updateCartQty,
+    removeFromCart,
+    clearCart,
     recordTransaction: recordPlatformTransaction,
   };
+}
+
+export function getPlatformCart(): UnifiedCartItem[] {
+  return readStorage(STORAGE_KEYS.CART, DEFAULT_CART_ITEMS);
+}
+
+export function clearPlatformCart(): void {
+  writeStorage(STORAGE_KEYS.CART, []);
 }

@@ -78,13 +78,54 @@ export function ApartmentBookingModal({
   const cautionDepositKobo = suite.cautionDepositKobo;
   const totalKobo = baseAmountKobo + taxKobo + cautionDepositKobo;
 
-  const handleBookingSubmit = (e: React.FormEvent) => {
+  const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!guestName.trim() || !guestEmail.trim() || !guestPhone.trim()) return;
 
     setIsSubmitting(true);
 
-    const ref = `ZA-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+    let ref = `ZA-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+    let isServerConfirmed = false;
+    let assignedRoom = `Suite ${Math.floor(101 + Math.random() * 30)}`;
+
+    try {
+      const res = await fetch("/api/apartments/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roomTypeId: suite.id,
+          checkIn,
+          checkOut,
+          adults: Number(adults),
+          children: Number(children),
+          rooms: 1,
+          guestName: guestName.trim(),
+          guestEmail: guestEmail.trim().toLowerCase(),
+          guestPhone: guestPhone.trim(),
+          specialRequests: specialRequests.trim() || null,
+          payNow: paymentMethod === "PAYSTACK_CARD",
+        }),
+      });
+
+      if (res.ok) {
+        const resData = await res.json();
+        if (resData?.ok && resData?.data) {
+          ref = resData.data.ref || ref;
+          if (resData.data.room?.number) {
+            assignedRoom = `Suite ${resData.data.room.number}`;
+          }
+          isServerConfirmed = true;
+        }
+      }
+    } catch {
+      // Offline / demo reservation mode
+    }
+
+    const initialStatus =
+      paymentMethod === "PAY_ON_ARRIVAL"
+        ? "PENDING_ARRIVAL"
+        : "CONFIRMED";
+
     const newBooking: ApartmentBooking = {
       id: `bkg_${Date.now()}`,
       bookingRef: ref,
@@ -104,14 +145,9 @@ export function ApartmentBookingModal({
       cautionDepositKobo,
       totalKobo,
       paymentMethod,
-      paymentStatus:
-        paymentMethod === "PAYSTACK_CARD"
-          ? "PAID"
-          : paymentMethod === "BANK_TRANSFER"
-          ? "CONFIRMED"
-          : "PENDING_ARRIVAL",
+      paymentStatus: initialStatus,
       specialRequests: specialRequests.trim() || undefined,
-      roomNumber: `Suite ${Math.floor(101 + Math.random() * 30)}`,
+      roomNumber: assignedRoom,
       createdAt: new Date().toISOString(),
     };
 
@@ -122,12 +158,12 @@ export function ApartmentBookingModal({
     recordTransaction({
       source: ServiceSlug.APARTMENTS,
       activityType: "BOOKING",
-      activitySummary: `Reserved ${suite.name} (${nights} nights, ${checkIn} → ${checkOut})`,
+      activitySummary: `Reserved ${suite.name} (${nights} nights, ${checkIn} → ${checkOut}) ${isServerConfirmed ? "[Verified API]" : "[Demo Mode]"}`,
       invoiceNo: ref,
       customer: guestName.trim(),
       amountKobo: totalKobo,
       location: "Zino Luxury Apartments (Lekki Phase 1)",
-      status: newBooking.paymentStatus,
+      status: initialStatus,
     });
 
     setIsSubmitting(false);

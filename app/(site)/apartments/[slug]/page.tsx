@@ -55,6 +55,7 @@ export default function ApartmentDetailsPage() {
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const loadedSuites = getApartmentSuites();
@@ -157,7 +158,7 @@ export default function ApartmentDetailsPage() {
           <Link href="/apartments" className="flex items-center gap-3.5 group shrink-0">
             <div className="w-11 h-11 rounded-xl bg-white border border-slate-200/90 p-1 flex items-center justify-center shadow-xs overflow-hidden group-hover:scale-105 transition-transform">
               <Image
-                src="/logos/apartments-logo.png"
+                src="/logos/zino-spark.png"
                 alt="Zino Luxury Apartments Logo"
                 width={145}
                 height={103}
@@ -237,13 +238,25 @@ export default function ApartmentDetailsPage() {
             <button
               type="button"
               onClick={() => {
-                navigator.clipboard.writeText(window.location.href);
-                alert("Apartment link copied to clipboard!");
+                if (typeof window !== "undefined") {
+                  navigator.clipboard.writeText(window.location.href);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2500);
+                }
               }}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
             >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>Share</span>
+              {copied ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-emerald-700 font-bold">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Share</span>
+                </>
+              )}
             </button>
             <button
               type="button"
@@ -557,7 +570,7 @@ export default function ApartmentDetailsPage() {
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-white p-1">
               <Image
-                src="/logos/apartments-logo.png"
+                src="/logos/zino-spark.png"
                 alt="Zino Apartments"
                 width={32}
                 height={32}

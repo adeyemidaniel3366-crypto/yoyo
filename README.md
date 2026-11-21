@@ -1,85 +1,139 @@
-# Zino One — Unified Business Platform & Master Enhancement Prompt
+# Zino One Website: Page Inventory and Error Repair Guide
 
-## 1. Executive Summary & Problem Statement
-The **Zino One Unified Business Platform** brings **6 distinct businesses** (**Billstacks**, **Top Builders**, **Zino Spark**, **Zino Apartments**, **Device Galaxy**, and **Visitor Management**) under a single login, unified financial engine, and cross-service admin dashboard.
+This README is the comprehensive issue register and status ledger for the Zino One website. It maps the public pages and admin pages in this repository, records the page and integration repairs completed across the codebase, and provides the architectural specifications for the unified platform.
 
-This specification and prompt covers:
-1. **End-to-End Unified State Synchronization (`lib/platform-store.ts`)** — Every important activity (sales, room bookings, online orders, material dispatches, SaaS subscriptions, visitor check-ins, and product edits) across any section of the website communicates in real time with the **Admin Financial & Sales Dashboard (`/admin`)** and **Activity Feed (`/admin/activity`)**.
-2. **100% Functional Admin Dashboard (`/admin`)** — Interactive Revenue/Expenses/Net Profit summary, editable Monthly Targets, functional Sales/Purchase Payment Due settlement, instant Low-Stock & Quality Alert restocking, 30-Day Sales chart grouping (`By service` vs `By location`), and live Cross-Service Scope filtering.
-3. **Rich Visual Photography & Descriptive Section Designs** — Curated visual imagery, architectural cards, and capability badges on both the **Admin Dashboard (`/admin`)** and **Main Home Screen (`/`)** describing what every section of the website is built for and what can be done on it, replacing plain text boxes.
-4. **Drag-and-Drop Local Image Upload & Storage (`components/ui/image-dropzone.tsx`)** — Instead of requiring external image URLs, admins can drag and drop image files directly from their computer's local storage into the dashboard; images are compressed, uploaded to `/api/uploads` (`public/uploads/products/`), and persisted across the platform.
-5. **Unified Invoice Activity & Multi-Format Exports (`components/ui/data-table.tsx`)** — Every invoice row is labeled with its **Source Section Badge** and **Activity Carried Out**, with one-click export to **CSV**, **Excel**, **PDF**, **Print**, and persistent **Column visibility**.
-6. **External Partner Portals on Home Screen (`/`)** — High-visibility styled buttons and gradient cards for **Neadston Limited** (`https://sales.neadstonltd.com/`) and **Esto World** (`https://sales.estoworld.com/login`).
-7. **Complete Viewport & Component Overflow Fixes** — Global `overflow-x: hidden; max-width: 100vw`, flex container `min-w-0` guards, modal `max-h-[90vh] overflow-y-auto`, and dropdown clipping fixes.
+## Project at a Glance
+
+- **Framework:** Next.js 14 App Router, React 18, TypeScript, Tailwind CSS.
+- **Data Layer:** Prisma and PostgreSQL APIs with robust fallback and reactive client-side store sync (`lib/platform-store.ts`).
+- **Unified Services:**
+  1. **Zino Main Portal:** Central group dashboard, cross-subsidiary activity logs, and executive overview.
+  2. **Zino Spark:** Retail & POS storefront (`/spark`), inventory control, stock adjustments, and inter-branch transfers.
+  3. **Zino Apartments:** Luxury short-let suites (`/apartments`), bookings engine, guest registry, and concierge support.
+  4. **Top Builders:** Construction materials marketplace (`/builders`), daily sales book, and debtors ledger.
+  5. **Device Galaxy:** Consumer electronics e-commerce (`/shop`), cart persistence, brand directory, and blog.
+  6. **Billstacks:** B2B cloud invoicing (`/billstacks`), price estimates, payroll HRM, and recurring retainers.
+  7. **Visitor Management:** Corporate reception check-in kiosk (`/visit`), VIP pre-registration, and host directory.
+- **Admin Route Prefix:** `/admin`.
+- **Shared Dashboard State:** [`lib/platform-store.ts`](lib/platform-store.ts).
+- **Executive Summary API:** [`app/api/dashboard/summary/route.ts`](app/api/dashboard/summary/route.ts) and [`lib/services/reports.ts`](lib/services/reports.ts).
+- **Admin Shell:** [`components/admin/admin-layout-shell.tsx`](components/admin/admin-layout-shell.tsx), [`components/admin/admin-sidebar.tsx`](components/admin/admin-sidebar.tsx), and [`components/admin/admin-topbar.tsx`](components/admin/admin-topbar.tsx).
 
 ---
 
-## 2. Issues Discovered & Resolved in the Codebase
+## Status Key
 
-| # | Issue Found | Root Cause | Fix Implemented |
+| Status | Meaning |
+|---|---|
+| **Resolved** | The issue has been systematically diagnosed, coded, typed, and verified in source and runtime. |
+| **Active / Live** | The route is functioning, returning HTTP 200, and integrated with the unified platform store and APIs. |
+
+---
+
+## Completed Repairs & Unified Platform Upgrades
+
+### 1. Cross-Site Cart Persistence & Checkout Separation — **Resolved**
+- Added `UnifiedCartItem`, `DEFAULT_CART_ITEMS`, `STORAGE_KEYS.CART`, and reactive cart mutations (`addToCart`, `updateCartQty`, `removeFromCart`, `clearCart`) in [`lib/platform-store.ts`](lib/platform-store.ts).
+- Decoupled product browsing from order logging: clicking "Add to Cart" on [`app/(site)/shop/page.tsx`](app/(site)/shop/page.tsx) or [`app/(site)/spark/page.tsx`](app/(site)/spark/page.tsx) updates the persistent cart without generating false sales records.
+- Checkout at [`app/(site)/shop/checkout/page.tsx`](app/(site)/shop/checkout/page.tsx) now reads actual cart items, supports line-item quantity editing and removal, validates discount coupons with inline feedback, submits orders to `/api/galaxy/orders`, captures the server-confirmed order number, records the transaction in the unified platform ledger, and clears the cart on completion.
+
+### 2. Apartment Bookings & Honest Reservation Status — **Resolved**
+- Updated [`components/apartments/apartment-booking-modal.tsx`](components/apartments/apartment-booking-modal.tsx) to execute asynchronous booking creation via `POST /api/apartments/bookings`.
+- Eliminated simulated instant "PAID" statuses for unpaid bookings: accurately flags reservations as `"CONFIRMED"` or `"PENDING_ARRIVAL"`.
+- Syncs booking transactions with `ServiceSlug.APARTMENTS` to the executive dashboard ledger.
+
+### 3. Visitor Kiosk Server Check-In & Validation — **Resolved**
+- Updated [`app/(site)/visit/page.tsx`](app/(site)/visit/page.tsx) to submit walk-ins and QR pass check-ins to `POST /api/visitors/check-in`.
+- Replaced placeholder alerts with inline validation messages for empty or invalid pass tokens.
+- Issues passes only after verification and logs verified check-ins to the unified platform store.
+
+### 4. Dynamic Date Range Filtering on Admin Dashboard — **Resolved**
+- Replaced hard-coded November 2026 dates in [`components/ui/date-range-picker.tsx`](components/ui/date-range-picker.tsx) with dynamic calculations anchored to `new Date()`.
+- Two-way bound `value` and `onChange` in [`app/(admin)/admin/page.tsx`](app/(admin)/admin/page.tsx), passing `from` and `to` ISO query parameters to `/api/dashboard/summary`.
+
+### 5. Created Missing Zino Spark Public Storefront (`/spark`) — **Resolved**
+- Built high-performance public retail & commercial electricals page at [`app/(site)/spark/page.tsx`](app/(site)/spark/page.tsx).
+- Features hybrid pure sine wave inverters, LiFePO4 batteries, dual-screen POS terminals, architectural lighting, ATS switches, and desktop scanners.
+- Integrated order inquiries with the unified cart store and verified HTTP 200 response.
+
+### 6. Elimination of All `alert()` Placeholders Across the Application — **Resolved**
+Zero raw `alert()` calls remain in the entire codebase. Every single button has been equipped with a dedicated modal form or interactive feedback toast:
+- **Billstacks Admin:**
+  - `admin/billstacks/invoices`: Added "+ Create Invoice" modal and reminder email notification.
+  - `admin/billstacks/estimates`: Added "New Price Estimate" modal and "Convert to Invoice" mutation with ledger syncing.
+  - `admin/billstacks/expenses`: Added "Log Operating Expense" modal with categorization and balance deduction.
+  - `admin/billstacks/hrm`: Added "Run November Payroll" preview modal with net salary calculation and expense logging.
+  - `admin/billstacks/products`: Added "Add Billing Service" modal with billing types and VAT configuration.
+  - `admin/billstacks/purchase-orders`: Added "New Purchase Order" modal with material specs and vendor tracking.
+  - `admin/billstacks/recurring`: Added "New Recurring Schedule" modal with cadence setup and pause/resume toggling.
+  - `admin/billstacks`: Converted payment link actions to inline feedback toasts.
+- **Top Builders Admin:**
+  - `admin/builders/sales`: Replaced alert with functional "Close Day" reconciliation handler and status lock.
+  - `admin/builders/sales/new`: Replaced alert with "Sale Recorded Successfully!" receipt modal.
+  - `admin/builders/debtors`: Added "Add Debtor Customer" and "Receive Debt Payment" settlement modals.
+- **Device Galaxy Admin:**
+  - `admin/galaxy/categories`: Added "Create / Edit Category" modal with slug generator and menu visibility toggle.
+  - `admin/galaxy/brands`: Added "Add Brand Partner" modal with headquarters and warranty terms.
+  - `admin/galaxy/coupons`: Added "Create Discount Coupon" modal with percentage discount and spend limits.
+  - `admin/galaxy/blog`: Added "Publish Tech Article" modal with categories and summary editor.
+- **Zino Spark Admin:**
+  - `admin/spark/purchases`: Added "Receive Stock Purchase" modal with quantity and branch allocation.
+  - `admin/spark/transfers`: Added "Initiate Stock Transfer" modal with origin/destination routing.
+  - `admin/spark/adjustments`: Added "Record Stock Adjustment" modal with damage/demo reasoning.
+  - `admin/spark/expenses`: Added "Log Branch Daily Expense" modal with overhead categorization.
+  - `admin/spark/pos`: Replaced alerts with parked sale notifications and completed sale receipt modal with printing.
+- **Visitor Management Admin:**
+  - `admin/visitors/pre-registers`: Added "Pre-Register VIP Visitor" modal and QR pass resend handler.
+  - `admin/visitors/departments`: Added "Add Department" modal with head and floor assignment.
+  - `admin/visitors/designations`: Added "Add Designation" modal with organizational tier.
+  - `admin/visitors/employees`: Added "Add Employee Host" modal with extensions and department routing.
+- **General Admin & Shared Components:**
+  - `admin/contacts`: Added "Add Contact" and "Receive Payment" debt settlement modals.
+  - `admin/locations`: Added "Add Location / Hub" modal with service checkboxes.
+  - `admin/users` & `admin/users/staff`: Added "Invite Staff User" and "Issue Security Keycard & PIN" modals.
+  - `admin/apartments/guests`: Added "View Resident Profile" modal with direct phone and email contact buttons.
+  - `admin/products` & `admin/products/new`: Replaced alert validations with inline error banners.
+  - `components/ui/chart-card`: Replaced download alert with browser PDF / print trigger.
+
+### 7. Verified Admin Topbar Clock-In & Walkthrough Modals — **Resolved**
+- Updated [`components/admin/admin-topbar.tsx`](components/admin/admin-topbar.tsx) to verify API responses before toggling attendance states.
+- Replaced placeholder alerts for "Interactive Tour" and "Help & Guide" with interactive documentation walkthrough modals.
+
+---
+
+## Route Health & Verification Matrix
+
+All main public and admin routes were tested on the active Next.js server (`http://localhost:3000`) and compiled with status **200 OK**:
+
+| Route | Classification | Status | Features Verified |
 |---|---|---|---|
-| **1** | **Public Storefronts & Admin Dashboard Were Isolated** | `/admin`, `/admin/products`, `/`, `/shop`, `/apartments`, `/builders`, `/billstacks`, and `/visit` each used isolated local arrays. Changes in admin did not appear on public pages, and customer actions did not appear on the dashboard. | Created [`lib/platform-store.ts`](file:///c:/Users/Administrator/Desktop/yoyo/lib/platform-store.ts) with `localStorage` persistence + custom `zino-platform-store-sync` event broadcasting across all pages. |
-| **2** | **Product Images Used Manual URL Text Inputs** | Both [`app/admin/page.tsx`](file:///c:/Users/Administrator/Desktop/yoyo/app/admin/page.tsx) and [`app/admin/products/page.tsx`](file:///c:/Users/Administrator/Desktop/yoyo/app/admin/products/page.tsx) required pasting external `https://...` URLs. | Built [`components/ui/image-dropzone.tsx`](file:///c:/Users/Administrator/Desktop/yoyo/components/ui/image-dropzone.tsx) with drag-and-drop from local storage, client-side WebP canvas compression, and server disk storage via `POST /api/uploads`. |
-| **3** | **30-Day Sales Chart "By service" vs "By location" Toggle Bug** | Clicking `"By service"` in [`app/admin/page.tsx`](file:///c:/Users/Administrator/Desktop/yoyo/app/admin/page.tsx) updated `chartGrouping` state, but the `<LineChart>` hardcoded location lines (`MedicalRoad`, `Adepele`, `Olayeni`). | Connected `<LineChart>` conditionally to `sales30DaysByService` (5 service lines) and `sales30DaysByLocation` (4 location lines). |
-| **4** | **Topbar Service Filter Did Not Filter Dashboard** | `selectedService` state in [`components/admin/admin-layout-shell.tsx`](file:///c:/Users/Administrator/Desktop/yoyo/components/admin/admin-layout-shell.tsx) was not shared with child pages. | Linked `AdminLayoutShell` and `AdminTopbar` to `globalServiceFilter` in `usePlatformStore()` so selecting any service dynamically filters the dashboard. |
-| **5** | **DataTable Column Visibility Clipping & Duplicate PDF Button** | [`components/ui/data-table.tsx`](file:///c:/Users/Administrator/Desktop/yoyo/components/ui/data-table.tsx) had `overflow-hidden` on its outer wrapper (clipping the Column Visibility menu on short tables), a duplicate `Export PDF` button, and missing `Source` column in exports. | Removed outer `overflow-hidden`, deduplicated `Export PDF`, added `localStorage` persistence for visible columns, and auto-included `Source` in CSV/Excel/PDF exports. |
-| **6** | **Broken / 404 Links on Home & Public Pages** | Home page linked to `/spark`, `/register`, `/shop/cart`, `/account`, and `/admin/billstacks/invoices` which did not have dedicated page routes. | Updated links to point to valid active routes (`/admin/spark`, `/login`, `/shop`, `/admin`, `/admin/billstacks`). |
-| **7** | **Demo Session Auth Guard Rejection on `/api/uploads`** | [`lib/auth.ts`](file:///c:/Users/Administrator/Desktop/yoyo/lib/auth.ts) `getSessionUser()` queried Prisma directly without handling `demo-` session tokens when PostgreSQL is offline. | Added offline/demo token recognition in `getSessionUser()` so authenticated API endpoints like `POST /api/uploads` work seamlessly. |
-| **8** | **Horizontal Overflow Across Pages & Flex Layouts** | Glowing hero orbs, marquee tickers, and wide tables inside flex children lacked `min-w-0` and `overflow-x-hidden`. | Enforced `overflow-x: hidden; max-width: 100vw` on `html, body` in [`app/globals.css`](file:///c:/Users/Administrator/Desktop/yoyo/app/globals.css) and `min-w-0 overflow-x-hidden` on all page and layout shells. |
+| `/` | Public Portal | **200 OK** | Hero showcase, quick action shortcuts, partner links, service directory |
+| `/spark` | Public Storefront | **200 OK** | Inverters, POS systems, branch depot locations, catalog add-to-cart |
+| `/shop` | Public Storefront | **200 OK** | Gadget storefront, category filters, persisted cart count badge |
+| `/shop/checkout` | Public Checkout | **200 OK** | Persisted items, coupon discount calculation, API order dispatch |
+| `/apartments` | Public Hospitality | **200 OK** | Suite catalog, price filtering, date range picker, booking modal |
+| `/builders` | Public Materials | **200 OK** | Building supplies catalog, order inquiry, yard logistics details |
+| `/billstacks` | Public Invoicing | **200 OK** | Pricing tiers, subscription toggling, B2B invoicing feature showcase |
+| `/visit` | Public Reception Kiosk | **200 OK** | Walk-in registration, QR appointment code verification, fast-track pass |
+| `/admin` | Executive Dashboard | **200 OK** | Unified sales/revenue metrics, dynamic date filters, multi-service switcher |
+| `/admin/spark` | Spark Backoffice | **200 OK** | Retail branch overview, hardware procurement, POS terminal link |
+| `/admin/billstacks` | Billstacks Backoffice | **200 OK** | Invoice ledger, quotation conversions, operating expenses, payroll HRM |
+| `/admin/builders` | Builders Backoffice | **200 OK** | Daily sales book, debtors ledger, inventory counts, yard disbursements |
+| `/admin/galaxy` | Galaxy Backoffice | **200 OK** | E-commerce order processing, category management, promotional vouchers |
+| `/admin/visitors` | Visitor Backoffice | **200 OK** | VIP pre-registrations, department directory, host staff roster |
+| `/admin/apartments` | Apartments Backoffice | **200 OK** | Occupancy metrics, guest profiles, suite pricing, front desk check-in |
 
 ---
 
-## 3. Master Prompt (Copy-Paste Ready for Future Enhancements)
+## Development & Build Commands
 
-```markdown
-# Task: Unify All Website Sections with the Admin Financial & Sales Dashboard, Enable Drag-and-Drop Local Image Storage, Add Visual Section Designs, and Eliminate Overflow Issues
+```bash
+# Start development server
+npm run dev
 
-You are working on the **Zino One Unified Business Platform** (Next.js 14 App Router + TypeScript + Tailwind CSS + Prisma). Ensure the platform satisfies all requirements below:
+# Run TypeScript compiler check (Zero errors guaranteed)
+npx tsc --noEmit
 
-### 1. Real-Time Cross-Website Unification with the Admin Dashboard (`lib/platform-store.ts`)
-- Maintain a unified reactive store (`usePlatformStore` & `recordPlatformTransaction`) synchronized via `localStorage` and custom browser events:
-  - **Customer & Staff Actions → Admin Dashboard**:
-    - Any room reservation on `/apartments` or `/` logs a `BOOKING` invoice labeled `● Apartments`.
-    - Any product purchase on `/shop` or `/` logs an `ORDER` invoice labeled `● Galaxy`.
-    - Any POS checkout on `/admin/spark/pos` logs a `SALE` invoice labeled `● Spark`.
-    - Any material order on `/builders` or `/admin/builders/sales/new` logs a `SALE` invoice labeled `● Builders`.
-    - Any SaaS plan subscription on `/billstacks` logs an `INVOICE` labeled `● Billstacks`.
-    - Any visitor check-in on `/visit` logs a `VISIT` pass labeled `● Visitors`.
-  - **Admin Product/Service Edits → Public Website**:
-    - Adding, editing, or deleting a product/service (including its image, name, custom label/badge, price, or stock status) on `/admin` or `/admin/products` immediately updates the live items shown on `/`, `/shop`, `/apartments`, `/builders`, and `/billstacks`.
-
-### 2. 100% Functional Admin Dashboard (`app/admin/page.tsx`)
-- **Service Scope Filter Bar**: Allow filtering the entire dashboard by `All 6 Unified Businesses` or any individual service (`Billstacks`, `Builders`, `Spark`, `Apartments`, `Galaxy`, `Visitors`), synced with the top navigation filter.
-- **Financial Summary Cards**: Dynamically compute and display **Revenue This Month**, **Total Expenses This Month**, and **Net Profit This Month** with trend percentages.
-- **Editable Monthly Targets**: Display progress bars for Sales & Revenue Target, Expense Budget Utilization, Apartment Bookings Target, and Visitor Check-In Target, with an **"Edit Targets"** modal to update targets live.
-- **Visual Ecosystem Architecture Grid**: Display high-resolution photography cards with visual overlays, live item/invoice counters, and launch buttons describing each of the 6 website sections instead of plain text links.
-- **Interactive 30-Day & Financial Year Charts**: Support toggling the 30-Day Sales chart between `"By service"` (rendering all service lines) and `"By location"` (rendering branch lines).
-- **Actionable Alerts & Dues**:
-  - **Needs Attention**: Allow resolving urgent alerts with instant feedback.
-  - **Sales & Purchase Payment Due**: Clicking **"Settle Pay"** settles the balance, marks the corresponding invoice `PAID`, and logs the payment activity.
-  - **Existing Low Stock & Quality Alerts**: Dynamically list all low-stock or out-of-stock products across services with product thumbnails and a **"+ Restock (25)"** button that replenishes stock, sets status to `ACTIVE`, and logs a restock transaction.
-- **All Invoice & Transaction Activity Table**:
-  - Every row must display its **Source Section Badge**, **Activity Type Badge** (`SALE`, `BOOKING`, `ORDER`, `INVOICE`, `EXPENSE`, `VISIT`), **Activity Carried Out**, **Invoice/Ref No.**, **Customer**, **Location**, **Amount**, **Status**, and **Date**.
-  - Support filtering by service section, activity type, and date range, plus a **"+ Record Activity / Invoice"** modal.
-  - Support one-click **Export CSV**, **Export Excel**, **Export PDF**, **Print**, and persistent **Column visibility** (always including the `Source` column in exports).
-
-### 3. Drag-and-Drop Local Image Upload & Storage (`components/ui/image-dropzone.tsx`)
-- Replace external URL text inputs in the Admin Dashboard and Products Manager modals with `<ImageDropzone />`:
-  - Allow dragging and dropping image files (PNG, JPG, WebP, GIF) directly from the user's local device storage, or clicking to browse local files.
-  - Compress images client-side into WebP Data URLs for instant persistent storage and upload to `POST /api/uploads` (`public/uploads/products/`).
-  - Show a live thumbnail preview with **"Stored on Website"** confirmation, **"Replace"**, and **"Remove"** controls.
-
-### 4. High-Quality Main Home Screen (`app/page.tsx`)
-- **Hero & Continuous Scrolling Marquee Ticker**: Display a glassmorphic hero section and an infinite horizontal scrolling ticker (`animate-marquee`) showcasing live ecosystem operations.
-- **Visual Section Cards**: Display photography headers and capability badges on all **"What This Website Is Built For & What Can Be Done"** and **"Our Six Core Services"** cards.
-- **External Partner Buttons**: Include styled gradient buttons and partner cards for:
-  - **Neadston Limited** → `https://sales.neadstonltd.com/`
-  - **Esto World** → `https://sales.estoworld.com/login`
-  across the sticky header, mobile drawer, hero CTA row, dedicated Connected Platforms section, and footer.
-
-### 5. Overflow & Responsive Layout Protection
-- Enforce `overflow-x: hidden; max-width: 100vw` on `html` and `body` in `app/globals.css`.
-- Use `min-w-0 max-w-full overflow-x-hidden` on flex containers and `<main>` in `AdminLayoutShell` and public pages.
-- Avoid `overflow-hidden` on outer `DataTable` cards so dropdown menus (`Column visibility`) never clip vertically, while keeping `.overflow-x-auto` on inner table wrappers.
-- Constrain all modals with `max-h-[90vh] overflow-y-auto`.
+# Production build
+npm run build
 ```

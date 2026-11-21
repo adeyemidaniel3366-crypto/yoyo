@@ -17,13 +17,22 @@ interface DateRangePickerProps {
 }
 
 export function DateRangePicker({
-  value = { from: "2026-11-04", to: "2026-11-18" },
+  value = {
+    from: new Date(new Date().setDate(new Date().getDate() - 14)).toISOString().split("T")[0],
+    to: new Date().toISOString().split("T")[0],
+  },
   onChange,
   className,
   align = "right",
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentRange, setCurrentRange] = useState<DateRange>(value);
+
+  React.useEffect(() => {
+    if (value && (value.from !== currentRange.from || value.to !== currentRange.to)) {
+      setCurrentRange(value);
+    }
+  }, [value?.from, value?.to]);
 
   // Format label for display
   const formatDateLabel = (dStr: string) => {
@@ -38,7 +47,7 @@ export function DateRangePicker({
   };
 
   const handlePreset = (preset: "today" | "7d" | "30d" | "month") => {
-    const today = new Date(2026, 10, 18); // Default demo baseline: Nov 18, 2026
+    const today = new Date();
     const formatD = (d: Date) => d.toISOString().split("T")[0];
 
     let fromD = new Date(today);
@@ -63,13 +72,13 @@ export function DateRangePicker({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-white text-xs font-medium text-heading hover:bg-gray-50 transition-colors shadow-2xs select-none"
+        className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-900 hover:bg-gray-50 transition-colors shadow-2xs select-none"
       >
-        <Calendar className="w-3.5 h-3.5 text-muted shrink-0" />
-        <span>
+        <Calendar className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+        <span className="text-gray-900">
           {formatDateLabel(currentRange.from)} - {formatDateLabel(currentRange.to)}
         </span>
-        <ChevronDown className="w-3.5 h-3.5 text-muted shrink-0 ml-1" />
+        <ChevronDown className="w-3.5 h-3.5 text-gray-500 shrink-0 ml-1" />
       </button>
 
       {isOpen && (
@@ -80,36 +89,36 @@ export function DateRangePicker({
           />
           <div
             className={cn(
-              "absolute z-50 mt-1 w-64 rounded-xl border border-border bg-white p-3 shadow-lg",
+              "absolute z-50 mt-1 w-64 rounded-xl border border-gray-200 bg-white p-3 shadow-lg text-gray-900",
               align === "right" ? "right-0" : "left-0"
             )}
           >
-            <div className="grid grid-cols-2 gap-1.5 mb-3 pb-3 border-b border-border">
+            <div className="grid grid-cols-2 gap-1.5 mb-3 pb-3 border-b border-gray-200">
               <button
                 type="button"
                 onClick={() => handlePreset("today")}
-                className="text-left px-2.5 py-1.5 rounded-md text-xs font-medium text-heading hover:bg-gray-100 transition-colors"
+                className="text-left px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-900 hover:bg-gray-100 transition-colors"
               >
                 Today
               </button>
               <button
                 type="button"
                 onClick={() => handlePreset("7d")}
-                className="text-left px-2.5 py-1.5 rounded-md text-xs font-medium text-heading hover:bg-gray-100 transition-colors"
+                className="text-left px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-900 hover:bg-gray-100 transition-colors"
               >
                 Last 7 days
               </button>
               <button
                 type="button"
                 onClick={() => handlePreset("30d")}
-                className="text-left px-2.5 py-1.5 rounded-md text-xs font-medium text-heading hover:bg-gray-100 transition-colors"
+                className="text-left px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-900 hover:bg-gray-100 transition-colors"
               >
                 Last 30 days
               </button>
               <button
                 type="button"
                 onClick={() => handlePreset("month")}
-                className="text-left px-2.5 py-1.5 rounded-md text-xs font-medium text-heading hover:bg-gray-100 transition-colors"
+                className="text-left px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-900 hover:bg-gray-100 transition-colors"
               >
                 This month
               </button>
@@ -117,7 +126,7 @@ export function DateRangePicker({
 
             <div className="space-y-2">
               <div>
-                <label className="block text-[11px] font-semibold text-muted uppercase mb-1">
+                <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
                   From
                 </label>
                 <input
@@ -128,11 +137,11 @@ export function DateRangePicker({
                     setCurrentRange(newR);
                     onChange?.(newR);
                   }}
-                  className="w-full h-8 px-2 text-xs border border-border rounded-md outline-none focus:border-active"
+                  className="w-full h-8 px-2 text-xs bg-white text-gray-900 border border-gray-200 rounded-md outline-none focus:border-active"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-semibold text-muted uppercase mb-1">
+                <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
                   To
                 </label>
                 <input
@@ -143,7 +152,7 @@ export function DateRangePicker({
                     setCurrentRange(newR);
                     onChange?.(newR);
                   }}
-                  className="w-full h-8 px-2 text-xs border border-border rounded-md outline-none focus:border-active"
+                  className="w-full h-8 px-2 text-xs bg-white text-gray-900 border border-gray-200 rounded-md outline-none focus:border-active"
                 />
               </div>
             </div>

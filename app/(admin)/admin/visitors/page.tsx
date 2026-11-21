@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Users,
   UserCheck,
@@ -99,6 +100,9 @@ export default function VisitorManagementDashboardPage() {
       {/* Page Header matching Screenshot */}
       <div>
         <div className="flex items-center gap-2">
+          <span className="w-9 h-9 rounded-lg bg-white border border-border p-0.5 overflow-hidden shrink-0">
+            <Image src="/logos/visitor-management.png" alt="Visitor Management" width={36} height={36} className="w-full h-full object-contain" />
+          </span>
           <SourceBadge source={ServiceSlug.VISITORS} size="sm" />
           <span className="text-xs text-muted font-bold uppercase tracking-wider">Enterprise Security</span>
         </div>

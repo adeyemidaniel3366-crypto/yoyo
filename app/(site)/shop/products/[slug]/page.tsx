@@ -29,7 +29,8 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params?.slug as string;
-  const { products: storeProducts, recordTransaction } = usePlatformStore();
+  const { products: storeProducts, addToCart, cartItems } = usePlatformStore();
+  const cartCount = cartItems.reduce((acc, it) => acc + it.qty, 0);
 
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState<string>("");
@@ -77,7 +78,7 @@ export default function ProductDetailPage() {
       };
     }
 
-    return CATALOG_PRODUCTS[0]; // fallback
+    return undefined;
   }, [slug, storeProducts]);
 
   const images = product?.images?.length ? product.images : [product?.image || ""];
@@ -85,14 +86,13 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (!product || !product.inStock) return;
-    recordTransaction({
-      source: ServiceSlug.GALAXY,
-      activityType: "ORDER",
-      activitySummary: `Added ${quantity}× ${product.name} to Cart`,
-      customer: "Device Galaxy Shopper",
-      amountKobo: product.priceKobo * quantity,
-      location: "Galaxy Online",
-      status: "PAID",
+    addToCart({
+      productId: product.id,
+      name: product.name,
+      sku: product.sku,
+      priceKobo: product.priceKobo,
+      qty: quantity,
+      image: product.image,
     });
     setAddedToast(true);
     setTimeout(() => setAddedToast(false), 3500);
@@ -172,7 +172,7 @@ export default function ProductDetailPage() {
               className="p-2.5 rounded-xl border border-border hover:bg-gray-50 flex items-center gap-2 text-xs font-bold text-heading"
             >
               <ShoppingCart className="w-4 h-4 text-galaxy" />
-              <span>Checkout</span>
+              <span>Cart ({cartCount})</span>
             </Link>
           </div>
         </div>

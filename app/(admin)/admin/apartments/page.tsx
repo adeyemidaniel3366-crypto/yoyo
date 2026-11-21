@@ -93,7 +93,7 @@ export default function ZinoApartmentsAdminDashboard() {
           <div className="flex items-center gap-3">
             <div className="w-10 h-8 rounded-lg bg-white border border-apartments/25 p-0.5 flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
               <Image
-                src="/logos/apartments-logo.png"
+                src="/logos/zino-spark.png"
                 alt="Zino Luxury Apartments"
                 width={80}
                 height={55}

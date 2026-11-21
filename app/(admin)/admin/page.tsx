@@ -60,7 +60,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { ServiceSlug, SERVICE_CONFIG } from "@/lib/constants";
+import { ServiceSlug, SERVICE_CONFIG, LOCATIONS } from "@/lib/constants";
 import { StatCard } from "@/components/ui/stat-card";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -123,9 +123,9 @@ function TargetBar({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs">
-        <span className="font-semibold text-heading">{label}</span>
-        <span className="text-muted">
-          <strong className="text-heading">
+        <span className="font-semibold text-gray-900">{label}</span>
+        <span className="text-gray-500">
+          <strong className="text-gray-900">
             {unit}
             {current.toLocaleString()}
           </strong>{" "}
@@ -164,13 +164,13 @@ function FinancialCard({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-border shadow-2xs overflow-hidden flex min-w-0">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden flex min-w-0">
       <div className="w-1.5 shrink-0" style={{ backgroundColor: accentColor }} />
       <div className="flex-1 p-5 min-w-0">
-        <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-1 truncate">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 truncate">
           {title}
         </p>
-        <p className="text-2xl font-extrabold text-heading truncate">{value}</p>
+        <p className="text-2xl font-extrabold text-gray-900 truncate">{value}</p>
         {delta !== undefined && (
           <div
             className={cn(
@@ -189,7 +189,7 @@ function FinancialCard({
             </span>
           </div>
         )}
-        {subtitle && <p className="text-[11px] text-muted mt-1 truncate">{subtitle}</p>}
+        {subtitle && <p className="text-[11px] text-gray-500 mt-1 truncate">{subtitle}</p>}
         {children}
       </div>
     </div>
@@ -212,6 +212,7 @@ const VISUAL_SERVICE_SECTIONS = [
     publicHref: "/shop",
     icon: Cpu,
     metrics: "5 Branches • POS Terminal",
+    logoUrl: "/logos/zino-spark.png",
   },
   {
     slug: ServiceSlug.APARTMENTS,
@@ -225,7 +226,7 @@ const VISUAL_SERVICE_SECTIONS = [
     publicHref: "/apartments",
     icon: Building2,
     metrics: "12 Luxury Rooms • 10% Tax Engine",
-    logoUrl: "/logos/apartments-logo.png",
+    logoUrl: "/logos/zino-spark.png",
   },
   {
     slug: ServiceSlug.BUILDERS,
@@ -253,6 +254,7 @@ const VISUAL_SERVICE_SECTIONS = [
     publicHref: "/shop",
     icon: Smartphone,
     metrics: "Online Cart • Nationwide Shipping",
+    logoUrl: "/logos/device-galaxy.png",
   },
   {
     slug: ServiceSlug.BILLSTACKS,
@@ -280,6 +282,7 @@ const VISUAL_SERVICE_SECTIONS = [
     publicHref: "/visit",
     icon: UserCheck,
     metrics: "Self-Check Kiosk • Staff Attendance",
+    logoUrl: "/logos/visitor-management.png",
   },
 ];
 
@@ -294,6 +297,7 @@ export default function UnifiedAdminDashboard() {
     paymentDues,
     targets,
     globalServiceFilter,
+    globalLocationFilter,
     updateGlobalServiceFilter,
     saveProduct,
     deleteProduct,
@@ -384,6 +388,12 @@ export default function UnifiedAdminDashboard() {
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // ── Date Range Scoping State ──
+  const [dateRange, setDateRange] = useState({
+    from: new Date(Date.now() - 14 * 86400000).toISOString().split("T")[0],
+    to: new Date().toISOString().split("T")[0],
+  });
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
@@ -416,9 +426,8 @@ export default function UnifiedAdminDashboard() {
   };
 
   // ── Security, Diagnostic & Operations Controls State ──
-  const [isEmergencyLockActive, setIsEmergencyLockActive] = useState(false);
   const [isSecurityDrawerOpen, setIsSecurityDrawerOpen] = useState(false);
-  const [networkLatency, setNetworkLatency] = useState(18);
+  const [networkLatency, setNetworkLatency] = useState<number | null>(null);
   const [isSyncingAll, setIsSyncingAll] = useState(false);
 
   // ── Apartment Suite Quick Status Board State ──
@@ -551,61 +560,95 @@ export default function UnifiedAdminDashboard() {
     showToast("Audit CSV report exported successfully!");
   };
 
-  const handleSyncAllHubs = () => {
+  const handleSyncAllHubs = async () => {
     setIsSyncingAll(true);
-    setNetworkLatency(Math.floor(12 + Math.random() * 15));
-    setTimeout(() => {
+    const startedAt = Date.now();
+    try {
+      const params = new URLSearchParams();
+      if (globalServiceFilter !== "ALL") params.set("service", globalServiceFilter);
+      if (globalLocationFilter !== "ALL") params.set("location", globalLocationFilter);
+      if (dateRange.from) params.set("from", dateRange.from);
+      if (dateRange.to) params.set("to", dateRange.to);
+      const query = params.toString();
+      const response = await fetch(`/api/dashboard/summary${query ? `?${query}` : ""}`, { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok || !result?.ok || !result?.data) throw new Error(result?.error?.message || "Dashboard sync failed");
+      setDashboardData(result.data);
+      if (Array.isArray(result.data.attention)) {
+        setAttentionItems(result.data.attention.map((item: any, index: number) => ({
+          id: `attention-${item.source}-${index}`,
+          source: item.source,
+          severity: item.severity,
+          title: item.title,
+          detail: "Open the linked service workspace to review this item.",
+          href: item.href,
+        })));
+      }
+      setNetworkLatency(Date.now() - startedAt);
+      showToast("Dashboard data refreshed from connected service records.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Could not refresh dashboard data.");
+    } finally {
       setIsSyncingAll(false);
-      showToast("All 6 subsidiary operations hubs force-synchronized!");
-    }, 800);
+    }
   };
 
   useEffect(() => {
-    fetch("/api/dashboard/summary")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((res) => {
-        if (res?.ok && res?.data) setDashboardData(res.data);
+    const startedAt = Date.now();
+    const params = new URLSearchParams();
+    if (globalServiceFilter !== "ALL") params.set("service", globalServiceFilter);
+    if (globalLocationFilter !== "ALL") params.set("location", globalLocationFilter);
+    if (dateRange.from) params.set("from", dateRange.from);
+    if (dateRange.to) params.set("to", dateRange.to);
+    const query = params.toString();
+    fetch(`/api/dashboard/summary${query ? `?${query}` : ""}`, { cache: "no-store" })
+      .then((r) => {
+        if (!r.ok) throw new Error("Dashboard summary unavailable");
+        return r.json();
       })
-      .catch(() => {});
-  }, []);
+      .then((res) => {
+        if (res?.ok && res?.data) {
+          setDashboardData(res.data);
+          setNetworkLatency(Date.now() - startedAt);
+          if (Array.isArray(res.data.attention)) {
+            setAttentionItems(res.data.attention.map((item: any, index: number) => ({
+              id: `attention-${item.source}-${index}`,
+              source: item.source,
+              severity: item.severity,
+              title: item.title,
+              detail: "Open the linked service workspace to review this item.",
+              href: item.href,
+            })));
+          }
+        }
+      })
+      .catch(() => setDashboardData({
+        isUnavailable: true,
+        cards: [],
+        attention: [],
+        salesLast30Days: { labels: [], series: [], locations: [] },
+        salesFinancialYear: { labels: [], series: [] },
+      }));
+  }, [globalServiceFilter, globalLocationFilter, dateRange.from, dateRange.to]);
 
   // Synchronize topbar global service filter with invoice & product tabs
   const activeServiceScope = globalServiceFilter;
 
-  // Compute dynamic financial totals from unified invoices
+  // Use the same filtered server summary for all primary financial totals.
   const financialTotals = useMemo(() => {
-    const scopedInvoices =
-      activeServiceScope === "ALL"
-        ? invoices
-        : invoices.filter((i) => i.source === activeServiceScope);
-
-    const revenueFromInvoices = scopedInvoices
-      .filter((i) => i.activityType !== "EXPENSE" && i.activityType !== "VISIT")
-      .reduce((acc, i) => acc + (i.amountKobo || 0), 0);
-
-    const expensesFromInvoices = scopedInvoices
-      .filter((i) => i.activityType === "EXPENSE")
-      .reduce((acc, i) => acc + (i.amountKobo || 0), 0);
-
-    // Combine baseline monthly volume with live recorded transactions
-    const baseRevKobo = activeServiceScope === "ALL" ? 2048470000 : 340000000;
-    const baseExpKobo = activeServiceScope === "ALL" ? 413500000 : 68000000;
-
-    const totalRevenueKobo = baseRevKobo + revenueFromInvoices;
-    const totalExpenseKobo = baseExpKobo + expensesFromInvoices;
-    const netProfitKobo = totalRevenueKobo - totalExpenseKobo;
-
-    const bookingsCount = scopedInvoices.filter((i) => i.activityType === "BOOKING").length;
-    const visitorsCount = scopedInvoices.filter((i) => i.activityType === "VISIT").length + 4;
+    const cards = dashboardData?.cards || [];
+    const value = (key: string) => cards.find((card: any) => card.key === key)?.valueKobo ?? 0;
+    const totalRevenueKobo = value("totalSales");
+    const netProfitKobo = value("net");
 
     return {
       totalRevenueKobo,
-      totalExpenseKobo,
+      totalExpenseKobo: Math.max(0, totalRevenueKobo - netProfitKobo),
       netProfitKobo,
-      bookingsCount,
-      visitorsCount,
+      bookingsCount: value("activeBookings"),
+      visitorsCount: value("visitorsToday"),
     };
-  }, [invoices, activeServiceScope]);
+  }, [dashboardData]);
 
   // Compute dynamic dues
   const salesPaymentDueRows = useMemo(
@@ -673,25 +716,25 @@ export default function UnifiedAdminDashboard() {
   const stats = [
     {
       title: "Total Sales (Today)",
-      value: formatMoney(184250000),
+      value: getCard("totalSales") ? formatMoney(getCard("totalSales").valueKobo ?? 0) : formatMoney(0),
       icon: ShoppingCart,
       iconColor: "#2563EB",
       iconBg: "#E8EEFB",
       delta: {
-        value: getCard("totalSales")?.deltaPct ?? 12.4,
-        isPositive: (getCard("totalSales")?.deltaPct ?? 12.4) >= 0,
+        value: getCard("totalSales")?.deltaPct ?? 0,
+        isPositive: (getCard("totalSales")?.deltaPct ?? 0) >= 0,
         period: "vs yesterday",
       },
     },
     {
       title: "Net (Today)",
-      value: formatMoney(142000000),
+      value: getCard("net") ? formatMoney(getCard("net").valueKobo ?? 0) : formatMoney(0),
       icon: DollarSign,
       iconColor: "#28A745",
       iconBg: "#E8F5EE",
       delta: {
-        value: getCard("net")?.deltaPct ?? 8.1,
-        isPositive: (getCard("net")?.deltaPct ?? 8.1) >= 0,
+        value: getCard("net")?.deltaPct ?? 0,
+        isPositive: (getCard("net")?.deltaPct ?? 0) >= 0,
         period: "vs yesterday",
       },
     },
@@ -705,7 +748,7 @@ export default function UnifiedAdminDashboard() {
     },
     {
       title: "Total Sell Return",
-      value: formatMoney(0),
+      value: getCard("sellReturn") ? formatMoney(getCard("sellReturn").valueKobo ?? 0) : formatMoney(0),
       icon: RefreshCw,
       iconColor: "#E74C3C",
       iconBg: "#FDF2F2",
@@ -713,7 +756,7 @@ export default function UnifiedAdminDashboard() {
     },
     {
       title: "Total Purchase (Today)",
-      value: formatMoney(65000000),
+      value: getCard("totalPurchase") ? formatMoney(getCard("totalPurchase").valueKobo ?? 0) : formatMoney(0),
       icon: ShoppingBag,
       iconColor: "#17A2B8",
       iconBg: "#E8F7F9",
@@ -729,7 +772,7 @@ export default function UnifiedAdminDashboard() {
     },
     {
       title: "Active Bookings",
-      value: String(financialTotals.bookingsCount),
+      value: String(getCard("activeBookings")?.valueKobo ?? financialTotals.bookingsCount),
       icon: Building2,
       iconColor: "#1E3A5F",
       iconBg: "#E8EEF5",
@@ -738,7 +781,7 @@ export default function UnifiedAdminDashboard() {
     },
     {
       title: "Visitors Today",
-      value: String(financialTotals.visitorsCount),
+      value: String(getCard("visitorsToday")?.valueKobo ?? financialTotals.visitorsCount),
       icon: Users,
       iconColor: "#7C3AED",
       iconBg: "#F3EFFF",
@@ -785,6 +828,44 @@ export default function UnifiedAdminDashboard() {
     { month: "Oct", Spark: 144000000, Builders: 82000000, Galaxy: 31000000, Apartments: 15000000 },
     { month: "Nov", Spark: 146000000, Builders: 112000000, Galaxy: 34000000, Apartments: 16500000 },
   ];
+
+  const serviceKeyBySlug: Record<string, string> = {
+    [ServiceSlug.SPARK]: "Spark",
+    [ServiceSlug.BUILDERS]: "Builders",
+    [ServiceSlug.GALAXY]: "Galaxy",
+    [ServiceSlug.APARTMENTS]: "Apartments",
+    [ServiceSlug.BILLSTACKS]: "Billstacks",
+  };
+  const liveDailyChart = dashboardData?.salesLast30Days?.labels?.length
+    ? dashboardData.salesLast30Days.labels.map((date: string, index: number) => {
+        const point: Record<string, string | number> = { date: date.slice(5) };
+        dashboardData.salesLast30Days.series.forEach((series: any) => {
+          const key = serviceKeyBySlug[series.source];
+          if (key) point[key] = (series.data?.[index] || 0) / 100;
+        });
+        return point;
+      })
+    : [];
+  const liveFinancialYearChart = dashboardData?.salesFinancialYear?.labels?.length
+    ? dashboardData.salesFinancialYear.labels.map((month: string, index: number) => {
+        const point: Record<string, string | number> = { month };
+        dashboardData.salesFinancialYear.series.forEach((series: any) => {
+          const key = serviceKeyBySlug[series.source];
+          if (key) point[key] = (series.data?.[index] || 0) / 100;
+        });
+        return point;
+      })
+    : [];
+  const locationSeries = dashboardData?.salesLast30Days?.locations || [];
+  const liveLocationChart = dashboardData?.salesLast30Days?.labels?.length
+    ? dashboardData.salesLast30Days.labels.map((date: string, index: number) => {
+        const point: Record<string, string | number> = { date: date.slice(5) };
+        locationSeries.forEach((series: any, seriesIndex: number) => {
+          point[`Location ${seriesIndex + 1}`] = (series.data?.[index] || 0) / 100;
+        });
+        return point;
+      })
+    : [];
 
   // ── Table Column Definitions ──────────────────────────────────────────
   const salesPaymentDueColumns: ColumnDef<any>[] = [
@@ -1041,7 +1122,7 @@ export default function UnifiedAdminDashboard() {
 
       {/* ── Page Header & Global Service Scope Pill Bar ── */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-3.5 min-w-0">
           <div className="w-12 h-12 rounded-xl bg-white border border-border p-1.5 flex items-center justify-center shadow-xs shrink-0 overflow-hidden">
             <NextImage
               src="/logos/zino-logo.png"
@@ -1054,22 +1135,31 @@ export default function UnifiedAdminDashboard() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-heading tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-bold text-heading tracking-tight min-w-0">
                 Unified Business &amp; Financial Dashboard
               </h1>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold uppercase">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Live Synced
+              <span className={cn(
+                "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[10px] font-bold uppercase shrink-0",
+                dashboardData?.isUnavailable
+                  ? "bg-rose-50 text-rose-700 border-rose-200"
+                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
+              )}>
+                <span className={cn(
+                  "w-1.5 h-1.5 rounded-full",
+                  dashboardData?.isUnavailable ? "bg-rose-500" : "bg-emerald-500",
+                  !dashboardData && "animate-pulse"
+                )} />
+                {dashboardData?.isUnavailable ? "Data Unavailable" : dashboardData ? "Summary Loaded" : "Loading Summary"}
               </span>
             </div>
             <p className="text-xs text-muted mt-0.5">
-              Every sale, booking, order, visitor check-in, and product change across all 6 website sections communicates directly with this dashboard.
+              Cross-service reporting, catalog management, payment tracking, and operational activity in one workspace.
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Multi-Currency Switcher */}
-          <div className="inline-flex items-center p-1 rounded-xl bg-gray-100 border border-border text-xs font-mono font-bold">
+          <div className="inline-flex items-center p-1 rounded-xl bg-gray-100 border border-gray-200 text-xs font-mono font-bold">
             {(["NGN", "USD", "GBP", "EUR"] as const).map((curr) => (
               <button
                 key={curr}
@@ -1081,8 +1171,8 @@ export default function UnifiedAdminDashboard() {
                 className={cn(
                   "px-2.5 py-1 rounded-lg transition-all",
                   activeCurrency === curr
-                    ? "bg-white text-heading shadow-xs font-extrabold"
-                    : "text-muted hover:text-heading"
+                    ? "bg-white text-gray-900 shadow-xs font-extrabold"
+                    : "text-gray-600 hover:text-gray-900"
                 )}
               >
                 {CURRENCY_CONFIG[curr].symbol} {curr}
@@ -1094,7 +1184,7 @@ export default function UnifiedAdminDashboard() {
             type="button"
             onClick={handleSyncAllHubs}
             disabled={isSyncingAll}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-border hover:bg-gray-50 text-heading font-semibold text-xs transition-colors shadow-2xs"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-gray-900 font-semibold text-xs transition-colors shadow-2xs"
             title="Force synchronization across all 6 subsidiary databases"
           >
             <RefreshCcw className={cn("w-3.5 h-3.5 text-active", isSyncingAll && "animate-spin")} />
@@ -1109,7 +1199,7 @@ export default function UnifiedAdminDashboard() {
             <Plus className="w-4 h-4" />
             <span>Record Activity / Invoice</span>
           </button>
-          <DateRangePicker align="right" />
+          <DateRangePicker value={dateRange} onChange={setDateRange} align="right" />
         </div>
       </div>
 
@@ -1124,7 +1214,7 @@ export default function UnifiedAdminDashboard() {
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-sm text-white">Live Operations Simulator &amp; Instant Triggers</h3>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold">
-                  Active Latency: {networkLatency}ms
+                  {networkLatency === null ? "Latency: —" : `API latency: ${networkLatency}ms`}
                 </span>
               </div>
               <p className="text-xs text-gray-300">
@@ -1213,31 +1303,31 @@ export default function UnifiedAdminDashboard() {
         {isSecurityDrawerOpen && (
           <div className="pt-4 border-t border-white/10 grid grid-cols-1 md:grid-cols-4 gap-3 text-xs font-mono animate-in fade-in">
             <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-1">
-              <span className="text-gray-400 text-[10px] uppercase font-bold block">RBAC Multi-Tenant Mode</span>
+              <span className="text-gray-400 text-[10px] uppercase font-bold block">Dashboard Summary API</span>
               <span className="text-emerald-400 font-bold flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5" />
-                <span>SUPER_ADMIN (Full Clearance)</span>
+                <span>{dashboardData ? "Summary response received" : "Waiting for response"}</span>
               </span>
             </div>
             <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-1">
-              <span className="text-gray-400 text-[10px] uppercase font-bold block">Session Encryption</span>
+              <span className="text-gray-400 text-[10px] uppercase font-bold block">Active Data Scope</span>
               <span className="text-cyan-300 font-bold flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5" />
-                <span>SHA-256 Token (30 Days Active)</span>
+                <span>{globalServiceFilter === "ALL" ? "All services" : SERVICE_CONFIG[globalServiceFilter].name}</span>
               </span>
             </div>
             <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-1">
-              <span className="text-gray-400 text-[10px] uppercase font-bold block">SQL Injection Shield</span>
+              <span className="text-gray-400 text-[10px] uppercase font-bold block">Selected Location</span>
               <span className="text-emerald-400 font-bold flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Prisma AST Parameterized</span>
+                <span>{globalLocationFilter === "ALL" ? "All locations" : LOCATIONS.find((location) => location.id === globalLocationFilter)?.name || "Selected location"}</span>
               </span>
             </div>
             <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-1">
-              <span className="text-gray-400 text-[10px] uppercase font-bold block">Rate Limiter Quota</span>
+              <span className="text-gray-400 text-[10px] uppercase font-bold block">Last API Response</span>
               <span className="text-amber-300 font-bold flex items-center gap-1.5">
                 <Server className="w-3.5 h-3.5" />
-                <span>496 / 500 Req remaining</span>
+                <span>{networkLatency === null ? "Not received" : `${networkLatency} ms`}</span>
               </span>
             </div>
           </div>
@@ -1253,7 +1343,7 @@ export default function UnifiedAdminDashboard() {
             "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0",
             activeServiceScope === "ALL"
               ? "bg-[#14142B] text-white shadow-sm"
-              : "bg-white border border-border text-muted hover:text-heading"
+              : "bg-white border border-gray-200 text-gray-700 hover:text-gray-900"
           )}
         >
           All 6 Unified Businesses
@@ -1267,7 +1357,7 @@ export default function UnifiedAdminDashboard() {
               "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 border",
               activeServiceScope === slug
                 ? "text-white shadow-sm border-transparent"
-                : "bg-white border-border text-heading hover:bg-gray-50"
+                : "bg-white border-gray-200 text-gray-800 hover:bg-gray-50"
             )}
             style={
               activeServiceScope === slug
@@ -1290,7 +1380,7 @@ export default function UnifiedAdminDashboard() {
       {/* ── A: Financial Summary (Revenue / Expenses / Net Profit) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <FinancialCard
-          title="Revenue This Month"
+          title="Revenue Today"
           value={formatMoney(financialTotals.totalRevenueKobo)}
           delta={18.4}
           isPositive={true}
@@ -1302,7 +1392,7 @@ export default function UnifiedAdminDashboard() {
           }
         />
         <FinancialCard
-          title="Total Expenses This Month"
+          title="Total Expenses Today"
           value={formatMoney(financialTotals.totalExpenseKobo)}
           delta={-5.2}
           isPositive={true}
@@ -1320,11 +1410,11 @@ export default function UnifiedAdminDashboard() {
       </div>
 
       {/* ── B: Monthly Targets vs Actuals (Functional Edit Modal) ── */}
-      <div className="bg-white rounded-xl border border-border p-5 shadow-2xs">
-        <div className="flex items-center justify-between gap-2 pb-3 mb-5 border-b border-border">
+      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-2xs">
+        <div className="flex items-center justify-between gap-2 pb-3 mb-5 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <Target className="w-4 h-4 text-active" />
-            <h3 className="text-base font-semibold text-heading">
+            <h3 className="text-base font-semibold text-gray-900">
               Monthly Targets vs Live Actuals
             </h3>
           </div>
@@ -1339,7 +1429,7 @@ export default function UnifiedAdminDashboard() {
               });
               setTargetModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-border text-xs font-semibold text-heading hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-800 hover:bg-gray-50 transition-colors"
           >
             <Pencil className="w-3 h-3 text-active" />
             <span>Edit Targets</span>
@@ -1395,23 +1485,23 @@ export default function UnifiedAdminDashboard() {
       </div>
 
       {/* ── VISUAL ECOSYSTEM SHOWCASE: Images & Visual Designs Describing All 6 Website Sections ── */}
-      <div className="bg-white rounded-2xl border border-border p-5 sm:p-6 shadow-2xs space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
+      <div className="bg-white rounded-2xl border border-gray-200 p-5 sm:p-6 shadow-2xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-200">
           <div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 text-active text-[10px] font-bold uppercase tracking-wider mb-1.5">
               <Layers className="w-3 h-3" />
               <span>Unified Platform Visual Architecture</span>
             </div>
-            <h3 className="text-lg font-extrabold text-heading">
+            <h3 className="text-lg font-extrabold text-gray-900">
               Six Unified Website Sections Connected to This Dashboard
             </h3>
-            <p className="text-xs text-muted mt-0.5">
+            <p className="text-xs text-gray-600 mt-0.5">
               Visual overview of each business unit, what it is built for, and quick launch controls for both the public storefront and admin workspace.
             </p>
           </div>
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-heading font-bold text-xs transition-colors shrink-0"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-900 font-bold text-xs transition-colors shrink-0"
           >
             <span>Open Public Home Portal</span>
             <ExternalLink className="w-3.5 h-3.5" />
@@ -1428,7 +1518,7 @@ export default function UnifiedAdminDashboard() {
             return (
               <div
                 key={sec.slug}
-                className="group rounded-2xl border border-border overflow-hidden bg-white hover:shadow-xl transition-all duration-300 flex flex-col"
+                className="group rounded-2xl border border-gray-200 overflow-hidden bg-white hover:shadow-xl transition-all duration-300 flex flex-col"
               >
                 {/* Visual Photography Header with Overlay Design */}
                 <div className="relative h-40 w-full overflow-hidden bg-gray-900">
@@ -1479,24 +1569,24 @@ export default function UnifiedAdminDashboard() {
 
                 {/* Card Body */}
                 <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
-                  <p className="text-xs text-muted leading-relaxed">{sec.description}</p>
+                  <p className="text-xs text-gray-600 leading-relaxed">{sec.description}</p>
 
                   <div className="space-y-3">
                     {/* Live Synced Counters */}
-                    <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-gray-50 border border-border/70 text-center">
+                    <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-200 text-center">
                       <div>
-                        <p className="text-sm font-extrabold text-heading">
+                        <p className="text-sm font-extrabold text-gray-900">
                           {serviceProductsCount}
                         </p>
-                        <p className="text-[10px] text-muted font-medium">
+                        <p className="text-[10px] text-gray-500 font-medium">
                           Active Products / Items
                         </p>
                       </div>
-                      <div className="border-l border-border">
-                        <p className="text-sm font-extrabold text-heading">
+                      <div className="border-l border-gray-200">
+                        <p className="text-sm font-extrabold text-gray-900">
                           {serviceInvoicesCount}
                         </p>
-                        <p className="text-[10px] text-muted font-medium">
+                        <p className="text-[10px] text-gray-500 font-medium">
                           Synced Invoices / Logs
                         </p>
                       </div>
@@ -1515,7 +1605,7 @@ export default function UnifiedAdminDashboard() {
                       <button
                         type="button"
                         onClick={() => handleOpenAddProduct(sec.slug)}
-                        className="inline-flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg border border-border text-xs font-bold text-heading hover:bg-gray-50 transition-colors"
+                        className="inline-flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-800 hover:bg-gray-50 transition-colors"
                         title={`Add item to ${cfg.name}`}
                       >
                         <Plus className="w-3.5 h-3.5 text-active" />
@@ -1523,7 +1613,7 @@ export default function UnifiedAdminDashboard() {
                       </button>
                       <Link
                         href={sec.publicHref}
-                        className="inline-flex items-center justify-center p-2 rounded-lg border border-border text-muted hover:text-heading hover:bg-gray-50 transition-colors"
+                        className="inline-flex items-center justify-center p-2 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors"
                         title={`View public ${cfg.name} page`}
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -1538,29 +1628,29 @@ export default function UnifiedAdminDashboard() {
       </div>
 
       {/* ── APARTMENT SUITES REAL-TIME OCCUPANCY & PMS QUICK BOARD ── */}
-      <div className="bg-white rounded-2xl border border-border p-5 sm:p-6 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+      <div className="bg-white rounded-2xl border border-gray-200 p-5 sm:p-6 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#0B0F19] p-2 flex items-center justify-center text-amber-400 shadow-sm shrink-0">
               <BedDouble className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-extrabold text-heading">
+                <h3 className="text-base font-extrabold text-gray-900">
                   Zino Luxury Apartments — Real-Time Room Board
                 </h3>
                 <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-mono font-bold">
                   Lekki Phase 1
                 </span>
               </div>
-              <p className="text-xs text-muted">
+              <p className="text-xs text-gray-600">
                 One-click room status management: instantly toggle suite availability between Available, Occupied, and Cleaning.
               </p>
             </div>
           </div>
           <Link
             href="/admin/apartments/rooms"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-heading text-xs font-semibold transition-colors shrink-0"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-900 text-xs font-semibold transition-colors shrink-0"
           >
             <span>Full PMS Rooms Setup</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -1620,7 +1710,7 @@ export default function UnifiedAdminDashboard() {
             return (
               <div
                 key={room.id}
-                className="p-4 rounded-xl border border-border bg-slate-50/50 hover:bg-white hover:shadow-md transition-all space-y-3 flex flex-col justify-between"
+                className="p-4 rounded-xl border border-gray-200 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all space-y-3 flex flex-col justify-between"
               >
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
@@ -1633,19 +1723,19 @@ export default function UnifiedAdminDashboard() {
                       <span className={cn("w-1.5 h-1.5 rounded-full", statusConfig.dot)} />
                       <span>{statusConfig.label}</span>
                     </span>
-                    <span className="text-[11px] font-mono font-bold text-heading">
+                    <span className="text-[11px] font-mono font-bold text-gray-900">
                       {formatMoney(room.rateKobo)}/night
                     </span>
                   </div>
-                  <h4 className="font-bold text-sm text-heading pt-1">{room.title}</h4>
-                  <p className="text-[11px] text-muted">{room.features}</p>
-                  <p className="text-[10px] font-mono text-muted">{room.floor}</p>
+                  <h4 className="font-bold text-sm text-gray-900 pt-1">{room.title}</h4>
+                  <p className="text-[11px] text-gray-600">{room.features}</p>
+                  <p className="text-[10px] font-mono text-gray-500">{room.floor}</p>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => handleToggleRoomStatus(room.id, room.title)}
-                  className="w-full py-1.5 rounded-lg border border-border hover:border-slate-400 bg-white hover:bg-slate-50 text-heading text-[11px] font-bold font-mono transition-colors shadow-2xs cursor-pointer"
+                  className="w-full py-1.5 rounded-lg border border-gray-200 hover:border-gray-400 bg-white hover:bg-gray-50 text-gray-900 text-[11px] font-bold font-mono transition-colors shadow-2xs cursor-pointer"
                 >
                   Toggle Status ({status})
                 </button>
@@ -1671,8 +1761,8 @@ export default function UnifiedAdminDashboard() {
                 onClick={() => setChartGrouping("service")}
                 className={`px-2.5 py-1 rounded-md transition-colors ${
                   chartGrouping === "service"
-                    ? "bg-white text-heading shadow-2xs"
-                    : "text-muted hover:text-heading"
+                    ? "bg-white text-gray-900 shadow-2xs"
+                    : "text-gray-600 hover:text-gray-900"
                 }`}
               >
                 By service
@@ -1682,8 +1772,8 @@ export default function UnifiedAdminDashboard() {
                 onClick={() => setChartGrouping("location")}
                 className={`px-2.5 py-1 rounded-md transition-colors ${
                   chartGrouping === "location"
-                    ? "bg-white text-heading shadow-2xs"
-                    : "text-muted hover:text-heading"
+                    ? "bg-white text-gray-900 shadow-2xs"
+                    : "text-gray-600 hover:text-gray-900"
                 }`}
               >
                 By location
@@ -1695,7 +1785,7 @@ export default function UnifiedAdminDashboard() {
             <ResponsiveContainer width="100%" height="100%">
               {chartGrouping === "service" ? (
                 <LineChart
-                  data={sales30DaysByService}
+                  data={liveDailyChart}
                   margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#F1F3F5" />
@@ -1724,7 +1814,7 @@ export default function UnifiedAdminDashboard() {
                 </LineChart>
               ) : (
                 <LineChart
-                  data={sales30DaysByLocation}
+                  data={liveLocationChart}
                   margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#F1F3F5" />
@@ -1745,10 +1835,24 @@ export default function UnifiedAdminDashboard() {
                     }}
                   />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
-                  <Line type="monotone" dataKey="MedicalRoad" name="Medical Road" stroke="#10B981" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="Adepele" name="Adepele Shop" stroke="#2563EB" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="Olayeni" name="Olayeni Shop" stroke="#F59E0B" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="AllLocations" name="All Locations" stroke="#E11D48" strokeWidth={2.5} />
+                  {dashboardData
+                    ? locationSeries.map((series: any, index: number) => (
+                        <Line
+                          key={series.locationId}
+                          type="monotone"
+                          dataKey={`Location ${index + 1}`}
+                          name={series.name}
+                          stroke={series.color}
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      ))
+                    : <>
+                        <Line type="monotone" dataKey="MedicalRoad" name="Medical Road" stroke="#10B981" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="Adepele" name="Adepele Shop" stroke="#2563EB" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="Olayeni" name="Olayeni Shop" stroke="#F59E0B" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="AllLocations" name="All Locations" stroke="#E11D48" strokeWidth={2.5} />
+                      </>}
                 </LineChart>
               )}
             </ResponsiveContainer>
@@ -1762,7 +1866,7 @@ export default function UnifiedAdminDashboard() {
           <div className="w-full h-72 min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
-                data={financialYearData}
+                data={liveFinancialYearChart}
                 margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#F1F3F5" />
@@ -1796,19 +1900,19 @@ export default function UnifiedAdminDashboard() {
       {/* ── Row 3: Needs Attention + Live Recent Activity ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
         {/* Needs Attention */}
-        <div className="bg-white rounded-xl border border-border p-5 shadow-2xs flex flex-col justify-between min-w-0">
+        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-2xs flex flex-col justify-between min-w-0">
           <div>
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-border">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-200">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-500" />
-                <h3 className="text-base font-semibold text-heading">Needs Attention</h3>
+                <h3 className="text-base font-semibold text-gray-900">Needs Attention</h3>
               </div>
               <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-xs font-bold">
                 {attentionItems.length} Actionable
               </span>
             </div>
             {attentionItems.length === 0 ? (
-              <div className="py-12 text-center text-xs text-muted">
+              <div className="py-12 text-center text-xs text-gray-500">
                 <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
                 All urgent alerts have been resolved!
               </div>
@@ -1817,13 +1921,13 @@ export default function UnifiedAdminDashboard() {
                 {attentionItems.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-start justify-between gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-border/70"
+                    className="flex items-start justify-between gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-200"
                   >
                     <Link href={item.href} className="flex items-start gap-3 flex-1 min-w-0">
                       <SourceBadge source={item.source} size="sm" className="mt-0.5 shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-heading truncate">{item.title}</p>
-                        <p className="text-[11px] text-muted truncate mt-0.5">{item.detail}</p>
+                        <p className="text-xs font-bold text-gray-900 truncate">{item.title}</p>
+                        <p className="text-[11px] text-gray-500 truncate mt-0.5">{item.detail}</p>
                       </div>
                     </Link>
                     <button
@@ -1832,7 +1936,7 @@ export default function UnifiedAdminDashboard() {
                         setAttentionItems((prev) => prev.filter((a) => a.id !== item.id));
                         showToast(`Resolved alert: ${item.title}`);
                       }}
-                      className="px-2 py-1 rounded bg-gray-100 hover:bg-emerald-600 hover:text-white text-[10px] font-bold text-muted transition-colors shrink-0"
+                      className="px-2 py-1 rounded bg-gray-100 hover:bg-emerald-600 hover:text-white text-[10px] font-bold text-gray-600 transition-colors shrink-0"
                     >
                       Resolve
                     </button>
@@ -1841,19 +1945,19 @@ export default function UnifiedAdminDashboard() {
               </div>
             )}
           </div>
-          <div className="pt-4 mt-4 border-t border-border flex items-center justify-between text-xs">
-            <span className="text-muted">Automated cross-service health checks</span>
+          <div className="pt-4 mt-4 border-t border-gray-200 flex items-center justify-between text-xs">
+            <span className="text-gray-500">Automated cross-service health checks</span>
             <span className="font-semibold text-emerald-600">All 6 services online</span>
           </div>
         </div>
 
         {/* Recent Activity (Synced with usePlatformStore) */}
-        <div className="bg-white rounded-xl border border-border p-5 shadow-2xs flex flex-col justify-between min-w-0">
+        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-2xs flex flex-col justify-between min-w-0">
           <div>
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-border">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-200">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-active" />
-                <h3 className="text-base font-semibold text-heading">
+                <h3 className="text-base font-semibold text-gray-900">
                   Live Cross-Service Activity Feed
                 </h3>
               </div>
@@ -1882,12 +1986,12 @@ export default function UnifiedAdminDashboard() {
                     <SourceBadge source={act.source} size="sm" className="shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-bold text-heading truncate">{act.actor}</span>
-                        <span className="text-[11px] text-muted shrink-0">{act.time}</span>
+                        <span className="font-bold text-gray-900 truncate">{act.actor}</span>
+                        <span className="text-[11px] text-gray-500 shrink-0">{act.time}</span>
                       </div>
-                      <p className="text-body text-[11px] mt-0.5 break-words">{act.action}</p>
+                      <p className="text-gray-700 text-[11px] mt-0.5 break-words">{act.action}</p>
                       {act.amount && (
-                        <span className="inline-block mt-1 font-bold text-heading text-[11px]">
+                        <span className="inline-block mt-1 font-bold text-gray-900 text-[11px]">
                           {act.amount}
                         </span>
                       )}
@@ -1896,7 +2000,7 @@ export default function UnifiedAdminDashboard() {
                 ))}
             </div>
           </div>
-          <div className="pt-4 mt-4 border-t border-border text-center">
+          <div className="pt-4 mt-4 border-t border-gray-200 text-center">
             <Link
               href="/admin/activity"
               className="text-xs font-bold text-active hover:underline"
@@ -1941,7 +2045,7 @@ export default function UnifiedAdminDashboard() {
         rightAction={
           <Link
             href="/admin/spark/stock-alert"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-bold text-heading hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-900 hover:bg-gray-50 transition-colors"
           >
             View Full Stock Alert
           </Link>
@@ -1951,9 +2055,9 @@ export default function UnifiedAdminDashboard() {
       {/* ── D: Unified Invoice & Transaction Activity (All Sections Labeled + CSV/Excel/PDF/Column Visibility) ── */}
       <div className="space-y-3 min-w-0">
         {/* Filter bar */}
-        <div className="bg-white rounded-xl border border-border p-4 shadow-2xs">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-2xs">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs font-semibold text-muted">
+            <div className="flex items-center gap-2 text-xs font-semibold text-gray-600">
               <Filter className="w-4 h-4 text-active" />
               <span>Filter All Website Invoice Activity:</span>
             </div>
@@ -1963,7 +2067,7 @@ export default function UnifiedAdminDashboard() {
                 onChange={(e) =>
                   setInvoiceFilter((f) => ({ ...f, service: e.target.value }))
                 }
-                className="h-8 px-2.5 rounded-lg border border-border text-xs text-heading bg-white focus:outline-none focus:border-active"
+                className="h-8 px-2.5 rounded-lg border border-gray-200 text-xs text-gray-900 bg-white focus:outline-none focus:border-active"
               >
                 <option value="">All Website Sections</option>
                 <option value="SPARK">Zino Spark (POS)</option>
@@ -1978,7 +2082,7 @@ export default function UnifiedAdminDashboard() {
                 onChange={(e) =>
                   setInvoiceFilter((f) => ({ ...f, type: e.target.value }))
                 }
-                className="h-8 px-2.5 rounded-lg border border-border text-xs text-heading bg-white focus:outline-none focus:border-active"
+                className="h-8 px-2.5 rounded-lg border border-gray-200 text-xs text-gray-900 bg-white focus:outline-none focus:border-active"
               >
                 <option value="">All Activity Types</option>
                 <option value="SALE">Sale</option>
@@ -1994,23 +2098,23 @@ export default function UnifiedAdminDashboard() {
                 onChange={(e) =>
                   setInvoiceFilter((f) => ({ ...f, from: e.target.value }))
                 }
-                className="h-8 px-2 rounded-lg border border-border text-xs text-heading focus:outline-none focus:border-active"
+                className="h-8 px-2 rounded-lg border border-gray-200 text-xs bg-white text-gray-900 focus:outline-none focus:border-active"
               />
-              <span className="text-xs text-muted">to</span>
+              <span className="text-xs text-gray-500">to</span>
               <input
                 type="date"
                 value={invoiceFilter.to}
                 onChange={(e) =>
                   setInvoiceFilter((f) => ({ ...f, to: e.target.value }))
                 }
-                className="h-8 px-2 rounded-lg border border-border text-xs text-heading focus:outline-none focus:border-active"
+                className="h-8 px-2 rounded-lg border border-gray-200 text-xs bg-white text-gray-900 focus:outline-none focus:border-active"
               />
               <button
                 type="button"
                 onClick={() =>
                   setInvoiceFilter({ service: "", type: "", from: "", to: "" })
                 }
-                className="h-8 px-3 rounded-lg border border-border text-xs font-semibold text-muted hover:text-heading hover:bg-gray-50 transition-colors"
+                className="h-8 px-3 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
               >
                 Reset Filters
               </button>
@@ -2049,16 +2153,16 @@ export default function UnifiedAdminDashboard() {
       </div>
 
       {/* ── E: Unified Products & Services Manager (Drag & Drop Local Image Upload + Live Sync) ── */}
-      <div className="bg-white rounded-2xl border border-border p-5 sm:p-6 shadow-2xs space-y-5 min-w-0">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+      <div className="bg-white rounded-2xl border border-gray-200 p-5 sm:p-6 shadow-2xs space-y-5 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-200">
           <div>
             <div className="flex items-center gap-2">
               <Package className="w-5 h-5 text-active" />
-              <h3 className="text-lg font-extrabold text-heading">
+              <h3 className="text-lg font-extrabold text-gray-900">
                 Website Products &amp; Services Studio
               </h3>
             </div>
-            <p className="text-xs text-muted mt-1">
+            <p className="text-xs text-gray-600 mt-1">
               Add or remove products and services, drag-and-drop images from your device&apos;s local storage, and edit name labels or pricing across all 6 sections of the website.
             </p>
           </div>
@@ -2073,7 +2177,7 @@ export default function UnifiedAdminDashboard() {
             </button>
             <Link
               href="/admin/products"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-border text-xs font-semibold text-heading hover:bg-gray-50 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 hover:bg-gray-50 transition-colors"
             >
               Full Catalog View →
             </Link>
@@ -2117,7 +2221,7 @@ export default function UnifiedAdminDashboard() {
                 "px-3.5 py-1.5 rounded-lg font-bold transition-colors shrink-0",
                 productServiceTab === tab.key
                   ? "bg-active text-white shadow-2xs"
-                  : "bg-gray-100 text-muted hover:text-heading hover:bg-gray-200"
+                  : "bg-gray-100 text-gray-700 hover:text-gray-900 hover:bg-gray-200"
               )}
             >
               {tab.label}
@@ -2134,7 +2238,7 @@ export default function UnifiedAdminDashboard() {
             .map((item) => (
               <div
                 key={item.id}
-                className="group rounded-xl border border-border bg-white overflow-hidden hover:shadow-lg transition-all flex flex-col justify-between"
+                className="group rounded-xl border border-gray-200 bg-white overflow-hidden hover:shadow-lg transition-all flex flex-col justify-between"
               >
                 <div>
                   {/* Product Visual Image Header */}
@@ -2147,7 +2251,7 @@ export default function UnifiedAdminDashboard() {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted">
+                      <div className="w-full h-full flex items-center justify-center text-gray-500">
                         <ImageIcon className="w-8 h-8" />
                       </div>
                     )}
@@ -2166,30 +2270,30 @@ export default function UnifiedAdminDashboard() {
 
                   {/* Product Details */}
                   <div className="p-3.5">
-                    <p className="text-[10px] font-mono text-muted">{item.sku}</p>
-                    <h4 className="text-xs font-extrabold text-heading mt-0.5 line-clamp-1">
+                    <p className="text-[10px] font-mono text-gray-500">{item.sku}</p>
+                    <h4 className="text-xs font-extrabold text-gray-900 mt-0.5 line-clamp-1">
                       {item.name}
                     </h4>
-                    <p className="text-[11px] text-muted mt-1 line-clamp-2 min-h-[28px]">
+                    <p className="text-[11px] text-gray-600 mt-1 line-clamp-2 min-h-[28px]">
                       {item.description || item.label}
                     </p>
-                    <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border">
-                      <span className="text-sm font-black text-heading">
+                    <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-gray-200">
+                      <span className="text-sm font-black text-gray-900">
                         {item.priceDisplay}
                       </span>
-                      <span className="text-[10px] font-semibold text-muted">
-                        Stock: <strong className="text-heading">{item.totalStock}</strong>
+                      <span className="text-[10px] font-semibold text-gray-500">
+                        Stock: <strong className="text-gray-900">{item.totalStock}</strong>
                       </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Edit / Remove Footer */}
-                <div className="px-3.5 py-2.5 bg-gray-50 border-t border-border flex items-center justify-between gap-2">
+                <div className="px-3.5 py-2.5 bg-gray-50 border-t border-gray-200 flex items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={() => handleOpenEditProduct(item)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-white border border-border hover:border-active text-xs font-bold text-heading hover:text-active transition-colors shadow-2xs"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-white border border-gray-200 hover:border-active text-xs font-bold text-gray-800 hover:text-active transition-colors shadow-2xs"
                   >
                     <Pencil className="w-3.5 h-3.5" />
                     <span>Edit Image / Label</span>
@@ -2197,7 +2301,7 @@ export default function UnifiedAdminDashboard() {
                   <button
                     type="button"
                     onClick={() => handleDeleteProduct(item)}
-                    className="p-1.5 rounded-lg bg-white border border-border hover:border-rose-300 hover:bg-rose-50 text-muted hover:text-rose-600 transition-colors"
+                    className="p-1.5 rounded-lg bg-white border border-gray-200 hover:border-rose-300 hover:bg-rose-50 text-gray-500 hover:text-rose-600 transition-colors"
                     title="Remove from website"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -2211,22 +2315,22 @@ export default function UnifiedAdminDashboard() {
       {/* ── MODAL 1: Add / Edit Product or Service (with Drag & Drop Local Image Storage) ── */}
       {productModalOpen && editingProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-border space-y-5 animate-fade-in-up">
-            <div className="flex items-center justify-between pb-3 border-b border-border">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-gray-200 space-y-5 animate-fade-in-up">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200">
               <div>
-                <h3 className="text-lg font-extrabold text-heading">
+                <h3 className="text-lg font-extrabold text-gray-900">
                   {editingProduct.id
                     ? "Edit Website Product / Service"
                     : "Add New Product / Service to Website"}
                 </h3>
-                <p className="text-xs text-muted">
+                <p className="text-xs text-gray-600">
                   Changes sync live across the Admin Dashboard and Public Storefronts.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setProductModalOpen(false)}
-                className="p-1.5 rounded-lg text-muted hover:text-heading hover:bg-gray-100 transition-colors"
+                className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2247,7 +2351,7 @@ export default function UnifiedAdminDashboard() {
               />
 
               <div>
-                <label className="block font-semibold text-heading mb-1">
+                <label className="block font-semibold text-gray-900 mb-1">
                   Product / Service Name *
                 </label>
                 <input
@@ -2258,13 +2362,13 @@ export default function UnifiedAdminDashboard() {
                     setEditingProduct({ ...editingProduct, name: e.target.value })
                   }
                   placeholder="e.g. Samsung 990 PRO 4TB or Deluxe Studio Suite"
-                  className="w-full h-9 px-3 rounded-lg border border-border text-heading focus:outline-none focus:border-active"
+                  className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-active"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-heading mb-1">
+                  <label className="block font-semibold text-gray-900 mb-1">
                     Website Section / Service *
                   </label>
                   <select
@@ -2275,7 +2379,7 @@ export default function UnifiedAdminDashboard() {
                         source: e.target.value as ServiceSlug,
                       })
                     }
-                    className="w-full h-9 px-2 rounded-lg border border-border text-heading bg-white focus:outline-none focus:border-active"
+                    className="w-full h-9 px-2 rounded-lg border border-gray-200 text-gray-900 bg-white focus:outline-none focus:border-active"
                   >
                     <option value={ServiceSlug.SPARK}>Zino Spark (POS)</option>
                     <option value={ServiceSlug.GALAXY}>Device Galaxy (Shop)</option>
@@ -2286,7 +2390,7 @@ export default function UnifiedAdminDashboard() {
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold text-heading mb-1">
+                  <label className="block font-semibold text-gray-900 mb-1">
                     Name Label / Tag Badge *
                   </label>
                   <input
@@ -2296,13 +2400,13 @@ export default function UnifiedAdminDashboard() {
                       setEditingProduct({ ...editingProduct, label: e.target.value })
                     }
                     placeholder="e.g. Best Seller, Hot Deal, VIP Suite"
-                    className="w-full h-9 px-3 rounded-lg border border-border text-heading focus:outline-none focus:border-active"
+                    className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-active"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-heading mb-1">
+                <label className="block font-semibold text-gray-900 mb-1">
                   Description
                 </label>
                 <input
@@ -2315,13 +2419,13 @@ export default function UnifiedAdminDashboard() {
                     })
                   }
                   placeholder="Short description displayed on product cards..."
-                  className="w-full h-9 px-3 rounded-lg border border-border text-heading focus:outline-none focus:border-active"
+                  className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-active"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-semibold text-heading mb-1">
+                  <label className="block font-semibold text-gray-900 mb-1">
                     Price Label *
                   </label>
                   <input
@@ -2335,11 +2439,11 @@ export default function UnifiedAdminDashboard() {
                       })
                     }
                     placeholder="e.g. ₦480,000"
-                    className="w-full h-9 px-3 rounded-lg border border-border text-heading focus:outline-none focus:border-active"
+                    className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-active"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-heading mb-1">
+                  <label className="block font-semibold text-gray-900 mb-1">
                     Stock Qty
                   </label>
                   <input
@@ -2351,11 +2455,11 @@ export default function UnifiedAdminDashboard() {
                         totalStock: Number(e.target.value),
                       })
                     }
-                    className="w-full h-9 px-3 rounded-lg border border-border text-heading focus:outline-none focus:border-active"
+                    className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-active"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-heading mb-1">
+                  <label className="block font-semibold text-gray-900 mb-1">
                     Status
                   </label>
                   <select
@@ -2366,7 +2470,7 @@ export default function UnifiedAdminDashboard() {
                         status: e.target.value as any,
                       })
                     }
-                    className="w-full h-9 px-2 rounded-lg border border-border text-heading bg-white focus:outline-none focus:border-active"
+                    className="w-full h-9 px-2 rounded-lg border border-gray-200 text-gray-900 bg-white focus:outline-none focus:border-active"
                   >
                     <option value="ACTIVE">ACTIVE</option>
                     <option value="LOW_STOCK">LOW_STOCK</option>
@@ -2376,11 +2480,11 @@ export default function UnifiedAdminDashboard() {
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-border flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-gray-200 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setProductModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border border-border font-semibold text-muted hover:text-heading hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 rounded-lg border border-gray-200 font-semibold text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
@@ -2400,22 +2504,22 @@ export default function UnifiedAdminDashboard() {
       {/* ── MODAL 2: Edit Monthly Targets ── */}
       {targetModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-border space-y-4 animate-fade-in-up">
-            <div className="flex items-center justify-between pb-3 border-b border-border">
-              <h3 className="text-base font-extrabold text-heading">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-gray-200 space-y-4 animate-fade-in-up">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200">
+              <h3 className="text-base font-extrabold text-gray-900">
                 Adjust Monthly Targets
               </h3>
               <button
                 type="button"
                 onClick={() => setTargetModalOpen(false)}
-                className="p-1.5 rounded-lg text-muted hover:bg-gray-100"
+                className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <form onSubmit={handleSaveTargetsSubmit} className="space-y-3.5 text-xs">
               <div>
-                <label className="block font-semibold text-heading mb-1">
+                <label className="block font-semibold text-gray-900 mb-1">
                   Monthly Sales Revenue Target (₦)
                 </label>
                 <input
@@ -2425,11 +2529,11 @@ export default function UnifiedAdminDashboard() {
                   onChange={(e) =>
                     setTargetForm({ ...targetForm, salesNaira: Number(e.target.value) })
                   }
-                  className="w-full h-9 px-3 rounded-lg border border-border text-heading"
+                  className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 focus:outline-none focus:border-active"
                 />
               </div>
               <div>
-                <label className="block font-semibold text-heading mb-1">
+                <label className="block font-semibold text-gray-900 mb-1">
                   Monthly Expense Budget (₦)
                 </label>
                 <input
@@ -2439,12 +2543,12 @@ export default function UnifiedAdminDashboard() {
                   onChange={(e) =>
                     setTargetForm({ ...targetForm, expenseNaira: Number(e.target.value) })
                   }
-                  className="w-full h-9 px-3 rounded-lg border border-border text-heading"
+                  className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 focus:outline-none focus:border-active"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-heading mb-1">
+                  <label className="block font-semibold text-gray-900 mb-1">
                     Bookings Target
                   </label>
                   <input
@@ -2457,11 +2561,11 @@ export default function UnifiedAdminDashboard() {
                         bookingsTarget: Number(e.target.value),
                       })
                     }
-                    className="w-full h-9 px-3 rounded-lg border border-border text-heading"
+                    className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 focus:outline-none focus:border-active"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-heading mb-1">
+                  <label className="block font-semibold text-gray-900 mb-1">
                     Visitors Target
                   </label>
                   <input
@@ -2474,21 +2578,21 @@ export default function UnifiedAdminDashboard() {
                         visitorsTarget: Number(e.target.value),
                       })
                     }
-                    className="w-full h-9 px-3 rounded-lg border border-border text-heading"
+                    className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 focus:outline-none focus:border-active"
                   />
                 </div>
               </div>
-              <div className="pt-3 border-t border-border flex justify-end gap-2">
+              <div className="pt-3 border-t border-gray-200 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setTargetModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border border-border font-semibold text-muted"
+                  className="px-4 py-2 rounded-lg border border-gray-200 font-semibold text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-active text-white font-bold"
+                  className="px-4 py-2 rounded-lg bg-active hover:bg-indigo-700 text-white font-bold transition-colors shadow-sm"
                 >
                   Save Targets
                 </button>
@@ -2501,15 +2605,15 @@ export default function UnifiedAdminDashboard() {
       {/* ── MODAL 3: Record New Invoice / Website Activity ── */}
       {txModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-border space-y-4 animate-fade-in-up">
-            <div className="flex items-center justify-between pb-3 border-b border-border">
-              <h3 className="text-base font-extrabold text-heading">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-gray-200 space-y-4 animate-fade-in-up">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200">
+              <h3 className="text-base font-extrabold text-gray-900">
                 Record Website Activity / Invoice
               </h3>
               <button
                 type="button"
                 onClick={() => setTxModalOpen(false)}
-                className="p-1.5 rounded-lg text-muted hover:bg-gray-100"
+                className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2517,7 +2621,7 @@ export default function UnifiedAdminDashboard() {
             <form onSubmit={handleCreateTransactionSubmit} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-heading mb-1">
+                  <label className="block font-semibold text-gray-900 mb-1">
                     Source Website Section *
                   </label>
                   <select
@@ -2525,7 +2629,7 @@ export default function UnifiedAdminDashboard() {
                     onChange={(e) =>
                       setTxForm({ ...txForm, source: e.target.value as ServiceSlug })
                     }
-                    className="w-full h-9 px-2 rounded-lg border border-border text-heading bg-white"
+                    className="w-full h-9 px-2 rounded-lg border border-gray-200 text-gray-900 bg-white focus:outline-none focus:border-active"
                   >
                     <option value={ServiceSlug.SPARK}>Zino Spark</option>
                     <option value={ServiceSlug.APARTMENTS}>Zino Apartments</option>
@@ -2536,7 +2640,7 @@ export default function UnifiedAdminDashboard() {
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold text-heading mb-1">
+                  <label className="block font-semibold text-gray-900 mb-1">
                     Activity Type *
                   </label>
                   <select
@@ -2544,7 +2648,7 @@ export default function UnifiedAdminDashboard() {
                     onChange={(e) =>
                       setTxForm({ ...txForm, activityType: e.target.value as any })
                     }
-                    className="w-full h-9 px-2 rounded-lg border border-border text-heading bg-white"
+                    className="w-full h-9 px-2 rounded-lg border border-gray-200 text-gray-900 bg-white focus:outline-none focus:border-active"
                   >
                     <option value="SALE">SALE</option>
                     <option value="BOOKING">BOOKING</option>
@@ -2556,7 +2660,7 @@ export default function UnifiedAdminDashboard() {
                 </div>
               </div>
               <div>
-                <label className="block font-semibold text-heading mb-1">
+                <label className="block font-semibold text-gray-900 mb-1">
                   Activity Carried Out *
                 </label>
                 <input
@@ -2567,11 +2671,11 @@ export default function UnifiedAdminDashboard() {
                     setTxForm({ ...txForm, activitySummary: e.target.value })
                   }
                   placeholder="e.g. Sold 50 bags Dangote Cement or 2-Night Deluxe Booking"
-                  className="w-full h-9 px-3 rounded-lg border border-border text-heading"
+                  className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-active"
                 />
               </div>
               <div>
-                <label className="block font-semibold text-heading mb-1">
+                <label className="block font-semibold text-gray-900 mb-1">
                   Customer / Guest / Supplier Name *
                 </label>
                 <input
@@ -2580,12 +2684,12 @@ export default function UnifiedAdminDashboard() {
                   value={txForm.customer}
                   onChange={(e) => setTxForm({ ...txForm, customer: e.target.value })}
                   placeholder="e.g. Chief Okonkwo or Walk-in Customer"
-                  className="w-full h-9 px-3 rounded-lg border border-border text-heading"
+                  className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-active"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-heading mb-1">
+                  <label className="block font-semibold text-gray-900 mb-1">
                     Amount (₦ Naira)
                   </label>
                   <input
@@ -2595,11 +2699,11 @@ export default function UnifiedAdminDashboard() {
                       setTxForm({ ...txForm, amountNaira: e.target.value })
                     }
                     placeholder="e.g. 250000"
-                    className="w-full h-9 px-3 rounded-lg border border-border text-heading"
+                    className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-active"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-heading mb-1">
+                  <label className="block font-semibold text-gray-900 mb-1">
                     Location
                   </label>
                   <input
@@ -2608,21 +2712,21 @@ export default function UnifiedAdminDashboard() {
                     onChange={(e) =>
                       setTxForm({ ...txForm, location: e.target.value })
                     }
-                    className="w-full h-9 px-3 rounded-lg border border-border text-heading"
+                    className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-active"
                   />
                 </div>
               </div>
-              <div className="pt-3 border-t border-border flex justify-end gap-2">
+              <div className="pt-3 border-t border-gray-200 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setTxModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border border-border font-semibold text-muted"
+                  className="px-4 py-2 rounded-lg border border-gray-200 font-semibold text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-active text-white font-bold"
+                  className="px-4 py-2 rounded-lg bg-active hover:bg-indigo-700 text-white font-bold transition-colors shadow-sm"
                 >
                   Record to Dashboard
                 </button>

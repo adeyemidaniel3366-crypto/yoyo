@@ -45,11 +45,11 @@ export default function VisitorsAttendancePage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-border p-6 shadow-2xs space-y-4">
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-2xs space-y-4">
         <div className="overflow-x-auto text-xs">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-border text-muted font-semibold">
+              <tr className="border-b border-gray-200 text-gray-700 font-bold">
                 <th className="py-2.5">Staff Member</th>
                 <th className="py-2.5">Department</th>
                 <th className="py-2.5">Clock-In Time</th>
@@ -58,13 +58,13 @@ export default function VisitorsAttendancePage() {
                 <th className="py-2.5 text-center">Punctuality</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-gray-200">
               {records.map((r) => (
                 <tr key={r.id} className="hover:bg-gray-50/70">
-                  <td className="py-3 font-bold text-heading">{r.employee}</td>
-                  <td className="py-3 text-muted">{r.department}</td>
-                  <td className="py-3 font-mono font-semibold text-heading">{r.clockIn}</td>
-                  <td className="py-3 text-muted">{r.clockOut || "Active Shift"}</td>
+                  <td className="py-3 font-bold text-gray-900">{r.employee}</td>
+                  <td className="py-3 text-gray-600">{r.department}</td>
+                  <td className="py-3 font-mono font-semibold text-gray-900">{r.clockIn}</td>
+                  <td className="py-3 text-gray-600">{r.clockOut || "Active Shift"}</td>
                   <td className="py-3 text-center">
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-700">
                       {r.workMode}

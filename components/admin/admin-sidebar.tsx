@@ -302,10 +302,9 @@ export function AdminSidebar({
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: SERVICE_CONFIG[ServiceSlug.SPARK].color }}
-                    />
+                    <span className="w-5 h-5 rounded bg-white p-0.5 flex items-center justify-center shrink-0 overflow-hidden">
+                      <Image src="/logos/zino-spark.png" alt="Zino Spark" width={24} height={24} className="w-full h-full object-contain" />
+                    </span>
                     <span className="font-semibold text-gray-200">Zino Spark</span>
                   </div>
                   {openGroups.spark ? (
@@ -357,7 +356,7 @@ export function AdminSidebar({
                   <div className="flex items-center gap-2.5">
                     <div className="w-5 h-4 rounded bg-white p-0.5 flex items-center justify-center shrink-0 overflow-hidden">
                       <Image
-                        src="/logos/apartments-logo.png"
+                        src="/logos/zino-spark.png"
                         alt="Zino Apartments"
                         width={30}
                         height={20}
@@ -420,10 +419,9 @@ export function AdminSidebar({
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: SERVICE_CONFIG[ServiceSlug.GALAXY].color }}
-                    />
+                    <span className="w-5 h-5 rounded bg-white p-0.5 flex items-center justify-center shrink-0 overflow-hidden">
+                      <Image src="/logos/device-galaxy.png" alt="Device Galaxy" width={24} height={24} className="w-full h-full object-contain" />
+                    </span>
                     <span className="font-semibold text-gray-200">Device Galaxy</span>
                   </div>
                   {openGroups.galaxy ? (
@@ -470,10 +468,9 @@ export function AdminSidebar({
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: SERVICE_CONFIG[ServiceSlug.VISITORS].color }}
-                    />
+                    <span className="w-5 h-5 rounded bg-white p-0.5 flex items-center justify-center shrink-0 overflow-hidden">
+                      <Image src="/logos/visitor-management.png" alt="Visitor Management" width={24} height={24} className="w-full h-full object-contain" />
+                    </span>
                     <span className="font-semibold text-gray-200">Visitor Management</span>
                   </div>
                   {openGroups.visitors ? (

@@ -240,7 +240,7 @@ export default function ZinoSparkStockAlertPage() {
           <select
             value={selectedLocation}
             onChange={(e) => setSelectedLocation(e.target.value)}
-            className="h-9 px-3 rounded-lg border border-border bg-white text-xs font-semibold text-heading focus:outline-none focus:border-active"
+            className="h-9 px-3 rounded-lg border border-border bg-white text-xs font-semibold text-gray-900 focus:outline-none focus:border-active"
           >
             <option value="ALL">Select location (All locations)</option>
             <option value="Adepele">Zino Spark Adepele</option>

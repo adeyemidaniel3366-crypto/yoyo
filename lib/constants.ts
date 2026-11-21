@@ -29,6 +29,7 @@ export interface ServiceConfigEntry {
   icon: string; // Lucide icon name
   publicRoute: string;
   adminRoute: string;
+  logoUrl?: string;
 }
 
 export const SERVICE_CONFIG: Record<ServiceSlug, ServiceConfigEntry> = {
@@ -41,6 +42,7 @@ export const SERVICE_CONFIG: Record<ServiceSlug, ServiceConfigEntry> = {
     icon: "Receipt",
     publicRoute: "/billstacks",
     adminRoute: "/admin/billstacks",
+    logoUrl: "/logos/billstacks-logo.png",
   },
   [ServiceSlug.BUILDERS]: {
     name: "Top Builders",
@@ -51,6 +53,7 @@ export const SERVICE_CONFIG: Record<ServiceSlug, ServiceConfigEntry> = {
     icon: "Hammer",
     publicRoute: "/builders",
     adminRoute: "/admin/builders",
+    logoUrl: "/logos/builders-logo.png",
   },
   [ServiceSlug.SPARK]: {
     name: "Zino Spark",
@@ -61,6 +64,7 @@ export const SERVICE_CONFIG: Record<ServiceSlug, ServiceConfigEntry> = {
     icon: "Cpu",
     publicRoute: "/spark",
     adminRoute: "/admin/spark",
+    logoUrl: "/logos/zino-spark.png",
   },
   [ServiceSlug.APARTMENTS]: {
     name: "Zino Apartments",
@@ -71,6 +75,7 @@ export const SERVICE_CONFIG: Record<ServiceSlug, ServiceConfigEntry> = {
     icon: "Building2",
     publicRoute: "/apartments",
     adminRoute: "/admin/apartments",
+    logoUrl: "/logos/apartments-logo.png",
   },
   [ServiceSlug.GALAXY]: {
     name: "Device Galaxy",
@@ -81,6 +86,7 @@ export const SERVICE_CONFIG: Record<ServiceSlug, ServiceConfigEntry> = {
     icon: "Smartphone",
     publicRoute: "/shop",
     adminRoute: "/admin/galaxy",
+    logoUrl: "/logos/device-galaxy.png",
   },
   [ServiceSlug.VISITORS]: {
     name: "Visitor Management",
@@ -91,6 +97,7 @@ export const SERVICE_CONFIG: Record<ServiceSlug, ServiceConfigEntry> = {
     icon: "UserCheck",
     publicRoute: "/visit",
     adminRoute: "/admin/visitors",
+    logoUrl: "/logos/visitor-management.png",
   },
 };
 

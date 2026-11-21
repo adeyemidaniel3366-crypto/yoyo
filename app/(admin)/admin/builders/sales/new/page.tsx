@@ -83,6 +83,7 @@ export default function TopBuildersNewSalePage() {
   const [amountPaid, setAmountPaid] = useState<number | "">("");
   const [fulfilment, setFulfilment] = useState<"SELF_COLLECTION" | "DELIVERED" | "TO_DELIVER">("SELF_COLLECTION");
   const [remarks, setRemarks] = useState("");
+  const [successData, setSuccessData] = useState<{ invoiceNo: string; total: number } | null>(null);
 
   // Filtered Products
   const filteredProducts = useMemo(() => {
@@ -135,6 +136,7 @@ export default function TopBuildersNewSalePage() {
   const handleSaveAndPrint = async () => {
     if (cart.length === 0) return;
     setIsSubmitting(true);
+    let fallbackInvoiceNo = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
     try {
       const paidKobo = Math.round(Number(amountPaid || 0) * 100);
       const totalKobo = Math.round(subtotalNaira * 100);
@@ -150,6 +152,7 @@ export default function TopBuildersNewSalePage() {
         status: paidKobo >= totalKobo ? "PAID" : paidKobo > 0 ? "PART_PAID" : "UNPAID",
         actor: "Sales Staff (Builders Yard)",
       });
+      fallbackInvoiceNo = inv.invoiceNo;
       const res = await fetch("/api/builders/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -169,17 +172,10 @@ export default function TopBuildersNewSalePage() {
         }),
       });
       const data = await res.json();
-      if (res.ok && data.ok) {
-        alert(`Sale recorded successfully! Invoice ${data.data?.invoiceNo || inv.invoiceNo}\nTotal: ₦${subtotalNaira.toLocaleString()}\nSynced to Unified Admin Dashboard.`);
-        router.push("/admin/builders/sales");
-      } else {
-        // Fallback for demo mode
-        alert(`Sale recorded! Invoice: ${inv.invoiceNo}\nTotal: ₦${subtotalNaira.toLocaleString()}.\nSynced to Unified Admin Dashboard.`);
-        router.push("/admin/builders/sales");
-      }
+      const finalInvoiceNo = (res.ok && data.ok && data.data?.invoiceNo) ? data.data.invoiceNo : fallbackInvoiceNo;
+      setSuccessData({ invoiceNo: finalInvoiceNo, total: subtotalNaira });
     } catch {
-      alert(`Sale recorded! Total: ₦${subtotalNaira.toLocaleString()}.\nSynced to Unified Admin Dashboard.`);
-      router.push("/admin/builders/sales");
+      setSuccessData({ invoiceNo: fallbackInvoiceNo, total: subtotalNaira });
     } finally {
       setIsSubmitting(false);
     }
@@ -354,7 +350,7 @@ export default function TopBuildersNewSalePage() {
                     setCustomer(e.target.value);
                   }
                 }}
-                className="w-full h-9 px-3 rounded-lg border border-border bg-white text-xs text-heading"
+                className="w-full h-9 px-3 rounded-lg border border-border bg-white text-xs text-gray-900"
               >
                 <option value="Adewumi Builders">Adewumi Builders (08000000101)</option>
                 <option value="Ibrahim & Sons Construction">Ibrahim & Sons Construction</option>
@@ -467,6 +463,49 @@ export default function TopBuildersNewSalePage() {
           </div>
         </div>
       </div>
+
+      {/* Success Modal */}
+      {successData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 text-center space-y-4 animate-scale-in">
+            <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Sale Recorded Successfully!</h3>
+              <p className="text-xs text-gray-500 mt-1">Invoice #{successData.invoiceNo}</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Total Invoice Value:</span>
+                <span className="font-bold text-gray-900">₦{successData.total.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Dashboard Status:</span>
+                <span className="font-bold text-emerald-600">Synced to Unified Ledger</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCart([]);
+                  setSuccessData(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Record Another Sale
+              </button>
+              <Link
+                href="/admin/builders/sales"
+                className="flex-1 py-2.5 rounded-xl bg-builders text-white text-xs font-bold text-center hover:opacity-95 shadow-sm transition-opacity"
+              >
+                View Sales Book
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

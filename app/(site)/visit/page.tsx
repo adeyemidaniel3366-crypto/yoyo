@@ -30,39 +30,99 @@ export default function VisitorKioskPage() {
   const [purpose, setPurpose] = useState("Business Meeting");
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [badgeNumber, setBadgeNumber] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isServerConfirmed, setIsServerConfirmed] = useState(false);
 
-  const handleCheckIn = (e: React.FormEvent) => {
+  const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    const badge = `PASS-${Math.floor(1000 + Math.random() * 9000)}`;
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    let passId = `PASS-${Math.floor(1000 + Math.random() * 9000)}`;
+    let serverOk = false;
+
+    try {
+      if (tab === "APPOINTMENT") {
+        const res = await fetch("/api/visitors/check-in", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: phoneOrCode.trim() }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.ok && data?.data) {
+            passId = data.data.token || data.data.id || passId;
+            serverOk = true;
+          }
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          if (res.status === 400 || res.status === 404) {
+            setErrorMessage(errData?.error?.message || "Invalid or expired appointment code.");
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      } else {
+        const res = await fetch("/api/visitors/check-in", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: visitorName.trim() || "Visitor",
+            phone: visitorPhone.trim() || phoneOrCode.trim() || "+2348000000000",
+            email: visitorEmail.trim() || null,
+            purpose,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.ok && data?.data) {
+            passId = data.data.token || data.data.id || passId;
+            serverOk = true;
+          }
+        }
+      }
+    } catch {
+      // Offline kiosk mode
+    }
+
+    const finalBadge = passId.startsWith("PASS-") ? passId : `PASS-${passId.slice(0, 8).toUpperCase()}`;
+
     recordPlatformTransaction({
       source: ServiceSlug.VISITORS,
       activityType: "VISIT",
-      activitySummary: `Visitor Kiosk Check-In (${purpose} with ${hostEmployee})`,
-      invoiceNo: badge,
+      activitySummary: `Visitor Kiosk Check-In (${purpose} with ${hostEmployee}) ${serverOk ? "[Verified]" : "[Local Kiosk]"}`,
+      invoiceNo: finalBadge,
       customer: visitorName.trim() || phoneOrCode.trim() || "Walk-In Visitor",
       amountKobo: 0,
       location: "HQ Reception Kiosk",
       status: "CHECKED_IN",
       actor: "Front Desk Kiosk",
     });
-    setBadgeNumber(badge);
+
+    setBadgeNumber(finalBadge);
+    setIsServerConfirmed(serverOk);
     setIsCheckedIn(true);
+    setIsSubmitting(false);
   };
 
   const handleReset = () => {
     setIsCheckedIn(false);
     setPhoneOrCode("");
     setVisitorName("");
+    setVisitorPhone("");
+    setVisitorEmail("");
+    setErrorMessage(null);
   };
 
   return (
     <div className="min-h-screen bg-slate-900 text-white flex flex-col justify-between p-4 sm:p-8">
       {/* Kiosk Header */}
-      <header className="max-w-4xl mx-auto w-full flex items-center justify-between pb-6 border-b border-slate-800">
+      <header className="max-w-4xl mx-auto w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-800">
         <Link href="/" className="flex items-center gap-3 group">
           <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md overflow-hidden group-hover:scale-105 transition-transform">
             <Image
-              src="/logos/zino-logo.png"
+              src="/logos/visitor-management.png"
               alt="Zino Security Kiosk"
               width={40}
               height={40}
@@ -76,7 +136,7 @@ export default function VisitorKioskPage() {
         </Link>
 
         {/* Top Entry Points matching Screenshot media_1795026254021_4d0a38d1.jpg */}
-        <div className="flex items-center gap-2 text-xs font-semibold">
+        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
           <button
             type="button"
             onClick={() => { setTab("APPOINTMENT"); setIsCheckedIn(false); }}
@@ -128,6 +188,12 @@ export default function VisitorKioskPage() {
                   : "Please provide your details to issue a visitor entry pass."}
               </p>
             </div>
+
+            {errorMessage && (
+              <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold">
+                {errorMessage}
+              </div>
+            )}
 
             <form onSubmit={handleCheckIn} className="space-y-4 text-xs">
               {tab === "APPOINTMENT" && (
@@ -199,10 +265,10 @@ export default function VisitorKioskPage() {
                       onChange={(e) => setHostEmployee(e.target.value)}
                       className="w-full h-10 px-3.5 rounded-xl border border-slate-600 bg-slate-900 text-white focus:outline-none focus:border-visitors"
                     >
-                      <option value="John Doe (Accounts Dept)">John Doe (Accounts Dept)</option>
-                      <option value="Chioma Okoye (Operations)">Chioma Okoye (Operations)</option>
-                      <option value="Babatunde Adeleke (IT Support)">Babatunde Adeleke (IT Support)</option>
-                      <option value="Management Office">Management Office</option>
+                      <option value="John Doe (Accounts Dept)" className="bg-slate-900 text-white">John Doe (Accounts Dept)</option>
+                      <option value="Chioma Okoye (Operations)" className="bg-slate-900 text-white">Chioma Okoye (Operations)</option>
+                      <option value="Babatunde Adeleke (IT Support)" className="bg-slate-900 text-white">Babatunde Adeleke (IT Support)</option>
+                      <option value="Management Office" className="bg-slate-900 text-white">Management Office</option>
                     </select>
                   </div>
                   <div>

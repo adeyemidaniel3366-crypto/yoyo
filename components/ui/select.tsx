@@ -35,21 +35,21 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             id={selectId}
             ref={ref}
             className={cn(
-              "w-full h-10 pl-3.5 pr-9 rounded-lg border bg-white text-sm text-heading appearance-none transition-colors outline-none cursor-pointer",
+              "w-full h-10 pl-3.5 pr-9 rounded-lg border bg-white text-sm text-gray-900 appearance-none transition-colors outline-none cursor-pointer",
               "border-border hover:border-gray-300 focus:border-active focus:ring-2 focus:ring-active/20",
               error && "border-rose-500 focus:border-rose-500 focus:ring-rose-200",
-              props.disabled && "bg-gray-50 text-muted cursor-not-allowed",
+              props.disabled && "bg-gray-50 text-gray-400 cursor-not-allowed",
               className
             )}
             {...props}
           >
             {placeholder && (
-              <option value="" disabled>
+              <option value="" disabled className="text-gray-500 bg-white">
                 {placeholder}
               </option>
             )}
             {options.map((opt) => (
-              <option key={opt.value} value={opt.value} disabled={opt.disabled}>
+              <option key={opt.value} value={opt.value} disabled={opt.disabled} className="text-gray-900 bg-white">
                 {opt.label}
               </option>
             ))}

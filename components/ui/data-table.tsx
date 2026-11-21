@@ -213,12 +213,12 @@ export function DataTable<T extends Record<string, any>>({
   };
 
   return (
-    <div className={cn("bg-white rounded-xl border border-border shadow-2xs min-w-0 max-w-full", className, "dark:bg-gray-800 dark:border-gray-700")}>
+    <div className={cn("admin-data-table bg-white rounded-xl border border-gray-200 shadow-2xs min-w-0 max-w-full text-gray-900", className)}>
       {/* Title & Top Toolbar */}
-      <div className="p-4 sm:p-5 border-b border-border space-y-3">
+      <div className="p-4 sm:p-5 border-b border-gray-100 space-y-3">
         {(title || rightAction) && (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            {title && <h3 className="text-base font-semibold text-heading dark:text-gray-100">{title}</h3>}
+            {title && <h3 className="data-table-title text-base font-semibold text-gray-900">{title}</h3>}
             {rightAction && <div className="shrink-0">{rightAction}</div>}
           </div>
         )}
@@ -226,44 +226,44 @@ export function DataTable<T extends Record<string, any>>({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
           {/* Export Pills Matching Screenshot */}
           {showExportButtons && (
-            <div className="flex items-center flex-wrap gap-1.5 text-xs text-muted">
+            <div className="flex items-center flex-wrap gap-1.5 text-xs text-gray-600">
               <button
                 type="button"
                 onClick={handleExportCSV}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-border bg-white text-muted hover:text-heading hover:bg-gray-50 transition-colors shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-gray-200 bg-white text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors shadow-2xs"
               >
-                <FileText className="w-3.5 h-3.5" />
+                <FileText className="w-3.5 h-3.5 text-gray-500" />
                 <span>Export CSV</span>
               </button>
               <button
                 type="button"
                 onClick={handleExportExcel}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-border bg-white text-muted hover:text-heading hover:bg-gray-50 transition-colors shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-gray-200 bg-white text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors shadow-2xs"
               >
-                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <FileSpreadsheet className="w-3.5 h-3.5 text-gray-500" />
                 <span>Export Excel</span>
               </button>
               <button
                 type="button"
                 onClick={handleExportPDF}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-border bg-white text-muted hover:text-heading hover:bg-gray-50 transition-colors shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-gray-200 bg-white text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors shadow-2xs"
               >
-                <Download className="w-3.5 h-3.5" />
+                <Download className="w-3.5 h-3.5 text-gray-500" />
                 <span>Export PDF</span>
               </button>
               <button
                 type="button"
                 onClick={handlePrint}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-border bg-white text-muted hover:text-heading hover:bg-gray-50 transition-colors shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-gray-200 bg-white text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors shadow-2xs"
               >
-                <Printer className="w-3.5 h-3.5" />
+                <Printer className="w-3.5 h-3.5 text-gray-500" />
                 <span>Print</span>
               </button>
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setShowColMenu(!showColMenu)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-border bg-white text-muted hover:text-heading hover:bg-gray-50 transition-colors shadow-2xs"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-gray-200 bg-white text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors shadow-2xs"
                 >
                   <Columns className="w-3.5 h-3.5" />
                   <span>Column visibility</span>
@@ -271,11 +271,11 @@ export function DataTable<T extends Record<string, any>>({
                 {showColMenu && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setShowColMenu(false)} />
-                    <div className="absolute left-0 mt-1 z-40 bg-white border border-border rounded-lg shadow-xl p-2 min-w-[180px] max-h-64 overflow-y-auto space-y-1">
+                    <div className="absolute left-0 mt-1 z-40 bg-white border border-gray-200 rounded-lg shadow-xl p-2 min-w-[180px] max-h-64 overflow-y-auto space-y-1 text-gray-900">
                       {columns.map((col) => (
                         <label
                           key={col.key}
-                          className="flex items-center gap-2 px-2 py-1 text-xs text-heading hover:bg-gray-50 rounded cursor-pointer"
+                          className="flex items-center gap-2 px-2 py-1 text-xs text-gray-900 hover:bg-gray-100 rounded cursor-pointer"
                         >
                           <input
                             type="checkbox"
@@ -286,9 +286,9 @@ export function DataTable<T extends Record<string, any>>({
                               else if (next.size > 1) next.delete(col.key);
                               updateVisibleColumns(next);
                             }}
-                            className="rounded border-border text-active focus:ring-active"
+                            className="rounded border-gray-300 text-active focus:ring-active"
                           />
-                          <span>{col.header}</span>
+                          <span className="text-gray-900">{col.header}</span>
                         </label>
                       ))}
                     </div>
@@ -300,7 +300,7 @@ export function DataTable<T extends Record<string, any>>({
 
           {/* Search bar */}
           <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder={searchPlaceholder}
@@ -309,7 +309,7 @@ export function DataTable<T extends Record<string, any>>({
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              className={cn("w-full h-8 pl-9 pr-3 rounded border border-border bg-white/90 dark:bg-gray-800/30 text-xs text-heading placeholder:text-muted/60 focus:outline-none focus:border-active dark:focus:border-primary")}
+              className={cn("data-table-search w-full h-8 pl-9 pr-3 rounded border border-gray-200 bg-white text-xs text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-active")}
             />
           </div>
         </div>
@@ -319,9 +319,9 @@ export function DataTable<T extends Record<string, any>>({
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm border-collapse">
           <thead>
-            <tr className={cn("border-b border-border bg-gray-50/70 text-xs font-semibold text-heading dark:text-gray-600")}>
+            <tr className={cn("border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-900")}>
               {showSourceColumn && (
-                <th className="py-3 px-4 w-28">Source</th>
+                <th className="py-3 px-4 w-28 text-gray-900">Source</th>
               )}
               {columns
                 .filter((col) => visibleColumns.has(col.key))
@@ -330,7 +330,7 @@ export function DataTable<T extends Record<string, any>>({
                     key={col.key}
                     onClick={() => col.sortable !== false && handleSort(col.key)}
                     className={cn(
-                      "py-3 px-4 font-semibold text-heading whitespace-nowrap",
+                      "py-3 px-4 font-semibold text-gray-900 whitespace-nowrap",
                       col.sortable !== false && "cursor-pointer select-none hover:bg-gray-100/60",
                       col.align === "center" && "text-center",
                       col.align === "right" && "text-right",
@@ -346,7 +346,7 @@ export function DataTable<T extends Record<string, any>>({
                     >
                       <span>{col.header}</span>
                       {col.sortable !== false && (
-                        <span className="text-muted">
+                        <span className="text-gray-400">
                           {sortKey === col.key ? (
                             sortDir === "asc" ? (
                               <ArrowUp className="w-3 h-3 text-active" />
@@ -363,14 +363,14 @@ export function DataTable<T extends Record<string, any>>({
                 ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-gray-100">
             {paginatedData.length > 0 ? (
               paginatedData.map((row, idx) => (
                 <tr
                   key={(row as any).id || idx}
                   onClick={() => onRowClick?.(row)}
                   className={cn(
-                    "hover:bg-gray-50/80 transition-colors dark:hover:bg-gray-800/50",
+                    "text-gray-800 hover:bg-gray-50/80 transition-colors",
                     "cursor-pointer"
                   )}
                 >
@@ -385,9 +385,9 @@ export function DataTable<T extends Record<string, any>>({
                       <td
                         key={col.key}
                         className={cn(
-                          "py-3 px-4",
+                          "py-3 px-4 text-gray-800",
                           col.align === "center" && "text-center",
-                          col.align === "right" && "text-right font-medium",
+                          col.align === "right" && "text-right font-medium text-gray-900",
                           col.className
                         )}
                       >
@@ -400,7 +400,7 @@ export function DataTable<T extends Record<string, any>>({
               <tr>
                 <td
                   colSpan={columns.length + (showSourceColumn ? 1 : 0)}
-                  className="py-12 text-center text-xs text-muted"
+                  className="py-12 text-center text-xs text-gray-500"
                 >
                   {emptyMessage}
                 </td>
@@ -411,7 +411,7 @@ export function DataTable<T extends Record<string, any>>({
       </div>
 
       {/* Footer: Pagination */}
-      <div className={cn("flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-border dark:border-gray-700 dark:text-gray-400")}>
+      <div className={cn("data-table-footer flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-gray-100 text-gray-700")}>
         <div>
           Showing {totalEntries === 0 ? 0 : startIndex + 1} to{" "}
           {Math.min(startIndex + pageSize, totalEntries)} of {totalEntries} entries
@@ -422,19 +422,19 @@ export function DataTable<T extends Record<string, any>>({
             type="button"
             disabled={currentPage <= 1}
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded border border-border bg-white text-heading hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded border border-gray-200 bg-white text-gray-900 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition-colors"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
             <span>Previous</span>
           </button>
-          <div className="px-2 font-medium text-heading">
+          <div className="data-table-page-number px-2 font-medium text-gray-900">
             {currentPage} / {totalPages}
           </div>
           <button
             type="button"
             disabled={currentPage >= totalPages}
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded border border-border bg-white text-heading hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded border border-gray-200 bg-white text-gray-900 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition-colors"
           >
             <span>Next</span>
             <ChevronRight className="w-3.5 h-3.5" />

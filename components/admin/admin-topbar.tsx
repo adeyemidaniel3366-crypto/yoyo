@@ -18,6 +18,10 @@ import {
   Compass,
   BookOpen,
   Filter,
+  X,
+  CheckCircle2,
+  Layers,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ServiceSlug, SERVICE_CONFIG, LOCATIONS } from "@/lib/constants";
@@ -50,7 +54,10 @@ export function AdminTopbar({
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [clockLoading, setClockLoading] = useState(false);
+  const [clockFeedback, setClockFeedback] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showTourModal, setShowTourModal] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
 
   React.useEffect(() => {
     // Check notifications
@@ -67,22 +74,34 @@ export function AdminTopbar({
 
   const handleClockToggle = async () => {
     setClockLoading(true);
+    setClockFeedback(null);
     try {
       const endpoint = isClockedIn
         ? "/api/visitors/attendance/clock-out"
         : "/api/visitors/attendance/clock-in";
       const res = await fetch(endpoint, { method: "POST" });
-      const data = await res.json();
-      if (res.ok && data.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.ok) {
         setIsClockedIn(!isClockedIn);
+        setClockFeedback(isClockedIn ? "Clocked out successfully." : "Clocked in successfully.");
       } else {
-        // Fallback for demo mode
-        setIsClockedIn(!isClockedIn);
+        if (typeof document !== "undefined" && document.cookie.includes("demo-offline-session")) {
+          setIsClockedIn(!isClockedIn);
+          setClockFeedback(isClockedIn ? "Demo Clock-out recorded." : "Demo Clock-in recorded.");
+        } else {
+          setClockFeedback(data?.error?.message || "Attendance request failed on server.");
+        }
       }
     } catch {
-      setIsClockedIn(!isClockedIn);
+      if (typeof document !== "undefined" && document.cookie.includes("demo-offline-session")) {
+        setIsClockedIn(!isClockedIn);
+        setClockFeedback(isClockedIn ? "Demo Clock-out recorded." : "Demo Clock-in recorded.");
+      } else {
+        setClockFeedback("Network error: Could not reach attendance server.");
+      }
     } finally {
       setClockLoading(false);
+      setTimeout(() => setClockFeedback(null), 4000);
     }
   };
 
@@ -104,9 +123,9 @@ export function AdminTopbar({
   };
 
   return (
-    <header className="sticky top-0 z-30 h-16 bg-topbar text-white border-b border-[#242442] flex items-center justify-between px-4 sm:px-6 shadow-sm">
+    <header className="sticky top-0 z-30 min-h-16 bg-topbar text-white border-b border-[#242442] flex items-center justify-between gap-2 px-3 sm:px-6 shadow-sm">
       {/* Left side: Hamburger + Global Search */}
-      <div className="flex items-center gap-3 lg:gap-4 flex-1 max-w-xl">
+      <div className="flex items-center gap-2 lg:gap-4 flex-1 min-w-0 max-w-xl">
         <button
           onClick={onToggleMobileSidebar}
           className="lg:hidden p-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
@@ -128,7 +147,7 @@ export function AdminTopbar({
         </Link>
 
         {/* Global Search Bar */}
-        <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-md">
+        <form onSubmit={handleSearchSubmit} className="relative flex-1 min-w-0 max-w-md">
           <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -145,7 +164,7 @@ export function AdminTopbar({
         {/* Tour button */}
         <button
           type="button"
-          onClick={() => alert("Welcome to Zino One platform tour! All 6 services are unified into this single admin workspace.")}
+          onClick={() => setShowTourModal(true)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-600 bg-transparent text-xs font-semibold text-gray-300 hover:text-white hover:border-gray-400 transition-colors"
         >
           <Compass className="w-3.5 h-3.5" />
@@ -155,7 +174,7 @@ export function AdminTopbar({
         {/* Guide button */}
         <button
           type="button"
-          onClick={() => alert("Platform Guide: Check documentation and operational manuals for all 6 business modules.")}
+          onClick={() => setShowGuideModal(true)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-active text-xs font-semibold text-white hover:bg-indigo-700 transition-colors shadow-2xs"
         >
           <BookOpen className="w-3.5 h-3.5" />
@@ -179,7 +198,7 @@ export function AdminTopbar({
           {showLocationDropdown && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowLocationDropdown(false)} />
-              <div className="absolute right-0 mt-1 z-50 w-64 bg-[#1A1A2E] border border-[#2E2E50] rounded-xl shadow-2xl p-2 text-xs">
+              <div className="absolute right-0 mt-1 z-50 w-64 bg-[#1A1A2E] text-white border border-[#2E2E50] rounded-xl shadow-2xl p-2 text-xs">
                 <div className="px-2 py-1 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                   Filter by Service
                 </div>
@@ -268,7 +287,7 @@ export function AdminTopbar({
       </div>
 
       {/* Right side: Clock In/Out, Notifications, User profile */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         {/* Clock In / Out button (Staff attendance) */}
         <button
           type="button"
@@ -322,28 +341,28 @@ export function AdminTopbar({
           {showUserDropdown && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowUserDropdown(false)} />
-              <div className="absolute right-0 mt-2 z-50 w-52 bg-white text-heading border border-border rounded-xl shadow-xl p-1.5 text-xs">
-                <div className="px-3 py-2 border-b border-border">
-                  <p className="font-bold text-heading">{userName}</p>
-                  <p className="text-muted text-[11px] truncate">{userRole}</p>
+              <div className="absolute right-0 mt-2 z-50 w-52 bg-white text-gray-900 border border-gray-200 rounded-xl shadow-xl p-1.5 text-xs">
+                <div className="px-3 py-2 border-b border-gray-100">
+                  <p className="font-bold text-gray-900">{userName}</p>
+                  <p className="text-gray-500 text-[11px] truncate">{userRole}</p>
                 </div>
                 <Link
                   href="/admin/users/staff"
                   onClick={() => setShowUserDropdown(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors text-heading"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-800"
                 >
-                  <User className="w-4 h-4 text-muted" />
+                  <User className="w-4 h-4 text-gray-500" />
                   <span>My Profile</span>
                 </Link>
                 <Link
                   href="/admin/settings"
                   onClick={() => setShowUserDropdown(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors text-heading"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-800"
                 >
-                  <SettingsIcon className="w-4 h-4 text-muted" />
+                  <SettingsIcon className="w-4 h-4 text-gray-500" />
                   <span>Platform Settings</span>
                 </Link>
-                <div className="border-t border-border my-1" />
+                <div className="border-t border-gray-100 my-1" />
                 <button
                   type="button"
                   onClick={handleLogout}
@@ -357,6 +376,102 @@ export function AdminTopbar({
           )}
         </div>
       </div>
+
+      {/* Clock Feedback Toast */}
+      {clockFeedback && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#14142B] text-white text-xs font-bold shadow-2xl border border-indigo-500/40 animate-fade-in-up">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{clockFeedback}</span>
+        </div>
+      )}
+
+      {/* Tour Walkthrough Modal */}
+      {showTourModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 text-gray-900 space-y-4 shadow-2xl border border-gray-200">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <Compass className="w-5 h-5 text-active" />
+                <h3 className="font-extrabold text-base text-gray-900">Zino One Platform Tour</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTourModal(false)}
+                className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-900"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-3 text-xs leading-relaxed text-gray-700">
+              <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-950">
+                <p className="font-bold text-active mb-0.5">1. Unified Multi-Service Workspace</p>
+                <p>All 6 businesses (Spark POS, Apartments, Builders, Galaxy, Billstacks, Visitors) stream transactions directly to this single command center.</p>
+              </div>
+              <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-900">
+                <p className="font-bold text-gray-900 mb-0.5">2. Central Products &amp; Invoices</p>
+                <p>Manage catalog items, pricing, images via drag-and-drop, and track consolidated cash flow with export to CSV, Excel, PDF, and Print.</p>
+              </div>
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-950">
+                <p className="font-bold text-emerald-700 mb-0.5">3. Live Staff &amp; Attendance</p>
+                <p>Clock in/out directly from the top bar to log reception attendance and security passes in real time.</p>
+              </div>
+            </div>
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowTourModal(false)}
+                className="px-4 py-2 rounded-xl bg-active text-white text-xs font-bold hover:bg-indigo-700 transition-colors"
+              >
+                Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Guide Operational Modal */}
+      {showGuideModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 text-gray-900 space-y-4 shadow-2xl border border-gray-200">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-active" />
+                <h3 className="font-extrabold text-base text-gray-900">Zino One Operational Guide</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGuideModal(false)}
+                className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-900"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-2.5 text-xs text-gray-700">
+              <div className="flex items-start gap-2.5 p-2.5 rounded-lg border border-gray-200 bg-gray-50/50">
+                <span className="px-2 py-0.5 rounded bg-white border border-gray-200 font-mono font-bold text-[10px] text-gray-800">Ctrl+K</span>
+                <p className="text-gray-700">Global Search palette for instant navigation across products, invoices, and service pages.</p>
+              </div>
+              <div className="flex items-start gap-2.5 p-2.5 rounded-lg border border-gray-200 bg-gray-50/50">
+                <span className="px-2 py-0.5 rounded bg-white border border-gray-200 font-mono font-bold text-[10px] text-gray-800">Filter</span>
+                <p className="text-gray-700">Use the topbar Scope dropdown to narrow dashboard views by service branch or physical depot.</p>
+              </div>
+              <div className="flex items-start gap-2.5 p-2.5 rounded-lg border border-gray-200 bg-gray-50/50">
+                <span className="px-2 py-0.5 rounded bg-white border border-gray-200 font-mono font-bold text-[10px] text-gray-800">Exports</span>
+                <p className="text-gray-700">Any activity or financial table can be exported directly to CSV, Excel, PDF, or Print.</p>
+              </div>
+            </div>
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowGuideModal(false)}
+                className="px-4 py-2 rounded-xl bg-gray-900 text-white text-xs font-bold hover:bg-black transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

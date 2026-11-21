@@ -41,9 +41,8 @@ export function StatCard({
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
       className={cn(
-        "rounded-xl border border-border p-5 shadow-sm transition-all duration-200 flex items-start gap-4",
+        "bg-white rounded-xl border border-gray-200 p-5 shadow-sm transition-all duration-200 flex items-start gap-4 text-gray-900",
         isClickable && "hover:shadow-md hover:border-gray-300 cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-active/20",
-        "dark:border-gray-700 dark:hover:bg-gray-900/20",
         className
       )}
     >
@@ -61,11 +60,11 @@ export function StatCard({
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-1">
-          <p className="text-[13px] font-medium text-muted truncate">{title}</p>
+          <p className="text-[13px] font-medium text-gray-500 truncate">{title}</p>
           {source && <SourceBadge source={source} size="sm" />}
         </div>
 
-        <h3 className="text-2xl lg:text-[26px] font-bold text-heading tracking-tight tabular-nums truncate dark:text-gray-100">
+        <h3 className="text-2xl lg:text-[26px] font-bold text-gray-900 tracking-tight tabular-nums truncate">
           {value}
         </h3>
 
@@ -85,13 +84,13 @@ export function StatCard({
               )}
               <span>{delta.isPositive ? "+" : ""}{delta.value}%</span>
               {delta.period && (
-                <span className="text-muted font-normal ml-0.5">{delta.period}</span>
+                <span className="text-gray-400 font-normal ml-0.5">{delta.period}</span>
               )}
             </span>
           )}
 
           {subtitle && !delta && (
-            <p className="text-xs text-muted truncate dark:text-gray-300">{subtitle}</p>
+            <p className="text-xs text-gray-500 truncate">{subtitle}</p>
           )}
         </div>
       </div>
