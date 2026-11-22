@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { ServiceSlug, LOCATIONS } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
-import { recordPlatformTransaction } from "@/lib/platform-store";
+import { recordPlatformTransaction, usePlatformStore } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
 
 interface SparkProduct {
@@ -36,12 +36,14 @@ interface PosCartItem {
 }
 
 export default function ZinoSparkPosPage() {
+  const { products: storeProducts } = usePlatformStore();
   const [selectedLocation, setSelectedLocation] = useState("loc_spark_medical");
   const [searchQuery, setSearchQuery] = useState("");
   const [cart, setCart] = useState<PosCartItem[]>([]);
   const [customer, setCustomer] = useState("Walk-in Customer");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "POS" | "TRANSFER">("CASH");
   const [amountPaidKobo, setAmountPaidKobo] = useState<number | "">("");
+  const [saleDate, setSaleDate] = useState(new Date().toISOString().slice(0, 10));
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [completedReceipt, setCompletedReceipt] = useState<{ invoiceNo: string; amountKobo: number; customer: string } | null>(null);
 
@@ -51,17 +53,19 @@ export default function ZinoSparkPosPage() {
   };
   const [parkedSales, setParkedSales] = useState<PosCartItem[][]>([]);
 
-  // Seed electronics products from screenshot
-  const sparkCatalog: SparkProduct[] = [
-    { sku: "13268", name: "Samsung 990 PRO 4TB PCIe 4.0 NVMe M.2 SSD", category: "SSD", priceKobo: 48000000, stock: 12 },
-    { sku: "13458", name: "Lexar SL500 Portable SSD 1TB with Magnetic Set", category: "SSD", priceKobo: 18500000, stock: 24 },
-    { sku: "13376", name: "Synology 8 Bay Rackstation RS1221RP+", category: "NAS", priceKobo: 245000000, stock: 4 },
-    { sku: "13216", name: "Verbatim Vi3000 SSD PCIe M.2 1TB NVMe", category: "SSD", priceKobo: 14500000, stock: 18 },
-    { sku: "13203", name: "JBL PartyBox Wireless Mic Set", category: "Audio", priceKobo: 12500000, stock: 8 },
-    { sku: "13285", name: "Transcend SSD Portable ESD410C 4TB", category: "SSD", priceKobo: 42000000, stock: 6 },
-    { sku: "13346", name: "SanDisk Cruzer Glide 3.0 USB 16GB", category: "Flash", priceKobo: 350000, stock: 85 },
-    { sku: "13444", name: "SanDisk Ultra MicroSDXC 16GB 80MB/s", category: "Memory", priceKobo: 280000, stock: 60 },
-  ];
+  const sparkCatalog: SparkProduct[] = React.useMemo(
+    () =>
+      storeProducts
+        .filter((p) => p.source === ServiceSlug.SPARK)
+        .map((p) => ({
+          sku: p.sku,
+          name: p.name,
+          category: p.label || "Electronics",
+          priceKobo: p.priceKobo,
+          stock: p.totalStock,
+        })),
+    [storeProducts]
+  );
 
   // Keyboard navigation shortcuts
   useEffect(() => {
@@ -124,6 +128,7 @@ export default function ZinoSparkPosPage() {
         location: locName,
         status: paidKobo >= totalKobo ? "PAID" : "PART_PAID",
         actor: `Cashier (${locName})`,
+        createdAt: saleDate,
       });
       const res = await fetch("/api/spark/sales", {
         method: "POST",
@@ -323,9 +328,29 @@ export default function ZinoSparkPosPage() {
               <span className="text-xs text-gray-400 font-semibold">{customer}</span>
             </div>
 
-            {/* Payment Method Selector */}
+            {/* Payment Method & Date Selector */}
             <div className="space-y-2 text-xs">
-              <label className="block font-bold text-heading uppercase tracking-wider">Payment Method</label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-bold text-heading uppercase tracking-wider mb-1">Customer</label>
+                  <input
+                    type="text"
+                    value={customer}
+                    onChange={(e) => setCustomer(e.target.value)}
+                    className="w-full h-8 px-2.5 rounded-lg border border-border text-xs text-heading"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-heading uppercase tracking-wider mb-1">Sale Date</label>
+                  <input
+                    type="date"
+                    value={saleDate}
+                    onChange={(e) => setSaleDate(e.target.value)}
+                    className="w-full h-8 px-2.5 rounded-lg border border-border text-xs text-heading"
+                  />
+                </div>
+              </div>
+              <label className="block font-bold text-heading uppercase tracking-wider pt-1">Payment Method</label>
               <div className="grid grid-cols-3 gap-2">
                 {(["CASH", "POS", "TRANSFER"] as const).map((m) => (
                   <button

@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   ChevronRight,
   ExternalLink,
+  Package,
 } from "lucide-react";
 import { ServiceSlug, SERVICE_CONFIG } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
@@ -28,8 +29,9 @@ import { usePlatformStore } from "@/lib/platform-store";
 
 interface SparkProduct {
   id: string;
+  sku: string;
   name: string;
-  category: "Power Systems" | "Smart POS" | "Commercial Lighting" | "Automation";
+  category: string;
   priceKobo: number;
   inStock: boolean;
   image: string;
@@ -37,83 +39,43 @@ interface SparkProduct {
   specs: string;
 }
 
-const SPARK_PRODUCTS: SparkProduct[] = [
-  {
-    id: "spk-001",
-    name: "Zino Spark Hybrid 5kVA Pure Sine Wave Inverter",
-    category: "Power Systems",
-    priceKobo: 78000000,
-    inStock: true,
-    image: "https://images.unsplash.com/photo-1558441719-8b489c63f7d1?w=800&auto=format&fit=crop&q=80",
-    features: ["48V DC Input", "Built-in 80A MPPT", "Smart LCD Display", "Overload & Surge Protection"],
-    specs: "5000VA / 4000W Continuous Output",
-  },
-  {
-    id: "spk-002",
-    name: "Zino Power 10kWh Lithium LiFePO4 Wall-Mount Battery",
-    category: "Power Systems",
-    priceKobo: 215000000,
-    inStock: true,
-    image: "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?w=800&auto=format&fit=crop&q=80",
-    features: ["6000+ Deep Cycles", "Built-in Smart BMS", "CAN/RS485 Bus", "10-Year Manufacturer Warranty"],
-    specs: "51.2V 200Ah Capacity",
-  },
-  {
-    id: "spk-003",
-    name: "Commercial POS All-in-One Dual Display Terminal",
-    category: "Smart POS",
-    priceKobo: 39500000,
-    inStock: true,
-    image: "https://images.unsplash.com/photo-1556742049-0a67c5574f73?w=800&auto=format&fit=crop&q=80",
-    features: ["15.6\" Capacitive Touch", "Customer-Facing 10\" Display", "High-Speed Thermal Printer", "Omni Barcode Scanner"],
-    specs: "Quad-Core 2.0GHz, 4GB RAM, 64GB SSD",
-  },
-  {
-    id: "spk-004",
-    name: "Architectural High-Bay Industrial LED Luminaire (150W)",
-    category: "Commercial Lighting",
-    priceKobo: 4800000,
-    inStock: true,
-    image: "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?w=800&auto=format&fit=crop&q=80",
-    features: ["21,000 Lumens Output", "IP65 Weatherproof", "Die-Cast Aluminum Housing", "50,000 Hours Lifespan"],
-    specs: "150W 6500K Daylight White",
-  },
-  {
-    id: "spk-005",
-    name: "Industrial 3-Phase Automatic Transfer Switch (ATS) 100A",
-    category: "Automation",
-    priceKobo: 12500000,
-    inStock: true,
-    image: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80",
-    features: ["Under 100ms Switching", "Generator Auto-Start Signal", "Mechanical & Electrical Interlock", "Surge Suppressor"],
-    specs: "4-Pole 415V 100A Rating",
-  },
-  {
-    id: "spk-006",
-    name: "Omni-Directional 2D Desktop Barcode & QR Scanner",
-    category: "Smart POS",
-    priceKobo: 6800000,
-    inStock: true,
-    image: "https://images.unsplash.com/photo-1526738549149-8e07eca6c147?w=800&auto=format&fit=crop&q=80",
-    features: ["Instant Mobile Screen Scanning", "Plug & Play USB", "Hands-Free Auto-Trigger", "Drop Resistance to 1.5m"],
-    specs: "CMOS Sensor, 640x480 resolution",
-  },
-];
-
 export default function SparkPublicPage() {
-  const { addToCart, recordTransaction } = usePlatformStore();
+  const { products: storeProducts, addToCart, recordTransaction } = usePlatformStore();
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [search, setSearch] = useState("");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  const categories = ["All", "Power Systems", "Smart POS", "Commercial Lighting", "Automation"];
+  const sparkCatalog: SparkProduct[] = React.useMemo(
+    () =>
+      storeProducts
+        .filter((p) => p.source === ServiceSlug.SPARK && p.status !== "INACTIVE" && p.status !== "ARCHIVED")
+        .map((p) => ({
+          id: p.id,
+          sku: p.sku,
+          name: p.name,
+          category: p.label || "Retail POS",
+          priceKobo: p.priceKobo,
+          inStock: p.status !== "OUT_OF_STOCK" && p.totalStock > 0,
+          image: p.imageUrl || "",
+          features: ["Verified Official Warranty", "Same-Day Branch Pickup", `Stock: ${p.totalStock} unit(s)`],
+          specs: p.description || p.label,
+        })),
+    [storeProducts]
+  );
 
-  const filteredProducts = SPARK_PRODUCTS.filter((prod) => {
+  const categories = React.useMemo(() => {
+    const cats = new Set<string>(["All"]);
+    sparkCatalog.forEach((p) => cats.add(p.category));
+    return Array.from(cats);
+  }, [sparkCatalog]);
+
+  const filteredProducts = sparkCatalog.filter((prod) => {
     const matchesCat = selectedCategory === "All" || prod.category === selectedCategory;
     const matchesSearch =
       prod.name.toLowerCase().includes(search.toLowerCase()) ||
       prod.category.toLowerCase().includes(search.toLowerCase()) ||
-      prod.specs.toLowerCase().includes(search.toLowerCase());
+      prod.specs.toLowerCase().includes(search.toLowerCase()) ||
+      prod.sku.toLowerCase().includes(search.toLowerCase());
     return matchesCat && matchesSearch;
   });
 
@@ -314,20 +276,29 @@ export default function SparkPublicPage() {
               key={prod.id}
               className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-xs hover:shadow-xl hover:border-blue-200 transition-all flex flex-col group"
             >
-              <div className="relative h-56 w-full bg-slate-100 overflow-hidden">
-                <img
-                  src={prod.image}
-                  alt={prod.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
+              <div className="relative h-56 w-full bg-slate-100 overflow-hidden flex items-center justify-center">
+                {prod.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={prod.image}
+                    alt={prod.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                ) : (
+                  <Package className="w-12 h-12 text-slate-300" />
+                )}
                 <div className="absolute top-3 left-3 flex items-center gap-2">
                   <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/95 text-blue-700 shadow-xs backdrop-blur-xs">
                     {prod.category}
                   </span>
                 </div>
                 <div className="absolute top-3 right-3">
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-600 text-white shadow-xs">
-                    In Stock
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-semibold shadow-xs ${
+                      prod.inStock ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
+                    }`}
+                  >
+                    {prod.inStock ? "In Stock" : "Out of Stock"}
                   </span>
                 </div>
               </div>

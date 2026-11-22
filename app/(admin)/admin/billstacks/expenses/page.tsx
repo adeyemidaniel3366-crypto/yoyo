@@ -7,6 +7,7 @@ import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { formatCurrency } from "@/lib/money";
 import { usePlatformStore } from "@/lib/platform-store";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface ExpenseRow {
   id: string;
@@ -37,6 +38,7 @@ export default function BillstacksExpensesPage() {
     vendor: "",
     amountNaira: "",
     paymentMode: "Bank Transfer",
+    date: new Date().toISOString().slice(0, 10),
   });
 
   const showToast = (msg: string) => {
@@ -49,7 +51,7 @@ export default function BillstacksExpensesPage() {
     if (!newExp.description.trim() || !newExp.vendor.trim() || !newExp.amountNaira.trim()) return;
 
     const amountKobo = Math.round(Number(newExp.amountNaira) * 100);
-    const today = new Date().toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+    const expDate = newExp.date || new Date().toISOString().slice(0, 10);
     const expenseId = `exp_${Date.now()}`;
 
     const created: ExpenseRow = {
@@ -58,7 +60,7 @@ export default function BillstacksExpensesPage() {
       description: newExp.description.trim(),
       vendor: newExp.vendor.trim(),
       amountKobo,
-      date: today,
+      date: expDate,
       paymentMode: newExp.paymentMode,
     };
 
@@ -73,6 +75,7 @@ export default function BillstacksExpensesPage() {
       amountKobo,
       location: "Billstacks Cloud HQ",
       status: "PAID",
+      createdAt: expDate,
     });
 
     setModalOpen(false);
@@ -82,6 +85,7 @@ export default function BillstacksExpensesPage() {
       vendor: "",
       amountNaira: "",
       paymentMode: "Bank Transfer",
+      date: new Date().toISOString().slice(0, 10),
     });
     showToast(`Expense of ₦${Number(created.amountKobo / 100).toLocaleString()} recorded and deducted from executive summary!`);
   };
@@ -264,30 +268,44 @@ export default function BillstacksExpensesPage() {
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
                     Amount (₦) *
                   </label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    placeholder="e.g. 150000"
+                  <NumberInput
                     value={newExp.amountNaira}
-                    onChange={(e) => setNewExp({ ...newExp, amountNaira: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks"
+                    onChange={(v) => setNewExp({ ...newExp, amountNaira: v === "" ? "" : String(v) })}
+                    placeholder="e.g. 150,000"
+                    min={1}
+                    step={100}
+                    allowNegative={false}
+                    allowDecimal={false}
+                    prefix="₦"
+                    required
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Payment Mode</label>
-                <select
-                  value={newExp.paymentMode}
-                  onChange={(e) => setNewExp({ ...newExp, paymentMode: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks bg-white text-gray-900"
-                >
-                  <option value="Bank Transfer">Bank Transfer / NIP</option>
-                  <option value="Corporate Card">Corporate Debit / Credit Card</option>
-                  <option value="Cheque">Corporate Cheque</option>
-                  <option value="Petty Cash">Petty Cash</option>
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Payment Mode</label>
+                  <select
+                    value={newExp.paymentMode}
+                    onChange={(e) => setNewExp({ ...newExp, paymentMode: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks bg-white text-gray-900"
+                  >
+                    <option value="Bank Transfer">Bank Transfer / NIP</option>
+                    <option value="Corporate Card">Corporate Debit / Credit Card</option>
+                    <option value="Cheque">Corporate Cheque</option>
+                    <option value="Petty Cash">Petty Cash</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Expense Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={newExp.date}
+                    onChange={(e) => setNewExp({ ...newExp, date: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">

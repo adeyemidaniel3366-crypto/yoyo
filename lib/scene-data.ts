@@ -133,23 +133,6 @@ export const SCENE_PROJECTS: SceneProject[] = [
     image: "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=800&auto=format&fit=crop&q=80",
   },
   {
-    id: "proj_zino_spark",
-    name: "Zino Spark Retail POS",
-    tagline: "Multi-branch retail & wholesale electronics POS system",
-    category: "HARDWARE_POS",
-    status: "ACTIVE_PRODUCTION",
-    year: "2026",
-    description:
-      "Computer Village multi-branch retail network system featuring rapid barcode POS counter checkouts, stock transfers between 5 physical shops, cash drawer shifts, and automated stock alerts.",
-    technologies: ["POS Cash Register", "Inter-Branch Stock Transfers", "Thermal Printing", "Inventory Ledger"],
-    metrics: "5 Computer Village Hubs · Real-time Cash Shifts",
-    primaryHref: "/admin/spark",
-    githubHref: "https://github.com/adeyemiZino3366-crypto/yoyo",
-    featured: false,
-    color: "turquoise",
-    image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&auto=format&fit=crop&q=80",
-  },
-  {
     id: "proj_top_builders",
     name: "Top Builders Materials Yard",
     tagline: "Heavy building materials dispatch & debtor tracking ledger",
@@ -268,15 +251,6 @@ export const SCENE_INTERNET_PORTALS: SceneInternetPortal[] = [
     badge: "Official Partner Ecosystem",
     type: "PARTNER_PORTAL",
   },
-  {
-    id: "port_github",
-    title: "GitHub Repository & Codebase",
-    role: "Open Source & Systems Code",
-    url: "https://github.com/adeyemiZino3366-crypto",
-    description: "Public repositories, full-stack architectures, algorithms, and development branches.",
-    badge: "adeyemiZino3366-crypto",
-    type: "DEVELOPER",
-  },
 ];
 
 export const SCENE_ARCHIVE: SceneArchiveItem[] = [
@@ -303,13 +277,5 @@ export const SCENE_ARCHIVE: SceneArchiveItem[] = [
     category: "Full-Stack System",
     summary: "Engineered room rack matrix for 12 serviced suites in Lekki, automated front desk check-in and 10% tax calculation.",
     impact: "Eliminated manual paper logbooks and double-bookings.",
-  },
-  {
-    year: "2026",
-    quarter: "Q1",
-    title: "Zino Spark Computer Village POS Network",
-    category: "POS Hardware & Software",
-    summary: "Built multi-shop retail point-of-sale supporting cash shifts, thermal receipt printing, and inter-branch inventory transfers.",
-    impact: "Coordinated inventory across 5 shops in Ikeja.",
   },
 ];

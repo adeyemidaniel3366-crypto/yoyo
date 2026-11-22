@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, ArrowLeft, Building2, X, CheckCircle2 } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface DeptItem {
   name: string;
@@ -162,11 +163,11 @@ export default function VisitorsDepartmentsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Staff Count</label>
-                  <input
-                    type="number"
+                  <NumberInput
+                    min={0}
                     value={newDept.staffCount}
-                    onChange={(e) => setNewDept({ ...newDept, staffCount: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-visitor"
+                    onChange={(v) => setNewDept({ ...newDept, staffCount: v === "" ? "" : String(v) })}
+                    className="rounded-xl focus:border-visitor"
                   />
                 </div>
                 <div>

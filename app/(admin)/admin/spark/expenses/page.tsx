@@ -7,6 +7,7 @@ import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { formatCurrency } from "@/lib/money";
 import { usePlatformStore } from "@/lib/platform-store";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface SparkExpense {
   id: string;
@@ -33,6 +34,7 @@ export default function SparkExpensesPage() {
     title: "",
     location: "Medical Road",
     amountNaira: "",
+    date: new Date().toISOString().slice(0, 10),
   });
 
   const showToast = (msg: string) => {
@@ -45,7 +47,7 @@ export default function SparkExpensesPage() {
     if (!newExp.title.trim() || !newExp.amountNaira.trim()) return;
 
     const amountKobo = Math.round(Number(newExp.amountNaira) * 100);
-    const today = new Date().toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+    const expDate = newExp.date || new Date().toISOString().slice(0, 10);
     const expId = `exp_${Date.now()}`;
 
     const created: SparkExpense = {
@@ -54,7 +56,7 @@ export default function SparkExpensesPage() {
       title: newExp.title.trim(),
       location: newExp.location,
       amountKobo,
-      date: today,
+      date: expDate,
     };
 
     setExpenses([created, ...expenses]);
@@ -68,10 +70,11 @@ export default function SparkExpensesPage() {
       amountKobo,
       location: created.location,
       status: "PAID",
+      createdAt: expDate,
     });
 
     setModalOpen(false);
-    setNewExp({ category: "Power & Fuel", title: "", location: "Medical Road", amountNaira: "" });
+    setNewExp({ category: "Power & Fuel", title: "", location: "Medical Road", amountNaira: "", date: new Date().toISOString().slice(0, 10) });
     showToast(`Branch expense recorded and synced to executive dashboard.`);
   };
 
@@ -202,16 +205,27 @@ export default function SparkExpensesPage() {
                 </div>
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Amount (₦) *</label>
-                  <input
-                    type="number"
+                  <NumberInput
                     required
-                    min="1"
-                    placeholder="e.g. 25000"
+                    min={1}
+                    prefix="₦"
+                    placeholder="e.g. 25,000"
                     value={newExp.amountNaira}
-                    onChange={(e) => setNewExp({ ...newExp, amountNaira: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-spark"
+                    onChange={(v) => setNewExp({ ...newExp, amountNaira: v === "" ? "" : String(v) })}
+                    className="rounded-xl focus:border-spark"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">Expense Date *</label>
+                <input
+                  type="date"
+                  required
+                  value={newExp.date}
+                  onChange={(e) => setNewExp({ ...newExp, date: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-spark"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">

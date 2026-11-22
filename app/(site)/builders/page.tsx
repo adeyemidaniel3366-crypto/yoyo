@@ -22,7 +22,7 @@ export default function TopBuildersPublicPage() {
   const [builderToast, setBuilderToast] = useState<string | null>(null);
 
   const storeBuilders = products
-    .filter((p) => p.source === ServiceSlug.BUILDERS && p.status !== "INACTIVE")
+    .filter((p) => p.source === ServiceSlug.BUILDERS && p.status !== "INACTIVE" && p.status !== "ARCHIVED")
     .map((p) => ({
       code: p.sku,
       name: p.name,
@@ -31,16 +31,10 @@ export default function TopBuildersPublicPage() {
       priceKobo: p.priceKobo,
       image: p.imageUrl,
       unit: "unit",
-      stock: p.status === "OUT_OF_STOCK" ? "Out of Stock" : `${p.totalStock} in Stock`,
+      stock: p.status === "OUT_OF_STOCK" || p.totalStock === 0 ? "Out of Stock" : `${p.totalStock} in Stock`,
     }));
 
-  const defaultCatalog = [
-    { code: "DAN-CEM-50KG", name: "Dangote Cement 50kg", label: "Wholesale Bag", price: "₦9,800", priceKobo: 980000, image: "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=600", unit: "bag", stock: "In Stock" },
-    { code: "BUA-CEM-50KG", name: "BUA Cement 50kg", label: "Construction Essential", price: "₦9,500", priceKobo: 950000, image: "https://images.unsplash.com/photo-1541888946425-d09bb18086f6?w=600", unit: "bag", stock: "In Stock" },
-    { code: "IRON-ROD-16MM", name: "Iron Rod 16mm", label: "Structural Steel", price: "₦18,000", priceKobo: 1800000, image: "https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?w=600", unit: "length", stock: "In Stock" },
-  ];
-
-  const catalogTeaser = storeBuilders.length > 0 ? storeBuilders : defaultCatalog;
+  const catalogTeaser = storeBuilders;
 
   return (
     <div className="min-h-screen bg-white flex flex-col overflow-x-hidden max-w-full">

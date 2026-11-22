@@ -27,6 +27,7 @@ import { ImageDropzone } from "@/components/ui/image-dropzone";
 import { usePlatformStore } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { NumberInput } from "@/components/ui/number-input";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,6 +45,7 @@ interface Product {
   totalStock?: number;
   isFeatured?: boolean;
   isNew?: boolean;
+  createdAt?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -97,6 +99,7 @@ function ProductModal({
     status: "ACTIVE",
     isFeatured: false,
     isNew: false,
+    createdAt: new Date().toISOString().slice(0, 10),
     ...product,
   });
   const [imageUrl, setImageUrl] = useState("");
@@ -125,6 +128,7 @@ function ProductModal({
       totalStock: form.totalStock ?? 0,
       isFeatured: form.isFeatured ?? false,
       isNew: form.isNew ?? false,
+      createdAt: form.createdAt || new Date().toISOString().slice(0, 10),
     });
   };
 
@@ -206,28 +210,51 @@ function ProductModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-heading block mb-1.5">Selling Price (₦ kobo)</label>
-              <input type="number" value={form.priceKobo ?? 0} onChange={(e) => set("priceKobo", Number(e.target.value))}
-                className="w-full h-9 px-3 rounded-lg border border-border text-sm text-heading focus:outline-none focus:border-active" />
+                        <NumberInput
+                          value={form.priceKobo ?? 0}
+                          onChange={(v) => set("priceKobo", v as number)}
+                          placeholder="e.g. 2500000"
+                          min={0}
+                          step={100}
+                          allowNegative={false}
+                          allowDecimal={false}
+                          prefix="₦"
+                        />
               <p className="text-[10px] text-muted mt-0.5">{formatCurrency(Number(form.priceKobo) || 0)}</p>
             </div>
             <div>
               <label className="text-xs font-semibold text-heading block mb-1.5">Cost Price (₦ kobo)</label>
-              <input type="number" value={form.costKobo ?? 0} onChange={(e) => set("costKobo", Number(e.target.value))}
-                className="w-full h-9 px-3 rounded-lg border border-border text-sm text-heading focus:outline-none focus:border-active" />
+                        <NumberInput
+                          value={form.costKobo ?? 0}
+                          onChange={(v) => set("costKobo", v as number)}
+                          placeholder="e.g. 2000000"
+                          min={0}
+                          step={100}
+                          allowNegative={false}
+                          allowDecimal={false}
+                          prefix="₦"
+                        />
               <p className="text-[10px] text-muted mt-0.5">{formatCurrency(Number(form.costKobo) || 0)}</p>
             </div>
           </div>
 
-          {/* Status */}
-          <div>
-            <label className="text-xs font-semibold text-heading block mb-1.5">Status</label>
-            <select value={form.status ?? "ACTIVE"} onChange={(e) => set("status", e.target.value)}
-              className="w-full h-9 px-3 rounded-lg border border-border text-sm text-gray-900 bg-white focus:outline-none focus:border-active">
-              <option value="ACTIVE">Active — visible on website</option>
-              <option value="INACTIVE">Inactive — hidden from website</option>
-              <option value="OUT_OF_STOCK">Out of Stock</option>
-              <option value="ARCHIVED">Archived</option>
-            </select>
+          {/* Status & Date */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-heading block mb-1.5">Status</label>
+              <select value={form.status ?? "ACTIVE"} onChange={(e) => set("status", e.target.value)}
+                className="w-full h-9 px-3 rounded-lg border border-border text-sm text-gray-900 bg-white focus:outline-none focus:border-active">
+                <option value="ACTIVE">Active — visible on website</option>
+                <option value="INACTIVE">Inactive — hidden from website</option>
+                <option value="OUT_OF_STOCK">Out of Stock</option>
+                <option value="ARCHIVED">Archived</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-heading block mb-1.5">Date Added</label>
+              <input type="date" value={form.createdAt ?? new Date().toISOString().slice(0, 10)} onChange={(e) => set("createdAt", e.target.value)}
+                className="w-full h-9 px-3 rounded-lg border border-border text-sm text-heading focus:outline-none focus:border-active" />
+            </div>
           </div>
 
           {/* Flags */}
@@ -334,6 +361,7 @@ export default function ProductsManagerPage() {
         totalStock: sp.totalStock,
         isFeatured: sp.isFeatured,
         isNew: sp.isNew,
+        createdAt: sp.createdAt,
       })),
     [storeProducts]
   );
@@ -370,6 +398,7 @@ export default function ProductsManagerPage() {
       totalStock: p.totalStock ?? 10,
       isFeatured: p.isFeatured,
       isNew: p.isNew,
+      createdAt: p.createdAt,
     });
     setModalProduct(undefined);
   };
@@ -598,33 +627,31 @@ export default function ProductsManagerPage() {
         </div>
       )}
 
-      {/* Product DataTable (shown for all tabs except "info-only" services when viewing just those) */}
-      {activeTab !== ServiceSlug.VISITORS && (
-        <DataTable
-          title={`${TABS.find((t) => t.key === activeTab)?.label ?? ""} — ${filtered.length} Products`}
-          columns={columns}
-          data={filtered}
-          showExportButtons={true}
-          showSourceColumn={activeTab === "ALL"}
-          searchPlaceholder="Search product name, SKU, description..."
-          emptyMessage="No products found. Click 'Add New Product' to get started."
-          pageSize={10}
-          rightAction={
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-muted absolute left-2.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Quick search..."
-                  className="pl-8 pr-3 h-8 rounded-lg border border-border text-xs text-heading focus:outline-none focus:border-active w-44"
-                />
-              </div>
+      {/* Product DataTable (shown for all tabs including visitors) */}
+      <DataTable
+        title={`${TABS.find((t) => t.key === activeTab)?.label ?? ""} — ${filtered.length} Products`}
+        columns={columns}
+        data={filtered}
+        showExportButtons={true}
+        showSourceColumn={activeTab === "ALL"}
+        searchPlaceholder="Search product name, SKU, description..."
+        emptyMessage="No products found. Click 'Add New Product' to get started."
+        pageSize={10}
+        rightAction={
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-muted absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Quick search..."
+                className="pl-8 pr-3 h-8 rounded-lg border border-border text-xs text-heading focus:outline-none focus:border-active w-44"
+              />
             </div>
-          }
-        />
-      )}
+          </div>
+        }
+      />
 
       {/* Modals */}
       {modalProduct !== undefined && (

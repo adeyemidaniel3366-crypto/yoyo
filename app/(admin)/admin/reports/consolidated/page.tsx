@@ -119,28 +119,36 @@ export default function ConsolidatedReportsPage() {
 
       {/* Top Total Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs">
-          <p className="text-xs text-muted font-medium">Consolidated Revenue</p>
-          <h3 className="text-2xl font-black text-heading mt-1">{formatCurrency(totalRevenue)}</h3>
-          <p className="text-[11px] text-emerald-600 font-semibold mt-1">Gross Inflows Across 6 Units</p>
+        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs min-w-0 overflow-hidden">
+          <p className="text-xs text-muted font-medium truncate">Consolidated Revenue</p>
+          <h3 className="text-lg sm:text-xl font-black text-heading mt-1 tabular-nums truncate" title={formatCurrency(totalRevenue)}>
+            {formatCurrency(totalRevenue)}
+          </h3>
+          <p className="text-[11px] text-emerald-600 font-semibold mt-1 truncate">Gross Inflows Across 6 Units</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs">
-          <p className="text-xs text-muted font-medium">Cost of Goods Sold (COGS)</p>
-          <h3 className="text-2xl font-black text-muted mt-1">{formatCurrency(totalCost)}</h3>
-          <p className="text-[11px] text-muted mt-1">Spark + Builders + Galaxy</p>
+        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs min-w-0 overflow-hidden">
+          <p className="text-xs text-muted font-medium truncate">Cost of Goods Sold (COGS)</p>
+          <h3 className="text-lg sm:text-xl font-black text-muted mt-1 tabular-nums truncate" title={formatCurrency(totalCost)}>
+            {formatCurrency(totalCost)}
+          </h3>
+          <p className="text-[11px] text-muted mt-1 truncate">Spark + Builders + Galaxy</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs">
-          <p className="text-xs text-muted font-medium">Operating Expenses</p>
-          <h3 className="text-2xl font-black text-rose-600 mt-1">{formatCurrency(totalExpenses)}</h3>
-          <p className="text-[11px] text-muted mt-1">Salaries, utilities & rent</p>
+        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs min-w-0 overflow-hidden">
+          <p className="text-xs text-muted font-medium truncate">Operating Expenses</p>
+          <h3 className="text-lg sm:text-xl font-black text-rose-600 mt-1 tabular-nums truncate" title={formatCurrency(totalExpenses)}>
+            {formatCurrency(totalExpenses)}
+          </h3>
+          <p className="text-[11px] text-muted mt-1 truncate">Salaries, utilities &amp; rent</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs">
-          <p className="text-xs text-muted font-medium">Net Consolidated Profit</p>
-          <h3 className="text-2xl font-black text-emerald-600 mt-1">{formatCurrency(totalNet)}</h3>
-          <p className="text-[11px] text-emerald-600 font-semibold mt-1">
+        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs min-w-0 overflow-hidden">
+          <p className="text-xs text-muted font-medium truncate">Net Consolidated Profit</p>
+          <h3 className="text-lg sm:text-xl font-black text-emerald-600 mt-1 tabular-nums truncate" title={formatCurrency(totalNet)}>
+            {formatCurrency(totalNet)}
+          </h3>
+          <p className="text-[11px] text-emerald-600 font-semibold mt-1 truncate">
             {((totalNet / totalRevenue) * 100).toFixed(1)}% Net Margin
           </p>
         </div>

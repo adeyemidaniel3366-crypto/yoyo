@@ -5,6 +5,7 @@ import Link from "next/link";
 import { SlidersHorizontal, Plus, ArrowLeft, X, CheckCircle2 } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface StockAdjustment {
   id: string;
@@ -193,12 +194,12 @@ export default function SparkAdjustmentsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Quantity Offset</label>
-                  <input
-                    type="number"
+                  <NumberInput
                     required
+                    allowNegative
                     value={newAdj.qtyChange}
-                    onChange={(e) => setNewAdj({ ...newAdj, qtyChange: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-spark"
+                    onChange={(v) => setNewAdj({ ...newAdj, qtyChange: v === "" ? "" : String(v) })}
+                    className="rounded-xl focus:border-spark"
                   />
                 </div>
                 <div>

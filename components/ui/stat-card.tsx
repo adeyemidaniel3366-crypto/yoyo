@@ -64,7 +64,7 @@ export function StatCard({
           {source && <SourceBadge source={source} size="sm" />}
         </div>
 
-        <h3 className="text-2xl lg:text-[26px] font-bold text-gray-900 tracking-tight tabular-nums truncate">
+        <h3 className="text-xl lg:text-2xl font-bold text-gray-900 tracking-tight tabular-nums truncate" title={String(value)}>
           {value}
         </h3>
 

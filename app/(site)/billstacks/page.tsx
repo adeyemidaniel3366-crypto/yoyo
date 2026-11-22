@@ -15,54 +15,35 @@ import {
 } from "lucide-react";
 import { ServiceSlug, SERVICE_CONFIG } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
-import { recordPlatformTransaction } from "@/lib/platform-store";
+import { recordPlatformTransaction, usePlatformStore } from "@/lib/platform-store";
 
 export default function BillstacksPublicPage() {
+  const { products: storeProducts } = usePlatformStore();
   const [billingCycle, setBillingCycle] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
   const [billToast, setBillToast] = useState<string | null>(null);
 
-  const plans = [
-    {
-      name: "Basic",
-      monthlyNaira: 1300,
-      yearlyNaira: 1235, // 5% off
-      desc: "Perfect for freelancers and sole traders getting started.",
-      features: [
-        "Up to 20 Invoices / month",
-        "Expense Tracking",
-        "Payment Reminders",
-        "Single User Access",
-      ],
-    },
-    {
-      name: "Standard",
-      monthlyNaira: 2000,
-      yearlyNaira: 1900, // 5% off
-      popular: true,
-      desc: "For growing small businesses needing multi-currency and estimates.",
-      features: [
-        "Unlimited Invoices & Estimates",
-        "Recurring Billing Schedules",
-        "Client Payment Links (Paystack)",
-        "Up to 5 Staff Users",
-        "Basic HRM Module",
-      ],
-    },
-    {
-      name: "Premium",
-      monthlyNaira: 3500,
-      yearlyNaira: 3325, // 5% off
-      desc: "Enterprise accounting and multi-location purchase orders.",
-      features: [
-        "All Standard Features",
-        "Purchase Orders & Waybills",
-        "Custom Tax Rates & Reports",
-        "Affiliate Tracking & Commission",
-        "Unlimited Staff Roles",
-        "Priority 24/7 Support",
-      ],
-    },
-  ];
+  const plans = React.useMemo(() => {
+    const billProducts = storeProducts.filter(
+      (p) => p.source === ServiceSlug.BILLSTACKS && p.status !== "INACTIVE" && p.status !== "ARCHIVED"
+    );
+    return billProducts.map((p, idx) => {
+      const monthlyNaira = Math.round((p.priceKobo || 200000) / 100);
+      return {
+        id: p.id,
+        name: p.name,
+        monthlyNaira,
+        yearlyNaira: Math.round(monthlyNaira * 0.95),
+        popular: idx === 0 || p.isFeatured,
+        desc: p.description || p.label || "Cloud accounting and B2B billing subscription.",
+        features: [
+          "Unlimited Invoices & Estimates",
+          "Automated Expense Tracking",
+          "Client Payment Links (Paystack)",
+          "FIRS 7.5% VAT Reporting",
+        ],
+      };
+    });
+  }, [storeProducts]);
 
   return (
     <div className="min-h-screen bg-white flex flex-col overflow-x-hidden max-w-full">

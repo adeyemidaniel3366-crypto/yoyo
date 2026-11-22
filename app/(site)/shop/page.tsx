@@ -17,12 +17,13 @@ import {
   X,
   CreditCard,
   Check,
+  Package,
 } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { usePlatformStore } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
-import { CATALOG_PRODUCTS, type StoreProduct } from "@/lib/shop-data";
+import { type StoreProduct } from "@/lib/shop-data";
 
 export default function DeviceGalaxyShopPage() {
   const { products: storeProducts, cartItems, addToCart } = usePlatformStore();
@@ -32,10 +33,10 @@ export default function DeviceGalaxyShopPage() {
   const [shopBanner, setShopBanner] = useState<string | null>(null);
   const [previewProduct, setPreviewProduct] = useState<StoreProduct | null>(null);
 
-  // Sync store products from Unified Products catalog if available
+  // Strict single source of truth from Unified Products catalog
   const mergedProducts: StoreProduct[] = React.useMemo(() => {
-    const galaxyStoreList = storeProducts
-      .filter((p) => p.source === ServiceSlug.GALAXY || p.source === ServiceSlug.SPARK)
+    return storeProducts
+      .filter((p) => p.source === ServiceSlug.GALAXY && p.status !== "INACTIVE" && p.status !== "ARCHIVED")
       .map((p) => ({
         id: p.id,
         sku: p.sku,
@@ -44,8 +45,8 @@ export default function DeviceGalaxyShopPage() {
         category: p.label || "Electronics",
         priceKobo: p.priceKobo,
         originalPriceKobo: Math.round(p.priceKobo * 1.12),
-        image: p.imageUrl || "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=600",
-        images: p.images?.length ? p.images : [p.imageUrl],
+        image: p.imageUrl || "",
+        images: p.images?.length ? p.images : p.imageUrl ? [p.imageUrl] : [],
         badge: (p.status === "OUT_OF_STOCK"
           ? "OUT_OF_STOCK"
           : p.isNew
@@ -57,8 +58,6 @@ export default function DeviceGalaxyShopPage() {
         rating: 5,
         description: p.description || p.name,
       }));
-
-    return galaxyStoreList.length > 0 ? galaxyStoreList : CATALOG_PRODUCTS;
   }, [storeProducts]);
 
   const filteredProducts = React.useMemo(() => {
@@ -197,27 +196,33 @@ export default function DeviceGalaxyShopPage() {
           </div>
 
           {/* Featured Hero Product Card */}
-          <div className="w-full max-w-sm rounded-2xl bg-white/10 p-6 border border-white/10 backdrop-blur-md text-center shadow-2xl">
-            <div className="w-44 h-44 mx-auto rounded-xl overflow-hidden bg-white p-3 flex items-center justify-center shadow-inner">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={CATALOG_PRODUCTS[0].image}
-                alt={CATALOG_PRODUCTS[0].name}
-                className="max-h-full max-w-full object-contain"
-              />
+          {mergedProducts[0] && (
+            <div className="w-full max-w-sm rounded-2xl bg-white/10 p-6 border border-white/10 backdrop-blur-md text-center shadow-2xl">
+              <div className="w-44 h-44 mx-auto rounded-xl overflow-hidden bg-white p-3 flex items-center justify-center shadow-inner">
+                {mergedProducts[0].image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={mergedProducts[0].image}
+                    alt={mergedProducts[0].name}
+                    className="max-h-full max-w-full object-contain"
+                  />
+                ) : (
+                  <Package className="w-12 h-12 text-gray-300" />
+                )}
+              </div>
+              <p className="font-bold text-sm text-white mt-3 truncate">{mergedProducts[0].name}</p>
+              <p className="text-amber-400 font-black text-xl mt-0.5">
+                {formatCurrency(mergedProducts[0].priceKobo)}
+              </p>
+              <button
+                type="button"
+                onClick={() => handleAddToCart(mergedProducts[0])}
+                className="mt-3 w-full py-2 rounded-lg bg-galaxy hover:bg-galaxy-dark text-white text-xs font-bold transition-colors"
+              >
+                Add to Cart
+              </button>
             </div>
-            <p className="font-bold text-sm text-white mt-3 truncate">{CATALOG_PRODUCTS[0].name}</p>
-            <p className="text-amber-400 font-black text-xl mt-0.5">
-              {formatCurrency(CATALOG_PRODUCTS[0].priceKobo)}
-            </p>
-            <button
-              type="button"
-              onClick={() => handleAddToCart(CATALOG_PRODUCTS[0])}
-              className="mt-3 w-full py-2 rounded-lg bg-galaxy hover:bg-galaxy-dark text-white text-xs font-bold transition-colors"
-            >
-              Add to Cart
-            </button>
-          </div>
+          )}
         </div>
       </section>
 
@@ -324,12 +329,18 @@ export default function DeviceGalaxyShopPage() {
                     <Eye className="w-4 h-4" />
                   </button>
 
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={p.image}
-                    alt={p.name}
-                    className="max-h-full max-w-full w-auto h-auto object-contain transition-transform duration-300 group-hover:scale-105"
-                  />
+                  {p.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.image}
+                      alt={p.name}
+                      className="max-h-full max-w-full w-auto h-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-gray-300">
+                      <Package className="w-10 h-10" />
+                    </div>
+                  )}
                 </div>
 
                 {/* Category & Title */}
@@ -414,12 +425,16 @@ export default function DeviceGalaxyShopPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
               {/* Product Image Box */}
               <div className="aspect-square w-full rounded-xl bg-gray-50 border border-gray-100 p-6 flex items-center justify-center overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={previewProduct.image}
-                  alt={previewProduct.name}
-                  className="max-h-full max-w-full object-contain"
-                />
+                {previewProduct.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={previewProduct.image}
+                    alt={previewProduct.name}
+                    className="max-h-full max-w-full object-contain"
+                  />
+                ) : (
+                  <Package className="w-14 h-14 text-gray-300" />
+                )}
               </div>
 
               {/* Product Info */}

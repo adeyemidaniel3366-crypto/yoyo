@@ -75,6 +75,7 @@ import {
 } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { NumberInput, formatNumbersInText } from "@/components/ui/number-input";
 
 // ---------------------------------------------------------------------------
 // Activity Type Badge
@@ -384,6 +385,7 @@ export default function UnifiedAdminDashboard() {
     amountNaira: "",
     location: "Medical Road",
     status: "PAID",
+    createdAt: new Date().toISOString().slice(0, 10),
   });
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -1043,6 +1045,7 @@ export default function UnifiedAdminDashboard() {
       status: "ACTIVE",
       totalStock: 20,
       lowStockAt: 5,
+      createdAt: new Date().toISOString().slice(0, 10),
     });
     setProductModalOpen(true);
   };
@@ -1096,6 +1099,7 @@ export default function UnifiedAdminDashboard() {
       location: txForm.location,
       status: txForm.status,
       actor: "Super Admin",
+      createdAt: txForm.createdAt || new Date().toISOString().slice(0, 10),
     });
     setTxModalOpen(false);
     setTxForm({
@@ -1106,6 +1110,7 @@ export default function UnifiedAdminDashboard() {
       amountNaira: "",
       location: "Medical Road",
       status: "PAID",
+      createdAt: new Date().toISOString().slice(0, 10),
     });
     showToast(`Recorded ${created.activityType} (${created.invoiceNo}) on Unified Dashboard`);
   };
@@ -1203,22 +1208,22 @@ export default function UnifiedAdminDashboard() {
         </div>
       </div>
 
-      {/* ── LIVE SUBSIDIARY OPERATIONS SIMULATOR & CONTROL TOOLBAR ── */}
+      {/* ── AUDIT EXPORT & SECURITY DIAGNOSTICS TOOLBAR ── */}
       <div className="bg-gradient-to-r from-[#14142B] to-[#1E1E38] text-white rounded-2xl p-4 sm:p-5 shadow-lg border border-indigo-900/40 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-indigo-600/30 border border-indigo-400/30 flex items-center justify-center text-indigo-400">
-              <Zap className="w-4 h-4 fill-current" />
+              <ShieldCheck className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-sm text-white">Live Operations Simulator &amp; Instant Triggers</h3>
+                <h3 className="font-bold text-sm text-white">Audit Trail &amp; Security Diagnostics</h3>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold">
                   {networkLatency === null ? "Latency: —" : `API latency: ${networkLatency}ms`}
                 </span>
               </div>
               <p className="text-xs text-gray-300">
-                Test real-time data propagation across all subsidiaries or export verified audit trails.
+                Export verified financial audit trails or inspect live security and service scope diagnostics.
               </p>
             </div>
           </div>
@@ -1246,57 +1251,6 @@ export default function UnifiedAdminDashboard() {
               <span>Security Diagnostics</span>
             </button>
           </div>
-        </div>
-
-        {/* Action Triggers */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-          <button
-            type="button"
-            onClick={handleSimulateBooking}
-            className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-apartments/50 transition-all text-left group cursor-pointer"
-          >
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-mono text-cyan-300 font-bold block uppercase tracking-wider">
-                Zino Apartments
-              </span>
-              <span className="text-xs font-semibold text-white group-hover:text-cyan-200 transition-colors">
-                + Simulate Instant Guest Booking
-              </span>
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSimulatePosSale}
-            className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-400/50 transition-all text-left group cursor-pointer"
-          >
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-mono text-blue-300 font-bold block uppercase tracking-wider">
-                Zino Spark Retail
-              </span>
-              <span className="text-xs font-semibold text-white group-hover:text-blue-200 transition-colors">
-                + Simulate Computer Village POS Sale
-              </span>
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSimulateDispatch}
-            className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-amber-400/50 transition-all text-left group cursor-pointer"
-          >
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-mono text-amber-300 font-bold block uppercase tracking-wider">
-                Top Builders Depot
-              </span>
-              <span className="text-xs font-semibold text-white group-hover:text-amber-200 transition-colors">
-                + Simulate 100 Bags Cement Dispatch
-              </span>
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
-          </button>
         </div>
 
         {/* Expanded Security & Diagnostics Drawer */}
@@ -1511,8 +1465,14 @@ export default function UnifiedAdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {VISUAL_SERVICE_SECTIONS.map((sec) => {
             const cfg = SERVICE_CONFIG[sec.slug];
-            const serviceProductsCount = products.filter((p) => p.source === sec.slug).length;
+            const serviceItems = products.filter((p) => p.source === sec.slug);
+            const activeItemsCount = serviceItems.filter((p) => p.status === "ACTIVE").length;
+            const totalItemsCount = serviceItems.length;
             const serviceInvoicesCount = invoices.filter((i) => i.source === sec.slug).length;
+            const dynamicTagline =
+              serviceItems.length > 0
+                ? serviceItems.slice(0, 2).map((p) => p.name).join(" • ")
+                : sec.tagline;
             const Icon = sec.icon;
 
             return (
@@ -1531,16 +1491,16 @@ export default function UnifiedAdminDashboard() {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
                   <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
                     <SourceBadge source={sec.slug} size="sm" />
-                    <span className="px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold">
-                      {sec.metrics}
+                    <span className="px-2.5 py-0.5 rounded-full bg-black/75 backdrop-blur-xs text-white text-[10px] font-bold">
+                      {totalItemsCount} Listed {totalItemsCount === 1 ? "Item" : "Items"} · {activeItemsCount} Active
                     </span>
                   </div>
                   <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-300">
-                        {sec.tagline}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-300 truncate">
+                        {dynamicTagline}
                       </p>
-                      <h4 className="text-sm font-extrabold text-white leading-snug">
+                      <h4 className="text-sm font-extrabold text-white leading-snug truncate">
                         {sec.title}
                       </h4>
                     </div>
@@ -1571,15 +1531,60 @@ export default function UnifiedAdminDashboard() {
                 <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
                   <p className="text-xs text-gray-600 leading-relaxed">{sec.description}</p>
 
+                  {/* Real-Time Synced Existing Products & Services List */}
+                  <div className="p-3 rounded-xl bg-slate-50 border border-gray-200 space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-gray-700">
+                      <span>Existing Goods &amp; Services ({totalItemsCount})</span>
+                      <span className="text-[10px] text-emerald-700 font-mono font-bold">{activeItemsCount} Active</span>
+                    </div>
+                    {serviceItems.length === 0 ? (
+                      <p className="text-[11px] text-gray-600 italic">No products or services added yet</p>
+                    ) : (
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                        {serviceItems.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-white border border-gray-200 text-[11px]"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="font-bold text-gray-900 truncate">{item.name}</p>
+                              <p className="text-[10px] text-gray-600 truncate">
+                                {item.label} · Stock: <strong className="text-gray-900">{item.totalStock}</strong>
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="font-extrabold text-gray-900">{item.priceDisplay}</p>
+                              <span
+                                className={cn(
+                                  "inline-block px-1.5 py-0.2 rounded text-[9px] font-bold uppercase",
+                                  item.status === "ACTIVE"
+                                    ? "bg-emerald-50 text-emerald-700"
+                                    : item.status === "LOW_STOCK"
+                                    ? "bg-amber-50 text-amber-700"
+                                    : "bg-gray-100 text-gray-600"
+                                )}
+                              >
+                                {item.status}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="space-y-3">
                     {/* Live Synced Counters */}
                     <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-200 text-center">
                       <div>
                         <p className="text-sm font-extrabold text-gray-900">
-                          {serviceProductsCount}
+                          {totalItemsCount}
                         </p>
                         <p className="text-[10px] text-gray-500 font-medium">
-                          Active Products / Items
+                          Total Goods / Services
+                        </p>
+                        <p className="text-[9px] text-emerald-600 font-bold">
+                          {activeItemsCount} Active In Store
                         </p>
                       </div>
                       <div className="border-l border-gray-200">
@@ -1588,6 +1593,9 @@ export default function UnifiedAdminDashboard() {
                         </p>
                         <p className="text-[10px] text-gray-500 font-medium">
                           Synced Invoices / Logs
+                        </p>
+                        <p className="text-[9px] text-gray-600 font-semibold">
+                          Real-time Ledger
                         </p>
                       </div>
                     </div>
@@ -1710,32 +1718,39 @@ export default function UnifiedAdminDashboard() {
             return (
               <div
                 key={room.id}
-                className="p-4 rounded-xl border border-gray-200 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all space-y-3 flex flex-col justify-between"
+                className="p-4 rounded-xl border border-gray-200 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all space-y-3 flex flex-col justify-between min-w-0 overflow-hidden"
               >
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
+                <div className="space-y-1.5 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5 min-w-0">
                     <span
                       className={cn(
-                        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border",
+                        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 max-w-full",
                         statusConfig.bg
                       )}
                     >
-                      <span className={cn("w-1.5 h-1.5 rounded-full", statusConfig.dot)} />
-                      <span>{statusConfig.label}</span>
+                      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", statusConfig.dot)} />
+                      <span className="truncate">{statusConfig.label}</span>
                     </span>
-                    <span className="text-[11px] font-mono font-bold text-gray-900">
+                    <span className="text-[11px] font-mono font-bold text-gray-900 truncate">
                       {formatMoney(room.rateKobo)}/night
                     </span>
                   </div>
-                  <h4 className="font-bold text-sm text-gray-900 pt-1">{room.title}</h4>
-                  <p className="text-[11px] text-gray-600">{room.features}</p>
-                  <p className="text-[10px] font-mono text-gray-500">{room.floor}</p>
+                  <h4 className="font-bold text-sm text-gray-900 pt-0.5 truncate" title={room.title}>
+                    {room.title}
+                  </h4>
+                  <p className="text-[11px] text-gray-600 truncate" title={room.features}>
+                    {room.features}
+                  </p>
+                  <p className="text-[10px] font-mono text-gray-500 truncate" title={room.floor}>
+                    {room.floor}
+                  </p>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => handleToggleRoomStatus(room.id, room.title)}
-                  className="w-full py-1.5 rounded-lg border border-gray-200 hover:border-gray-400 bg-white hover:bg-gray-50 text-gray-900 text-[11px] font-bold font-mono transition-colors shadow-2xs cursor-pointer"
+                  aria-label={`Toggle room status for ${room.title}, currently ${status}`}
+                  className="w-full py-1.5 px-2 rounded-lg border border-gray-200 hover:border-gray-400 bg-white hover:bg-gray-50 text-gray-900 text-[11px] font-bold font-mono transition-colors shadow-2xs cursor-pointer truncate"
                 >
                   Toggle Status ({status})
                 </button>
@@ -2435,7 +2450,7 @@ export default function UnifiedAdminDashboard() {
                     onChange={(e) =>
                       setEditingProduct({
                         ...editingProduct,
-                        priceDisplay: e.target.value,
+                        priceDisplay: formatNumbersInText(e.target.value),
                       })
                     }
                     placeholder="e.g. ₦480,000"
@@ -2446,16 +2461,19 @@ export default function UnifiedAdminDashboard() {
                   <label className="block font-semibold text-gray-900 mb-1">
                     Stock Qty
                   </label>
-                  <input
-                    type="number"
+                                  <NumberInput
                     value={editingProduct.totalStock ?? 10}
-                    onChange={(e) =>
+                                    onChange={(v) =>
                       setEditingProduct({
                         ...editingProduct,
-                        totalStock: Number(e.target.value),
+                                        totalStock: v as number,
                       })
                     }
-                    className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-active"
+                                    placeholder="e.g. 100"
+                                    min={0}
+                                    step={1}
+                                    allowNegative={false}
+                                    allowDecimal={false}
                   />
                 </div>
                 <div>
@@ -2478,6 +2496,23 @@ export default function UnifiedAdminDashboard() {
                     <option value="PROMO">PROMO</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-900 mb-1">
+                  Date Added
+                </label>
+                <input
+                  type="date"
+                  value={editingProduct.createdAt || new Date().toISOString().slice(0, 10)}
+                  onChange={(e) =>
+                    setEditingProduct({
+                      ...editingProduct,
+                      createdAt: e.target.value,
+                    })
+                  }
+                  className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 focus:outline-none focus:border-active"
+                />
               </div>
 
               <div className="pt-3 border-t border-gray-200 flex items-center justify-end gap-2">
@@ -2522,28 +2557,30 @@ export default function UnifiedAdminDashboard() {
                 <label className="block font-semibold text-gray-900 mb-1">
                   Monthly Sales Revenue Target (₦)
                 </label>
-                <input
-                  type="number"
-                  required
+                              <NumberInput
                   value={targetForm.salesNaira}
-                  onChange={(e) =>
-                    setTargetForm({ ...targetForm, salesNaira: Number(e.target.value) })
-                  }
-                  className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 focus:outline-none focus:border-active"
+                                onChange={(v) => setTargetForm({ ...targetForm, salesNaira: v as number })}
+                                placeholder="e.g. 1000000"
+                                min={100000}
+                                step={10000}
+                                allowNegative={false}
+                                allowDecimal={false}
+                                prefix="₦"
                 />
               </div>
               <div>
                 <label className="block font-semibold text-gray-900 mb-1">
                   Monthly Expense Budget (₦)
                 </label>
-                <input
-                  type="number"
-                  required
+                              <NumberInput
                   value={targetForm.expenseNaira}
-                  onChange={(e) =>
-                    setTargetForm({ ...targetForm, expenseNaira: Number(e.target.value) })
-                  }
-                  className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 focus:outline-none focus:border-active"
+                                onChange={(v) => setTargetForm({ ...targetForm, expenseNaira: v as number })}
+                                placeholder="e.g. 500000"
+                                min={100000}
+                                step={10000}
+                                allowNegative={false}
+                                allowDecimal={false}
+                                prefix="₦"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -2551,34 +2588,28 @@ export default function UnifiedAdminDashboard() {
                   <label className="block font-semibold text-gray-900 mb-1">
                     Bookings Target
                   </label>
-                  <input
-                    type="number"
-                    required
+                                  <NumberInput
                     value={targetForm.bookingsTarget}
-                    onChange={(e) =>
-                      setTargetForm({
-                        ...targetForm,
-                        bookingsTarget: Number(e.target.value),
-                      })
-                    }
-                    className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 focus:outline-none focus:border-active"
+                                    onChange={(v) => setTargetForm({ ...targetForm, bookingsTarget: v as number })}
+                                    placeholder="e.g. 50"
+                                    min={1}
+                                    step={1}
+                                    allowNegative={false}
+                                    allowDecimal={false}
                   />
                 </div>
                 <div>
                   <label className="block font-semibold text-gray-900 mb-1">
                     Visitors Target
                   </label>
-                  <input
-                    type="number"
-                    required
+                                  <NumberInput
                     value={targetForm.visitorsTarget}
-                    onChange={(e) =>
-                      setTargetForm({
-                        ...targetForm,
-                        visitorsTarget: Number(e.target.value),
-                      })
-                    }
-                    className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 focus:outline-none focus:border-active"
+                                    onChange={(v) => setTargetForm({ ...targetForm, visitorsTarget: v as number })}
+                                    placeholder="e.g. 100"
+                                    min={1}
+                                    step={1}
+                                    allowNegative={false}
+                                    allowDecimal={false}
                   />
                 </div>
               </div>
@@ -2687,19 +2718,20 @@ export default function UnifiedAdminDashboard() {
                   className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-active"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block font-semibold text-gray-900 mb-1">
                     Amount (₦ Naira)
                   </label>
-                  <input
-                    type="number"
+                  <NumberInput
                     value={txForm.amountNaira}
-                    onChange={(e) =>
-                      setTxForm({ ...txForm, amountNaira: e.target.value })
-                    }
-                    placeholder="e.g. 250000"
-                    className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-active"
+                    onChange={(v) => setTxForm({ ...txForm, amountNaira: v === "" ? "" : String(v) })}
+                    placeholder="e.g. 250,000"
+                    min={0}
+                    step={100}
+                    allowNegative={false}
+                    allowDecimal={false}
+                    prefix="₦"
                   />
                 </div>
                 <div>
@@ -2713,6 +2745,20 @@ export default function UnifiedAdminDashboard() {
                       setTxForm({ ...txForm, location: e.target.value })
                     }
                     className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-active"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-900 mb-1">
+                    Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={txForm.createdAt}
+                    onChange={(e) =>
+                      setTxForm({ ...txForm, createdAt: e.target.value })
+                    }
+                    className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 focus:outline-none focus:border-active"
                   />
                 </div>
               </div>

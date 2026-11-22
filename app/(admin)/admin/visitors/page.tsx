@@ -28,8 +28,10 @@ import {
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { ChartCard } from "@/components/ui/chart-card";
+import { usePlatformStore } from "@/lib/platform-store";
 
 export default function VisitorManagementDashboardPage() {
+  const { visitors, checkoutVisitor } = usePlatformStore();
   const [userName, setUserName] = useState("John Doe");
   const [visitorData, setVisitorData] = useState<{
     totalVisitors: number;
@@ -76,12 +78,12 @@ export default function VisitorManagementDashboardPage() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good Morning!" : hour < 18 ? "Good Afternoon!" : "Good Night!";
 
-  // 4 Overview cards from Screenshot media_1795026254019_24141187.jpg
+  // 4 Overview cards synced with live visitors list
   const overviewCards = [
     { title: "Total Employees", value: String(visitorData.totalEmployees), bg: "bg-[#0A1931] text-white" },
-    { title: "Total Visitors", value: String(visitorData.totalVisitors), bg: "bg-[#6D5DF6] text-white" },
+    { title: "Total Visitors", value: String(visitors.length), bg: "bg-[#6D5DF6] text-white" },
     { title: "Total Pre Registers", value: String(visitorData.totalPreRegisters), bg: "bg-[#3B82F6] text-white" },
-    { title: "Today Attendance", value: String(visitorData.todayAttendance), bg: "bg-[#8B5CF6] text-white" },
+    { title: "Active Inside Premises", value: String(visitors.filter((v) => v.status === "CHECKED_IN").length), bg: "bg-[#8B5CF6] text-white" },
   ];
 
   // 12 Nov - 18 Nov Chart Data
@@ -230,6 +232,84 @@ export default function VisitorManagementDashboardPage() {
           </div>
           <ArrowRight className="w-4 h-4 text-muted group-hover:translate-x-1 transition-transform" />
         </Link>
+      </div>
+
+      {/* Live Visitors List Table on Admin Visitor Management Dashboard */}
+      <div className="bg-white rounded-2xl border border-border p-6 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border">
+          <div>
+            <h3 className="text-base font-bold text-heading">Live Visitors &amp; Appointments List</h3>
+            <p className="text-xs text-muted">
+              Real-time visitor check-ins, time of visit, time of appointment, and premises status synced from the reception kiosk.
+            </p>
+          </div>
+          <Link
+            href="/admin/visitors/list"
+            className="text-xs font-bold text-visitor hover:underline"
+          >
+            Open Full Visitor Logbook →
+          </Link>
+        </div>
+
+        <div className="overflow-x-auto text-xs">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-border text-muted font-semibold">
+                <th className="py-2.5">Badge #</th>
+                <th className="py-2.5">Visitor Name &amp; Phone</th>
+                <th className="py-2.5">Host Staff Member</th>
+                <th className="py-2.5">Purpose</th>
+                <th className="py-2.5">Visit Schedule</th>
+                <th className="py-2.5">Appointment Schedule</th>
+                <th className="py-2.5 text-center">Status</th>
+                <th className="py-2.5 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {visitors.map((v) => (
+                <tr key={v.id} className="hover:bg-gray-50/70">
+                  <td className="py-3 font-mono font-bold text-visitor">{v.badgeNo}</td>
+                  <td className="py-3">
+                    <p className="font-bold text-heading">{v.name}</p>
+                    <p className="text-[11px] text-muted">{v.phone}</p>
+                  </td>
+                  <td className="py-3 font-semibold text-heading">{v.hostEmployee}</td>
+                  <td className="py-3 text-muted">{v.purpose}</td>
+                  <td className="py-3 font-mono">
+                    <p className="text-heading font-bold">{v.visitTime}</p>
+                    <p className="text-[11px] text-muted">{v.visitDate}</p>
+                  </td>
+                  <td className="py-3 font-mono">
+                    <p className="text-blue-600 font-bold">{v.appointmentTime || v.visitTime}</p>
+                    <p className="text-[11px] text-blue-500">{v.appointmentDate || v.visitDate}</p>
+                  </td>
+                  <td className="py-3 text-center">
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        v.status === "CHECKED_IN"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {v.status === "CHECKED_IN" ? "INSIDE PREMISES" : `DEPARTED (${v.checkOut})`}
+                    </span>
+                  </td>
+                  <td className="py-3 text-right">
+                    {v.status === "CHECKED_IN" && (
+                      <button
+                        type="button"
+                        onClick={() => checkoutVisitor(v.id)}
+                        className="px-3 py-1 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-100 cursor-pointer"
+                      >
+                        Check Out
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

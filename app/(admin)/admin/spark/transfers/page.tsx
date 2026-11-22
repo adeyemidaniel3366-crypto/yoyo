@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeftRight, Plus, ArrowLeft, X, CheckCircle2 } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface StockTransfer {
   id: string;
@@ -199,13 +200,12 @@ export default function SparkTransfersPage() {
 
               <div>
                 <label className="block font-semibold text-gray-700 mb-1">Quantity to Transfer</label>
-                <input
-                  type="number"
+                <NumberInput
                   required
-                  min="1"
+                  min={1}
                   value={newTransfer.qty}
-                  onChange={(e) => setNewTransfer({ ...newTransfer, qty: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-spark"
+                  onChange={(v) => setNewTransfer({ ...newTransfer, qty: v === "" ? "" : String(v) })}
+                  className="rounded-xl focus:border-spark"
                 />
               </div>
 

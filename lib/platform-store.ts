@@ -27,6 +27,24 @@ export interface UnifiedProduct {
   isNew?: boolean;
   capacity?: string;
   amenities?: string[];
+  createdAt?: string;
+}
+
+export interface UnifiedVisitorLog {
+  id: string;
+  badgeNo: string;
+  name: string;
+  phone: string;
+  email?: string;
+  hostEmployee: string;
+  purpose: string;
+  visitDate: string;
+  visitTime: string;
+  appointmentDate?: string;
+  appointmentTime?: string;
+  checkIn: string;
+  checkOut: string | null;
+  status: "CHECKED_IN" | "CHECKED_OUT";
 }
 
 export interface UnifiedInvoiceActivity {
@@ -587,6 +605,56 @@ export const DEFAULT_CART_ITEMS: UnifiedCartItem[] = [
   },
 ];
 
+export const DEFAULT_VISITORS: UnifiedVisitorLog[] = [
+  {
+    id: "v1",
+    badgeNo: "VIS-00041",
+    name: "Engr. Tunde Bakare",
+    phone: "+234 802 987 6543",
+    email: "tunde.b@cloudsystems.ng",
+    hostEmployee: "Mr. Femi Adeleke (Finance)",
+    purpose: "Cloud Infrastructure Audit",
+    visitDate: "2026-11-21",
+    visitTime: "09:15",
+    appointmentDate: "2026-11-21",
+    appointmentTime: "09:00",
+    checkIn: "2026-11-21, 09:15 AM",
+    checkOut: null,
+    status: "CHECKED_IN",
+  },
+  {
+    id: "v2",
+    badgeNo: "VIS-00040",
+    name: "Amaka Nwachukwu",
+    phone: "+234 803 111 2233",
+    email: "amaka@zenithpartners.com",
+    hostEmployee: "Chief Executive Office",
+    purpose: "Partnership Discussion",
+    visitDate: "2026-11-21",
+    visitTime: "10:30",
+    appointmentDate: "2026-11-21",
+    appointmentTime: "10:30",
+    checkIn: "2026-11-21, 10:30 AM",
+    checkOut: null,
+    status: "CHECKED_IN",
+  },
+  {
+    id: "v3",
+    badgeNo: "VIS-00039",
+    name: "Chinedu Okeke",
+    phone: "+234 809 333 4455",
+    hostEmployee: "Storekeeper (Adepele)",
+    purpose: "Equipment Delivery",
+    visitDate: "2026-11-20",
+    visitTime: "14:00",
+    appointmentDate: "2026-11-20",
+    appointmentTime: "14:00",
+    checkIn: "2026-11-20, 14:00",
+    checkOut: "14:45",
+    status: "CHECKED_OUT",
+  },
+];
+
 // ---------------------------------------------------------------------------
 // Storage Keys & Event Sync
 // ---------------------------------------------------------------------------
@@ -598,6 +666,7 @@ const STORAGE_KEYS = {
   DUES: "zino_unified_dues_v2",
   TARGETS: "zino_unified_targets_v2",
   CART: "zino_unified_cart_v2",
+  VISITORS: "zino_unified_visitors_v2",
   GLOBAL_SERVICE_FILTER: "zino_global_service_filter_v2",
   GLOBAL_LOCATION_FILTER: "zino_global_location_filter_v2",
 };
@@ -639,6 +708,7 @@ export function recordPlatformTransaction(params: {
   status?: string;
   location?: string;
   actor?: string;
+  createdAt?: string;
 }) {
   const prefixMap: Record<ServiceSlug, string> = {
     [ServiceSlug.SPARK]: "SPK",
@@ -653,7 +723,7 @@ export function recordPlatformTransaction(params: {
     `${prefixMap[params.source]}-${Math.floor(100000 + Math.random() * 900000)}`;
   const amountDisplay =
     params.amountKobo > 0 ? formatCurrency(params.amountKobo) : "Pass Issued";
-  const today = new Date().toISOString().slice(0, 10);
+  const txDate = params.createdAt || new Date().toISOString().slice(0, 10);
 
   const newInvoice: UnifiedInvoiceActivity = {
     id: `inv_${Date.now()}`,
@@ -666,7 +736,7 @@ export function recordPlatformTransaction(params: {
     amountDisplay,
     status: params.status || "PAID",
     location: params.location || "Main Location",
-    createdAt: today,
+    createdAt: txDate,
   };
 
   const currentInvoices = readStorage(STORAGE_KEYS.INVOICES, DEFAULT_UNIFIED_INVOICES);
@@ -675,7 +745,7 @@ export function recordPlatformTransaction(params: {
   const newActivity: UnifiedActivityLogItem = {
     id: `act_${Date.now()}`,
     source: params.source,
-    time: "Just now",
+    time: params.createdAt ? params.createdAt : "Just now",
     actor: params.actor || params.customer,
     action: `${params.activitySummary} (${invoiceNo})`,
     amount: params.amountKobo > 0 ? amountDisplay : null,
@@ -686,6 +756,63 @@ export function recordPlatformTransaction(params: {
   writeStorage(STORAGE_KEYS.ACTIVITIES, [newActivity, ...currentActivities.slice(0, 29)]);
 
   return newInvoice;
+}
+
+export function recordVisitorCheckIn(params: {
+  badgeNo?: string;
+  name: string;
+  phone: string;
+  email?: string;
+  hostEmployee: string;
+  purpose: string;
+  visitDate?: string;
+  visitTime?: string;
+  appointmentDate?: string;
+  appointmentTime?: string;
+}) {
+  const badgeNo = params.badgeNo || `VIS-${Math.floor(10000 + Math.random() * 90000)}`;
+  const visitDate = params.visitDate || new Date().toISOString().slice(0, 10);
+  const appointmentDate = params.appointmentDate || visitDate;
+  const now = new Date();
+  const fallbackTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const visitTime = params.visitTime || fallbackTime;
+  const appointmentTime = params.appointmentTime || visitTime;
+  const checkIn = `${visitDate}, ${visitTime}${appointmentTime ? ` (Appt: ${appointmentDate} ${appointmentTime})` : ""}`;
+
+  const newVisitor: UnifiedVisitorLog = {
+    id: `vis_${Date.now()}`,
+    badgeNo,
+    name: params.name,
+    phone: params.phone,
+    email: params.email,
+    hostEmployee: params.hostEmployee,
+    purpose: params.purpose,
+    visitDate,
+    visitTime,
+    appointmentDate,
+    appointmentTime,
+    checkIn,
+    checkOut: null,
+    status: "CHECKED_IN",
+  };
+
+  const currentVisitors = readStorage(STORAGE_KEYS.VISITORS, DEFAULT_VISITORS);
+  writeStorage(STORAGE_KEYS.VISITORS, [newVisitor, ...currentVisitors]);
+
+  recordPlatformTransaction({
+    source: ServiceSlug.VISITORS,
+    activityType: "VISIT",
+    activitySummary: `Visitor Check-In (${params.purpose} with ${params.hostEmployee}) — Visit: ${visitDate} ${visitTime} / Appt: ${appointmentDate} ${appointmentTime}`,
+    invoiceNo: badgeNo,
+    customer: params.name,
+    amountKobo: 0,
+    location: "HQ Reception Kiosk",
+    status: "CHECKED_IN",
+    actor: "Front Desk Kiosk",
+    createdAt: visitDate,
+  });
+
+  return newVisitor;
 }
 
 // ---------------------------------------------------------------------------
@@ -699,6 +826,7 @@ export function usePlatformStore() {
   const [paymentDues, setPaymentDues] = useState<UnifiedPaymentDue[]>(DEFAULT_PAYMENT_DUES);
   const [targets, setTargets] = useState<UnifiedMonthlyTargets>(DEFAULT_MONTHLY_TARGETS);
   const [cartItems, setCartItems] = useState<UnifiedCartItem[]>(DEFAULT_CART_ITEMS);
+  const [visitors, setVisitors] = useState<UnifiedVisitorLog[]>(DEFAULT_VISITORS);
   const [globalServiceFilter, setGlobalServiceFilter] = useState<ServiceSlug | "ALL">("ALL");
   const [globalLocationFilter, setGlobalLocationFilter] = useState<string>("ALL");
 
@@ -709,6 +837,7 @@ export function usePlatformStore() {
     setPaymentDues(readStorage(STORAGE_KEYS.DUES, DEFAULT_PAYMENT_DUES));
     setTargets(readStorage(STORAGE_KEYS.TARGETS, DEFAULT_MONTHLY_TARGETS));
     setCartItems(readStorage(STORAGE_KEYS.CART, DEFAULT_CART_ITEMS));
+    setVisitors(readStorage(STORAGE_KEYS.VISITORS, DEFAULT_VISITORS));
     setGlobalServiceFilter(readStorage(STORAGE_KEYS.GLOBAL_SERVICE_FILTER, "ALL"));
     setGlobalLocationFilter(readStorage(STORAGE_KEYS.GLOBAL_LOCATION_FILTER, "ALL"));
   }, []);
@@ -737,9 +866,11 @@ export function usePlatformStore() {
           ? product.priceDisplay
           : formatCurrency(priceKobo);
       const primaryImage =
-        product.imageUrl ||
-        product.images?.[0] ||
-        "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=600&auto=format&fit=crop&q=80";
+        (product.imageUrl && product.imageUrl.trim()) ||
+        (product.images?.[0] && product.images[0].trim()) ||
+        "";
+
+      const cleanImages = (product.images || []).filter((img) => Boolean(img && img.trim()));
 
       const normalized: UnifiedProduct = {
         id: isExisting ? product.id! : `p_${Date.now()}`,
@@ -752,7 +883,7 @@ export function usePlatformStore() {
         costKobo: product.costKobo ?? Math.round(priceKobo * 0.75),
         priceDisplay,
         imageUrl: primaryImage,
-        images: product.images && product.images.length > 0 ? product.images : [primaryImage],
+        images: cleanImages.length > 0 ? cleanImages : primaryImage ? [primaryImage] : [],
         status: product.status || "ACTIVE",
         totalStock: typeof product.totalStock === "number" ? product.totalStock : 15,
         lowStockAt: typeof product.lowStockAt === "number" ? product.lowStockAt : 5,
@@ -760,6 +891,7 @@ export function usePlatformStore() {
         isNew: product.isNew ?? false,
         capacity: product.capacity,
         amenities: product.amenities,
+        createdAt: product.createdAt || new Date().toISOString().slice(0, 10),
       };
 
       const updated = isExisting
@@ -928,6 +1060,41 @@ export function usePlatformStore() {
     writeStorage(STORAGE_KEYS.CART, []);
   }, []);
 
+  const addVisitor = useCallback(
+    (params: {
+      badgeNo?: string;
+      name: string;
+      phone: string;
+      email?: string;
+      hostEmployee: string;
+      purpose: string;
+      visitDate?: string;
+      visitTime?: string;
+      appointmentDate?: string;
+      appointmentTime?: string;
+    }) => {
+      return recordVisitorCheckIn(params);
+    },
+    []
+  );
+
+  const checkoutVisitor = useCallback((id: string) => {
+    const current = readStorage(STORAGE_KEYS.VISITORS, DEFAULT_VISITORS);
+    const outTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const updated = current.map((v) =>
+      v.id === id ? { ...v, status: "CHECKED_OUT" as const, checkOut: outTime } : v
+    );
+    writeStorage(STORAGE_KEYS.VISITORS, updated);
+  }, []);
+
+  const deleteVisitor = useCallback((id: string) => {
+    const current = readStorage(STORAGE_KEYS.VISITORS, DEFAULT_VISITORS);
+    writeStorage(
+      STORAGE_KEYS.VISITORS,
+      current.filter((v) => v.id !== id)
+    );
+  }, []);
+
   return {
     products,
     invoices,
@@ -935,6 +1102,7 @@ export function usePlatformStore() {
     paymentDues,
     targets,
     cartItems,
+    visitors,
     globalServiceFilter,
     globalLocationFilter,
     saveProduct,
@@ -948,6 +1116,9 @@ export function usePlatformStore() {
     updateCartQty,
     removeFromCart,
     clearCart,
+    addVisitor,
+    checkoutVisitor,
+    deleteVisitor,
     recordTransaction: recordPlatformTransaction,
   };
 }

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { ShieldCheck, Plus, ArrowLeft, Search, Lock, UserCheck, X, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Plus, ArrowLeft, Search, Lock, UserCheck, X, CheckCircle2, Trash2 } from "lucide-react";
 import { Role, ServiceSlug } from "@prisma/client";
 import { StatusBadge } from "@/components/ui/status-badge";
 
@@ -14,14 +14,15 @@ interface PlatformUser {
   services: string[];
   status: "ACTIVE" | "INACTIVE";
   lastLogin: string;
+  createdAt?: string;
 }
 
 const USERS: PlatformUser[] = [
-  { id: "u1", name: "Super Administrator", email: "admin@zinoone.com", role: "SUPER_ADMIN", services: ["ALL_SERVICES"], status: "ACTIVE", lastLogin: "Just now" },
-  { id: "u2", name: "Femi Adeleke", email: "femi.adeleke@zinoone.com", role: "ACCOUNTANT", services: ["BILLSTACKS", "APARTMENTS"], status: "ACTIVE", lastLogin: "Today, 08:30" },
-  { id: "u3", name: "Adaeze Okafor", email: "adaeze.o@zinoapartments.com", role: "FRONT_DESK", services: ["APARTMENTS"], status: "ACTIVE", lastLogin: "Today, 07:45" },
-  { id: "u4", name: "Chinedu Eze", email: "chinedu@devicegalaxy.com", role: "STORE_MANAGER", services: ["GALAXY", "SPARK"], status: "ACTIVE", lastLogin: "Yesterday" },
-  { id: "u5", name: "Tunde Bakare", email: "tunde@topbuilders.ng", role: "YARD_SUPERVISOR", services: ["BUILDERS"], status: "ACTIVE", lastLogin: "18 Nov 2026" },
+  { id: "u1", name: "Super Administrator", email: "admin@zinoone.com", role: "SUPER_ADMIN", services: ["ALL_SERVICES"], status: "ACTIVE", lastLogin: "Just now", createdAt: "2026-01-01" },
+  { id: "u2", name: "Femi Adeleke", email: "femi.adeleke@zinoone.com", role: "ACCOUNTANT", services: ["BILLSTACKS", "APARTMENTS"], status: "ACTIVE", lastLogin: "Today, 08:30", createdAt: "2026-01-15" },
+  { id: "u3", name: "Adaeze Okafor", email: "adaeze.o@zinoapartments.com", role: "FRONT_DESK", services: ["APARTMENTS"], status: "ACTIVE", lastLogin: "Today, 07:45", createdAt: "2026-06-01" },
+  { id: "u4", name: "Chinedu Eze", email: "chinedu@devicegalaxy.com", role: "STORE_MANAGER", services: ["GALAXY", "SPARK"], status: "ACTIVE", lastLogin: "Yesterday", createdAt: "2026-03-10" },
+  { id: "u5", name: "Tunde Bakare", email: "tunde@topbuilders.ng", role: "YARD_SUPERVISOR", services: ["BUILDERS"], status: "ACTIVE", lastLogin: "18 Nov 2026", createdAt: "2026-02-12" },
 ];
 
 export default function UsersManagementPage() {
@@ -34,6 +35,7 @@ export default function UsersManagementPage() {
     email: "",
     role: "STORE_MANAGER",
     service: "SPARK",
+    createdAt: new Date().toISOString().slice(0, 10),
   });
 
   const showToast = (msg: string) => {
@@ -52,13 +54,19 @@ export default function UsersManagementPage() {
       role: newStaff.role,
       services: [newStaff.service],
       status: "ACTIVE",
-      lastLogin: "Invited — Pending first login",
+      lastLogin: `Invited (${newStaff.createdAt})`,
+      createdAt: newStaff.createdAt,
     };
 
     setUsers([created, ...users]);
     setInviteModalOpen(false);
-    setNewStaff({ name: "", email: "", role: "STORE_MANAGER", service: "SPARK" });
+    setNewStaff({ name: "", email: "", role: "STORE_MANAGER", service: "SPARK", createdAt: new Date().toISOString().slice(0, 10) });
     showToast(`Staff invitation sent to ${created.email}`);
+  };
+
+  const handleDeleteUser = (u: PlatformUser) => {
+    setUsers((prev) => prev.filter((item) => item.id !== u.id));
+    showToast(`Removed user account ${u.name} (${u.email})`);
   };
 
   const filtered = users.filter(
@@ -123,6 +131,7 @@ export default function UsersManagementPage() {
                 <th className="py-2.5">Accessible Services</th>
                 <th className="py-2.5 text-center">Status</th>
                 <th className="py-2.5">Last Active</th>
+                <th className="py-2.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -144,6 +153,17 @@ export default function UsersManagementPage() {
                     <StatusBadge status={u.status} size="sm" />
                   </td>
                   <td className="py-3 text-muted">{u.lastLogin}</td>
+                  <td className="py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteUser(u)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 text-[11px] font-bold transition-colors cursor-pointer"
+                      title="Delete User"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -221,6 +241,15 @@ export default function UsersManagementPage() {
                     <option value="VISITORS">Visitor Security</option>
                   </select>
                 </div>
+              </div>
+              <div>
+                <label className="block font-bold text-heading mb-1">Start / Registration Date</label>
+                <input
+                  type="date"
+                  value={newStaff.createdAt}
+                  onChange={(e) => setNewStaff({ ...newStaff, createdAt: e.target.value })}
+                  className="w-full h-9 px-3 rounded-xl border border-border outline-none focus:border-active"
+                />
               </div>
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-border">
                 <button

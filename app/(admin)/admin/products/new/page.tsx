@@ -16,6 +16,7 @@ import {
 import { ServiceSlug, SERVICE_CONFIG } from "@/lib/constants";
 import { usePlatformStore } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
+import { NumberInput } from "@/components/ui/number-input";
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -31,7 +32,8 @@ export default function NewProductPage() {
     costNgn: 32000,
     totalStock: 15,
     lowStockAt: 3,
-    imageUrl: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=600",
+    imageUrl: "",
+    createdAt: new Date().toISOString().slice(0, 10),
     isFeatured: true,
     isNew: true,
   });
@@ -60,12 +62,13 @@ export default function NewProductPage() {
       costKobo,
       priceDisplay: formatCurrency(priceKobo),
       imageUrl: form.imageUrl.trim(),
-      images: [form.imageUrl.trim()],
+      images: form.imageUrl.trim() ? [form.imageUrl.trim()] : [],
       status: "ACTIVE",
       totalStock: Number(form.totalStock) || 10,
       lowStockAt: Number(form.lowStockAt) || 3,
       isFeatured: form.isFeatured,
       isNew: form.isNew,
+      createdAt: form.createdAt,
     });
 
     setIsSaved(true);
@@ -165,17 +168,31 @@ export default function NewProductPage() {
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-semibold text-heading block mb-1">
-                Category / Badge Label
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. SSDs &amp; Storage, Flagship POS, Top Seller"
-                value={form.label}
-                onChange={(e) => setForm({ ...form, label: e.target.value })}
-                className="w-full h-10 px-3 rounded-xl border border-border text-xs text-heading focus:outline-none focus:border-active"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-semibold text-heading block mb-1">
+                  Category / Badge Label
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. SSDs &amp; Storage, Flagship POS, Top Seller"
+                  value={form.label}
+                  onChange={(e) => setForm({ ...form, label: e.target.value })}
+                  className="w-full h-10 px-3 rounded-xl border border-border text-xs text-heading focus:outline-none focus:border-active"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-heading block mb-1">
+                  Date Added
+                </label>
+                <input
+                  type="date"
+                  value={form.createdAt}
+                  onChange={(e) => setForm({ ...form, createdAt: e.target.value })}
+                  className="w-full h-10 px-3 rounded-xl border border-border text-xs text-heading focus:outline-none focus:border-active"
+                />
+              </div>
             </div>
 
             <div>
@@ -203,12 +220,16 @@ export default function NewProductPage() {
                 <label className="text-xs font-semibold text-heading block mb-1">
                   Selling Price (₦ NGN) *
                 </label>
-                <input
-                  type="number"
+                            <NumberInput
+                              value={form.priceNgn}
+                              onChange={(v) => setForm({ ...form, priceNgn: v as number })}
+                              placeholder="e.g. 45000"
+                              min={0}
+                              step={100}
+                              allowNegative={false}
+                              allowDecimal={false}
+                              prefix="₦"
                   required
-                  value={form.priceNgn}
-                  onChange={(e) => setForm({ ...form, priceNgn: Number(e.target.value) })}
-                  className="w-full h-10 px-3 rounded-xl border border-border text-xs text-heading focus:outline-none focus:border-active"
                 />
                 <p className="text-[10px] text-muted mt-1">
                   Format: {formatCurrency(Math.round(form.priceNgn * 100))}
@@ -219,11 +240,15 @@ export default function NewProductPage() {
                 <label className="text-xs font-semibold text-heading block mb-1">
                   Cost / Acquisition Price (₦ NGN)
                 </label>
-                <input
-                  type="number"
+                            <NumberInput
                   value={form.costNgn}
-                  onChange={(e) => setForm({ ...form, costNgn: Number(e.target.value) })}
-                  className="w-full h-10 px-3 rounded-xl border border-border text-xs text-heading focus:outline-none focus:border-active"
+                              onChange={(v) => setForm({ ...form, costNgn: v as number })}
+                              placeholder="e.g. 32000"
+                              min={0}
+                              step={100}
+                              allowNegative={false}
+                              allowDecimal={false}
+                              prefix="₦"
                 />
                 <p className="text-[10px] text-muted mt-1">
                   Margin: {formatCurrency(Math.round((form.priceNgn - form.costNgn) * 100))}
@@ -236,11 +261,14 @@ export default function NewProductPage() {
                 <label className="text-xs font-semibold text-heading block mb-1">
                   Initial Stock Quantity
                 </label>
-                <input
-                  type="number"
+                            <NumberInput
                   value={form.totalStock}
-                  onChange={(e) => setForm({ ...form, totalStock: Number(e.target.value) })}
-                  className="w-full h-10 px-3 rounded-xl border border-border text-xs text-heading focus:outline-none focus:border-active"
+                              onChange={(v) => setForm({ ...form, totalStock: v as number })}
+                              placeholder="e.g. 15"
+                              min={0}
+                              step={1}
+                              allowNegative={false}
+                              allowDecimal={false}
                 />
               </div>
 
@@ -248,11 +276,14 @@ export default function NewProductPage() {
                 <label className="text-xs font-semibold text-heading block mb-1">
                   Low Stock Alert Threshold
                 </label>
-                <input
-                  type="number"
+                            <NumberInput
                   value={form.lowStockAt}
-                  onChange={(e) => setForm({ ...form, lowStockAt: Number(e.target.value) })}
-                  className="w-full h-10 px-3 rounded-xl border border-border text-xs text-heading focus:outline-none focus:border-active"
+                              onChange={(v) => setForm({ ...form, lowStockAt: v as number })}
+                              placeholder="e.g. 3"
+                              min={0}
+                              step={1}
+                              allowNegative={false}
+                              allowDecimal={false}
                 />
               </div>
             </div>
@@ -337,12 +368,19 @@ export default function NewProductPage() {
                       NEW
                     </span>
                   )}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={form.imageUrl}
-                    alt={form.name || "Preview"}
-                    className="max-h-full max-w-full object-contain"
-                  />
+                  {form.imageUrl.trim() ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={form.imageUrl}
+                      alt={form.name || "Preview"}
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-gray-400 space-y-1">
+                      <Package className="w-8 h-8 opacity-40" />
+                      <span className="text-[10px] font-mono">No Cover Image</span>
+                    </div>
+                  )}
                 </div>
 
                 <p className="text-[10px] font-bold text-muted uppercase">

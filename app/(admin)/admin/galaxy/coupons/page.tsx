@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Ticket, Plus, ArrowLeft, X, CheckCircle2 } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface CouponRow {
   id: string;
@@ -178,23 +179,24 @@ export default function GalaxyCouponsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Discount (% Off) *</label>
-                  <input
-                    type="number"
+                  <NumberInput
                     required
-                    min="1"
-                    max="99"
+                    min={1}
+                    max={99}
+                    suffix="%"
                     value={newCoupon.discountPct}
-                    onChange={(e) => setNewCoupon({ ...newCoupon, discountPct: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-galaxy"
+                    onChange={(v) => setNewCoupon({ ...newCoupon, discountPct: v === "" ? "" : String(v) })}
+                    className="rounded-xl focus:border-galaxy"
                   />
                 </div>
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Min Spend (₦)</label>
-                  <input
-                    type="number"
+                  <NumberInput
+                    min={0}
+                    prefix="₦"
                     value={newCoupon.minSpendNaira}
-                    onChange={(e) => setNewCoupon({ ...newCoupon, minSpendNaira: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-galaxy"
+                    onChange={(v) => setNewCoupon({ ...newCoupon, minSpendNaira: v === "" ? "" : String(v) })}
+                    className="rounded-xl focus:border-galaxy"
                   />
                 </div>
               </div>
@@ -202,11 +204,11 @@ export default function GalaxyCouponsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Usage Limit</label>
-                  <input
-                    type="number"
+                  <NumberInput
+                    min={1}
                     value={newCoupon.maxUses}
-                    onChange={(e) => setNewCoupon({ ...newCoupon, maxUses: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-galaxy"
+                    onChange={(v) => setNewCoupon({ ...newCoupon, maxUses: v === "" ? "" : String(v) })}
+                    className="rounded-xl focus:border-galaxy"
                   />
                 </div>
                 <div>

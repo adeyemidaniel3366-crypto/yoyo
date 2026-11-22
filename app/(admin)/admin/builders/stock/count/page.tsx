@@ -5,6 +5,7 @@ import Link from "next/link";
 import { HardHat, ArrowLeft, CheckCircle2, Save } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { NumberInput } from "@/components/ui/number-input";
 
 export default function BuildersStockCountPage() {
   const [counts, setCounts] = useState([
@@ -64,17 +65,19 @@ export default function BuildersStockCountPage() {
                     <td className="py-3 font-bold text-heading">{row.item}</td>
                     <td className="py-3 text-center font-semibold">{row.systemQty}</td>
                     <td className="py-3 text-center">
-                      <input
-                        type="number"
-                        value={row.physicalQty}
-                        onChange={(e) => {
-                          const val = Number(e.target.value);
-                          setCounts((prev) =>
-                            prev.map((r, i) => (i === idx ? { ...r, physicalQty: val } : r))
-                          );
-                        }}
-                        className="w-20 h-8 px-2 text-center rounded-lg border border-border text-xs font-bold text-heading"
-                      />
+                      <div className="w-24 mx-auto">
+                        <NumberInput
+                          min={0}
+                          value={row.physicalQty}
+                          onChange={(v) => {
+                            const val = typeof v === "number" ? v : 0;
+                            setCounts((prev) =>
+                              prev.map((r, i) => (i === idx ? { ...r, physicalQty: val } : r))
+                            );
+                          }}
+                          className="h-8 px-2 text-center text-xs font-bold"
+                        />
+                      </div>
                     </td>
                     <td className="py-3 text-center font-bold">
                       <span className={diff === 0 ? "text-emerald-600" : diff < 0 ? "text-rose-600" : "text-blue-600"}>

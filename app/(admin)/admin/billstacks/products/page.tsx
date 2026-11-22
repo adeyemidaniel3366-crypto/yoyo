@@ -2,28 +2,15 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Package, Plus, ArrowLeft, Search, X, CheckCircle2 } from "lucide-react";
+import { Package, Plus, ArrowLeft, Search, X, CheckCircle2, Trash2 } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { formatCurrency } from "@/lib/money";
-
-interface BillstackItem {
-  id: string;
-  name: string;
-  sku: string;
-  rateKobo: number;
-  billingType: string;
-  taxRate: string;
-}
-
-const ITEMS: BillstackItem[] = [
-  { id: "b1", name: "Enterprise Cloud ERP Retainer", sku: "BS-ERP-MONTHLY", rateKobo: 145000000, billingType: "RECURRING_MONTHLY", taxRate: "7.5% VAT" },
-  { id: "b2", name: "Custom API & FinTech Integration", sku: "BS-ENG-HOURLY", rateKobo: 2500000, billingType: "PER_HOUR", taxRate: "7.5% VAT" },
-  { id: "b3", name: "Annual Corporate Financial Audit", sku: "BS-AUDIT-ANNUAL", rateKobo: 450000000, billingType: "ONE_TIME", taxRate: "7.5% VAT" },
-];
+import { usePlatformStore } from "@/lib/platform-store";
+import { NumberInput } from "@/components/ui/number-input";
 
 export default function BillstacksProductsPage() {
-  const [items, setItems] = useState<BillstackItem[]>(ITEMS);
+  const { products: storeProducts, saveProduct, deleteProduct } = usePlatformStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [newItem, setNewItem] = useState({
@@ -32,7 +19,24 @@ export default function BillstacksProductsPage() {
     rateNaira: "",
     billingType: "RECURRING_MONTHLY",
     taxRate: "7.5% VAT",
+    createdAt: new Date().toISOString().slice(0, 10),
   });
+
+  const items = React.useMemo(
+    () =>
+      storeProducts
+        .filter((p) => p.source === ServiceSlug.BILLSTACKS)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          sku: p.sku,
+          rateKobo: p.priceKobo,
+          billingType: p.label || "RECURRING_MONTHLY",
+          taxRate: "7.5% VAT",
+          createdAt: p.createdAt || "2026-11-20",
+        })),
+    [storeProducts]
+  );
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -46,16 +50,22 @@ export default function BillstacksProductsPage() {
     const rateKobo = Math.round(Number(newItem.rateNaira) * 100);
     const sku = newItem.sku.trim() || `BS-${newItem.name.slice(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
 
-    const created: BillstackItem = {
-      id: `it_${Date.now()}`,
+    const saved = saveProduct({
+      source: ServiceSlug.BILLSTACKS,
       name: newItem.name.trim(),
       sku,
-      rateKobo,
-      billingType: newItem.billingType,
-      taxRate: newItem.taxRate,
-    };
+      label: newItem.billingType,
+      description: `${newItem.billingType} (${newItem.taxRate})`,
+      priceKobo: rateKobo,
+      priceDisplay: `${formatCurrency(rateKobo)} / month`,
+      imageUrl: "",
+      images: [],
+      status: "ACTIVE",
+      totalStock: 999,
+      lowStockAt: 0,
+      createdAt: newItem.createdAt,
+    });
 
-    setItems([...items, created]);
     setModalOpen(false);
     setNewItem({
       name: "",
@@ -63,8 +73,9 @@ export default function BillstacksProductsPage() {
       rateNaira: "",
       billingType: "RECURRING_MONTHLY",
       taxRate: "7.5% VAT",
+      createdAt: new Date().toISOString().slice(0, 10),
     });
-    showToast(`Billing service item "${created.name}" added to catalog.`);
+    showToast(`Billing service item "${saved.name}" added and synced across platform.`);
   };
 
   return (
@@ -112,7 +123,9 @@ export default function BillstacksProductsPage() {
                 <th className="py-2.5">Service Item Name</th>
                 <th className="py-2.5">Billing Type</th>
                 <th className="py-2.5">Applicable Tax</th>
+                <th className="py-2.5">Date Added</th>
                 <th className="py-2.5 text-right">Standard Rate (₦)</th>
+                <th className="py-2.5 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -122,8 +135,22 @@ export default function BillstacksProductsPage() {
                   <td className="py-3 font-semibold text-heading">{it.name}</td>
                   <td className="py-3 font-mono text-muted">{it.billingType}</td>
                   <td className="py-3 text-muted">{it.taxRate}</td>
+                  <td className="py-3 text-muted font-mono">{it.createdAt}</td>
                   <td className="py-3 text-right font-black text-heading">
                     {formatCurrency(it.rateKobo)}
+                  </td>
+                  <td className="py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        deleteProduct(it.id);
+                        showToast(`Removed "${it.name}" from Billstacks catalog.`);
+                      }}
+                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50"
+                      title="Delete Service"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -174,14 +201,14 @@ export default function BillstacksProductsPage() {
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
                     Standard Rate (₦) *
                   </label>
-                  <input
-                    type="number"
+                  <NumberInput
                     required
-                    min="1"
-                    placeholder="e.g. 500000"
+                    min={1}
+                    placeholder="e.g. 500,000"
+                    prefix="₦"
                     value={newItem.rateNaira}
-                    onChange={(e) => setNewItem({ ...newItem, rateNaira: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks"
+                    onChange={(v) => setNewItem({ ...newItem, rateNaira: v === "" ? "" : String(v) })}
+                    className="rounded-xl text-xs focus:border-billstacks"
                   />
                 </div>
                 <div>
@@ -221,6 +248,16 @@ export default function BillstacksProductsPage() {
                     <option value="0% EXEMPT">0% Exempt</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Date Added</label>
+                <input
+                  type="date"
+                  value={newItem.createdAt}
+                  onChange={(e) => setNewItem({ ...newItem, createdAt: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">

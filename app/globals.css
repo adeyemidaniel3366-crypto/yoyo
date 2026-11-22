@@ -200,9 +200,23 @@
   a:focus-visible,
   input:focus-visible,
   select:focus-visible,
-  textarea:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.25);
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid #4F46E5;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+  }
+
+  /* Respect user reduced motion preferences (WCAG 2.1 AA) */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   /* ---------------------------------------------------------------------------
@@ -767,57 +781,50 @@ body {
   max-width: 100%;
 }
 
-/* Keep the admin table readable when the operating system requests dark mode.
-   Most table cell colors come from service components with fixed light-theme
-   colors, so scope the dark palette here instead of changing the whole app. */
-@media (prefers-color-scheme: dark) {
-  .admin-data-table .data-table-title,
-  .admin-data-table .data-table-search,
-  .admin-data-table .data-table-page-number {
-    color: #f9fafb !important;
-  }
+/* Keep all DataTable instances visually consistent with the light white-card
+   theme across both the Admin Dashboard and Staff Portal (even in OS dark mode). */
+.admin-data-table {
+  background-color: #ffffff;
+  color: #111827;
+}
 
-  .admin-data-table tbody td {
-    color: #e5e7eb !important;
-  }
+.admin-data-table thead tr {
+  background-color: #f9fafb !important;
+  color: #111827 !important;
+}
 
-  .admin-data-table tbody .text-heading {
-    color: #f9fafb !important;
-  }
+.admin-data-table thead th {
+  color: #111827 !important;
+}
 
-  .admin-data-table tbody .text-body {
-    color: #e5e7eb !important;
-  }
+.admin-data-table tbody tr {
+  background-color: #ffffff !important;
+  border-color: #f3f4f6 !important;
+}
 
-  .admin-data-table tbody .text-muted {
-    color: #cbd5e1 !important;
-  }
+.admin-data-table tbody tr:hover {
+  background-color: #f9fafb !important;
+}
 
-  .admin-data-table thead tr {
-    background-color: #111827;
-    color: #f3f4f6;
-  }
+.admin-data-table tbody td {
+  color: #111827;
+}
 
-  .admin-data-table tbody tr {
-    background-color: #1f2937;
-    border-color: #374151;
-  }
+.admin-data-table .data-table-title,
+.admin-data-table .data-table-page-number {
+  color: #111827 !important;
+}
 
-  .admin-data-table tbody tr:hover {
-    background-color: #374151;
-  }
+.admin-data-table .data-table-footer {
+  color: #4b5563 !important;
+}
 
-  .admin-data-table input {
-    background-color: #111827;
-    border-color: #4b5563;
-    color: #f9fafb;
-  }
+.admin-data-table input.data-table-search {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+  color: #111827 !important;
+}
 
-  .admin-data-table input::placeholder {
-    color: #9ca3af;
-  }
-
-  .admin-data-table .data-table-footer {
-    color: #e5e7eb;
-  }
+.admin-data-table input.data-table-search::placeholder {
+  color: #9ca3af !important;
 }

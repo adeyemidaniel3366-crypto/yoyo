@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Users, Plus, ArrowLeft, Search, Shield, Key, X, CheckCircle2 } from "lucide-react";
+import { Users, Plus, ArrowLeft, Search, Shield, Key, X, CheckCircle2, Trash2 } from "lucide-react";
 
 interface StaffAccess {
   id: string;
@@ -11,13 +11,14 @@ interface StaffAccess {
   branch: string;
   accessCardId: string;
   pinSet: boolean;
+  issuedDate?: string;
 }
 
 const STAFF: StaffAccess[] = [
-  { id: "1", name: "Femi Adeleke", position: "Financial Controller", branch: "HQ Victoria Island", accessCardId: "CRD-8821", pinSet: true },
-  { id: "2", name: "Chinedu Eze", position: "Store Manager", branch: "Computer Village (Medical Rd)", accessCardId: "CRD-8822", pinSet: true },
-  { id: "3", name: "Adaeze Okafor", position: "Front Desk Concierge", branch: "Zino Apartments Lekki", accessCardId: "CRD-8823", pinSet: true },
-  { id: "4", name: "Tunde Bakare", position: "Yard Supervisor", branch: "Top Builders Supply Yard", accessCardId: "CRD-8824", pinSet: true },
+  { id: "1", name: "Femi Adeleke", position: "Financial Controller", branch: "HQ Victoria Island", accessCardId: "CRD-8821", pinSet: true, issuedDate: "2026-01-15" },
+  { id: "2", name: "Chinedu Eze", position: "Store Manager", branch: "Computer Village (Medical Rd)", accessCardId: "CRD-8822", pinSet: true, issuedDate: "2026-03-10" },
+  { id: "3", name: "Adaeze Okafor", position: "Front Desk Concierge", branch: "Zino Apartments Lekki", accessCardId: "CRD-8823", pinSet: true, issuedDate: "2026-06-01" },
+  { id: "4", name: "Tunde Bakare", position: "Yard Supervisor", branch: "Top Builders Supply Yard", accessCardId: "CRD-8824", pinSet: true, issuedDate: "2026-02-12" },
 ];
 
 export default function StaffAccessPage() {
@@ -29,6 +30,7 @@ export default function StaffAccessPage() {
     position: "",
     branch: "HQ Victoria Island",
     pin: "1234",
+    issuedDate: new Date().toISOString().slice(0, 10),
   });
 
   const showToast = (msg: string) => {
@@ -47,12 +49,18 @@ export default function StaffAccessPage() {
       branch: newCard.branch,
       accessCardId: `CRD-${Math.floor(1000 + Math.random() * 9000)}`,
       pinSet: Boolean(newCard.pin.trim()),
+      issuedDate: newCard.issuedDate || new Date().toISOString().slice(0, 10),
     };
 
     setStaff([created, ...staff]);
     setCardModalOpen(false);
-    setNewCard({ name: "", position: "", branch: "HQ Victoria Island", pin: "1234" });
+    setNewCard({ name: "", position: "", branch: "HQ Victoria Island", pin: "1234", issuedDate: new Date().toISOString().slice(0, 10) });
     showToast(`Security Keycard ${created.accessCardId} issued to ${created.name}`);
+  };
+
+  const handleDeleteCard = (s: StaffAccess) => {
+    setStaff((prev) => prev.filter((item) => item.id !== s.id));
+    showToast(`Revoked and deleted Keycard ${s.accessCardId} & PIN for ${s.name}`);
   };
 
   return (
@@ -97,7 +105,9 @@ export default function StaffAccessPage() {
                 <th className="py-2.5">Position</th>
                 <th className="py-2.5">Assigned Facility</th>
                 <th className="py-2.5 font-mono">Access Badge ID</th>
+                <th className="py-2.5">Issued Date</th>
                 <th className="py-2.5 text-center">POS Terminal PIN</th>
+                <th className="py-2.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -107,10 +117,22 @@ export default function StaffAccessPage() {
                   <td className="py-3 text-muted">{s.position}</td>
                   <td className="py-3 font-semibold text-heading">{s.branch}</td>
                   <td className="py-3 font-mono font-bold text-active">{s.accessCardId}</td>
+                  <td className="py-3 text-muted font-mono">{s.issuedDate || "2026-01-15"}</td>
                   <td className="py-3 text-center">
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">
-                      PIN ACTIVE
+                      {s.pinSet ? "PIN ACTIVE" : "NO PIN"}
                     </span>
+                  </td>
+                  <td className="py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCard(s)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 text-[11px] font-bold transition-colors cursor-pointer"
+                      title="Delete Keycard & PIN"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -170,16 +192,27 @@ export default function StaffAccessPage() {
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="block font-bold text-heading mb-1">Terminal Unlock PIN (4 digits)</label>
-                <input
-                  type="password"
-                  maxLength={4}
-                  placeholder="••••"
-                  value={newCard.pin}
-                  onChange={(e) => setNewCard({ ...newCard, pin: e.target.value })}
-                  className="w-full h-9 px-3 rounded-xl border border-border font-mono tracking-widest outline-none focus:border-active"
-                />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-bold text-heading mb-1">Terminal Unlock PIN (4 digits)</label>
+                  <input
+                    type="password"
+                    maxLength={4}
+                    placeholder="••••"
+                    value={newCard.pin}
+                    onChange={(e) => setNewCard({ ...newCard, pin: e.target.value })}
+                    className="w-full h-9 px-3 rounded-xl border border-border font-mono tracking-widest outline-none focus:border-active"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-heading mb-1">Issue Date</label>
+                  <input
+                    type="date"
+                    value={newCard.issuedDate}
+                    onChange={(e) => setNewCard({ ...newCard, issuedDate: e.target.value })}
+                    className="w-full h-9 px-3 rounded-xl border border-border outline-none focus:border-active"
+                  />
+                </div>
               </div>
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-border">
                 <button

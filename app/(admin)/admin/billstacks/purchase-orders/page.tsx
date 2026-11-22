@@ -8,6 +8,7 @@ import { SourceBadge } from "@/components/ui/source-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCurrency } from "@/lib/money";
 import { usePlatformStore } from "@/lib/platform-store";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface PurchaseOrder {
   id: string;
@@ -206,14 +207,14 @@ export default function BillstacksPurchaseOrdersPage() {
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
                     PO Value (₦) *
                   </label>
-                  <input
-                    type="number"
+                  <NumberInput
                     required
-                    min="1"
-                    placeholder="e.g. 4200000"
+                    min={1}
+                    placeholder="e.g. 4,200,000"
+                    prefix="₦"
                     value={newPo.amountNaira}
-                    onChange={(e) => setNewPo({ ...newPo, amountNaira: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks"
+                    onChange={(v) => setNewPo({ ...newPo, amountNaira: v === "" ? "" : String(v) })}
+                    className="rounded-xl text-xs focus:border-billstacks"
                   />
                 </div>
                 <div>

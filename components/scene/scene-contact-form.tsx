@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Send, CheckCircle2, Sparkles, Mail } from "lucide-react";
+import { Send, CheckCircle2 } from "lucide-react";
 import { sceneAudio } from "./scene-sound";
 
 export function SceneContactForm() {
@@ -35,24 +35,24 @@ export function SceneContactForm() {
   };
 
   return (
-    <div className="p-6 sm:p-8 rounded-3xl bg-white/80 border border-[#12110E]/10 shadow-sm space-y-6">
+    <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-lg space-y-6">
       <div className="space-y-1">
-        <h3 className="text-xl font-bold text-[#12110E] tracking-tight">
+        <h3 className="text-xl font-bold text-black tracking-tight">
           Send a Direct Message
         </h3>
-        <p className="text-xs text-[#12110E]/70">
+        <p className="text-xs text-slate-600">
           Have an inquiry, project idea, or architectural challenge? Drop a note below.
         </p>
       </div>
 
       {isSubmitted ? (
-        <div className="p-6 rounded-2xl bg-[#00CEC8]/15 border border-[#00CEC8]/40 space-y-3 text-center animate-in zoom-in-95 duration-200">
-          <CheckCircle2 className="w-8 h-8 text-[#00CEC8] mx-auto" />
-          <h4 className="font-bold text-sm text-[#12110E]">
-            Message Received!
-          </h4>
-          <p className="text-xs text-[#12110E]/80 max-w-sm mx-auto leading-relaxed">
-            Thank you, {name}. Zino will review your note regarding <strong>{topic}</strong> and get back to you at <strong>{email}</strong>.
+        <div className="p-6 rounded-2xl bg-blue-50 border border-blue-200 space-y-3 text-center">
+          <CheckCircle2 className="w-8 h-8 text-blue-600 mx-auto" />
+          <h4 className="font-bold text-sm text-black">Message Received!</h4>
+          <p className="text-xs text-slate-700 max-w-sm mx-auto leading-relaxed">
+            Thank you, {name}. Zino will review your note regarding{" "}
+            <strong className="text-black">{topic}</strong> and get back to you at{" "}
+            <strong className="text-black">{email}</strong>.
           </p>
           <button
             type="button"
@@ -62,7 +62,7 @@ export function SceneContactForm() {
               setEmail("");
               setMessage("");
             }}
-            className="text-xs font-mono font-bold text-[#EB4203] hover:underline pt-2 block mx-auto"
+            className="text-xs font-mono font-bold text-blue-600 hover:underline pt-2 block mx-auto cursor-pointer"
           >
             Send Another Message
           </button>
@@ -71,7 +71,7 @@ export function SceneContactForm() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Topic Pills */}
           <div className="space-y-1.5">
-            <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#12110E]/60 block">
+            <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 block">
               Inquiry Topic
             </label>
             <div className="flex flex-wrap gap-1.5">
@@ -83,10 +83,10 @@ export function SceneContactForm() {
                     sceneAudio.playHover();
                     setTopic(t);
                   }}
-                  className={`px-3 py-1 rounded-full text-xs font-mono transition-all ${
+                  className={`px-3 py-1 rounded-full text-xs font-mono transition-all cursor-pointer ${
                     topic === t
-                      ? "bg-[#00CEC8] text-[#12110E] font-bold shadow-sm"
-                      : "bg-[#FCEFC3]/80 hover:bg-[#FCEFC3] text-[#12110E]/80 border border-[#12110E]/5"
+                      ? "bg-blue-600 text-white font-bold shadow-sm"
+                      : "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
                   }`}
                 >
                   {t}
@@ -98,44 +98,56 @@ export function SceneContactForm() {
           {/* Name & Email Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[11px] font-mono text-[#12110E]/70 block">
+              <label
+                htmlFor="contact-name"
+                className="text-[11px] font-mono text-slate-700 block"
+              >
                 Your Name
               </label>
               <input
+                id="contact-name"
                 type="text"
                 required
                 placeholder="Zino Adeyemi"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#12110E]/15 text-xs text-[#12110E] placeholder:text-[#12110E]/30 focus:outline-none focus:border-[#00CEC8]"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs text-black placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[11px] font-mono text-[#12110E]/70 block">
+              <label
+                htmlFor="contact-email"
+                className="text-[11px] font-mono text-slate-700 block"
+              >
                 Your Email
               </label>
               <input
+                id="contact-email"
                 type="email"
                 required
                 placeholder="you@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#12110E]/15 text-xs text-[#12110E] placeholder:text-[#12110E]/30 focus:outline-none focus:border-[#00CEC8]"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs text-black placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
               />
             </div>
           </div>
 
           {/* Message Textarea */}
           <div className="space-y-1">
-            <label className="text-[11px] font-mono text-[#12110E]/70 block">
+            <label
+              htmlFor="contact-message"
+              className="text-[11px] font-mono text-slate-700 block"
+            >
               Message or Project Brief
             </label>
             <textarea
+              id="contact-message"
               rows={3}
               placeholder="Tell me a bit about what you're working on or want to build..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#12110E]/15 text-xs text-[#12110E] placeholder:text-[#12110E]/30 focus:outline-none focus:border-[#00CEC8] resize-none"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs text-black placeholder:text-slate-400 focus:outline-none focus:border-blue-600 resize-none"
             />
           </div>
 
@@ -143,7 +155,7 @@ export function SceneContactForm() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-full bg-[#EB4203] hover:bg-[#EB4203]/90 text-white font-bold text-xs tracking-wide shadow-sm hover:shadow transition-all disabled:opacity-50"
+            className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs tracking-wide shadow-sm transition-all disabled:opacity-50 cursor-pointer"
           >
             {isSubmitting ? (
               <span>Sending note...</span>

@@ -51,53 +51,46 @@ export default function ZinoApartmentsPublicPage() {
   const [children, setChildren] = useState(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Load suites from localStorage and unified store
+  // Load suites directly from the Unified Platform Store so counts & details strictly match Admin/Staff catalog
   const refreshSuites = () => {
-    const local = getApartmentSuites();
-    // Also include any apartment products added via unified admin
     const storeApartments = products.filter(
-      (p) => p.source === ServiceSlug.APARTMENTS && p.status !== "INACTIVE"
+      (p) => p.source === ServiceSlug.APARTMENTS && p.status !== "INACTIVE" && p.status !== "ARCHIVED"
     );
 
-    const merged: ApartmentSuite[] = [...local];
-    storeApartments.forEach((p) => {
-      if (!merged.some((s) => s.id === p.id || s.slug === p.sku?.toLowerCase())) {
-        merged.push({
-          id: p.id,
-          slug: p.sku ? p.sku.toLowerCase().replace(/[^a-z0-9]/g, "-") : p.id,
-          name: p.name,
-          subtitle: p.label || "Serviced Luxury Apartment",
-          category: (p.name.includes("2-Bedroom")
-            ? "2-Bedroom"
-            : p.name.includes("1-Bedroom")
-            ? "1-Bedroom"
-            : p.name.includes("Penthouse")
-            ? "Penthouse"
-            : "Studio") as ApartmentSuite["category"],
-          basePriceKobo: p.priceKobo || 3000000,
-          taxPct: 10,
-          cautionDepositKobo: 2000000,
-          adults: 2,
-          children: 1,
-          bedrooms: 1,
-          bathrooms: 1,
-          bedType: "1 King-Size Bed (6x6)",
-          sizeSqm: 65,
-          floor: "2nd Floor",
-          view: "Lekki Skyline View",
-          image: p.imageUrl,
-          gallery: p.images || [p.imageUrl],
-          amenities: p.amenities || ["AC", "Kitchen", "WiFi", "Bath Heater"],
-          description: p.description || p.label || "Luxury apartment in Lekki Phase 1.",
-          sleepingArrangements: [{ room: "Master Bedroom", bed: "1 King-Size Bed" }],
-          rules: ["Check-in: 2:00 PM", "Check-out: 11:00 AM", "Refundable deposit required"],
-          availableUnits: p.totalStock || 4,
-          featured: p.isFeatured ?? true,
-        });
-      }
-    });
+    const mapped: ApartmentSuite[] = storeApartments.map((p) => ({
+      id: p.id,
+      slug: p.sku ? p.sku.toLowerCase().replace(/[^a-z0-9]/g, "-") : p.id,
+      name: p.name,
+      subtitle: p.label || "Serviced Luxury Apartment",
+      category: (p.name.includes("2-Bedroom")
+        ? "2-Bedroom"
+        : p.name.includes("1-Bedroom")
+        ? "1-Bedroom"
+        : p.name.includes("Penthouse")
+        ? "Penthouse"
+        : "Studio") as ApartmentSuite["category"],
+      basePriceKobo: p.priceKobo || 3000000,
+      taxPct: 10,
+      cautionDepositKobo: 2000000,
+      adults: 2,
+      children: 1,
+      bedrooms: p.name.includes("2-Bedroom") ? 2 : 1,
+      bathrooms: p.name.includes("2-Bedroom") ? 2 : 1,
+      bedType: "1 King-Size Bed (6x6)",
+      sizeSqm: 65,
+      floor: "2nd Floor",
+      view: "Lekki Skyline View",
+      image: p.imageUrl || "",
+      gallery: p.images && p.images.length > 0 ? p.images : p.imageUrl ? [p.imageUrl] : [],
+      amenities: p.amenities || ["Sitout", "AC", "Kitchen", "WiFi", "Bath Heater", "24/7 Power"],
+      description: p.description || p.label || "Luxury apartment in Lekki Phase 1.",
+      sleepingArrangements: [{ room: "Master Bedroom", bed: "1 King-Size Bed" }],
+      rules: ["Check-in: 2:00 PM", "Check-out: 11:00 AM", "Refundable deposit required"],
+      availableUnits: p.totalStock || 4,
+      featured: p.isFeatured ?? true,
+    }));
 
-    setSuites(merged);
+    setSuites(mapped);
   };
 
   useEffect(() => {
@@ -436,13 +429,17 @@ export default function ZinoApartmentsPublicPage() {
             >
               <div>
                 {/* Photo Container */}
-                <div className="relative aspect-[16/11] w-full bg-slate-100 overflow-hidden">
-                  <img
-                    src={suiteItem.image}
-                    alt={suiteItem.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                  />
+                <div className="relative aspect-[16/11] w-full bg-slate-100 overflow-hidden flex items-center justify-center">
+                  {suiteItem.image ? (
+                    <img
+                      src={suiteItem.image}
+                      alt={suiteItem.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="text-xs font-mono text-slate-400">No Cover Photo</span>
+                  )}
                   <div className="absolute top-3 left-3 flex items-center gap-2">
                     <span className="px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md text-[10px] font-mono font-bold text-slate-800 shadow-xs border border-white/40">
                       {suiteItem.category}

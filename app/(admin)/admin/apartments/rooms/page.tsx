@@ -30,10 +30,11 @@ import {
   DEFAULT_APARTMENT_SUITES,
 } from "@/lib/apartments-data";
 import { usePlatformStore } from "@/lib/platform-store";
+import { NumberInput } from "@/components/ui/number-input";
 
 export default function ApartmentRoomsPage() {
-  const { saveProduct, deleteProduct } = usePlatformStore();
-  const [suites, setSuites] = useState<ApartmentSuite[]>(DEFAULT_APARTMENT_SUITES);
+  const { products: storeProducts, saveProduct, deleteProduct } = usePlatformStore();
+  const [suites, setSuites] = useState<ApartmentSuite[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSuite, setEditingSuite] = useState<ApartmentSuite | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -51,9 +52,8 @@ export default function ApartmentRoomsPage() {
   const [floor, setFloor] = useState("3rd Floor, West Wing");
   const [view, setView] = useState("Lekki Lagoon & Skyline View");
   const [availableUnits, setAvailableUnits] = useState(4);
-  const [imageUrl, setImageUrl] = useState(
-    "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=1000&auto=format&fit=crop&q=80"
-  );
+  const [imageUrl, setImageUrl] = useState("");
+  const [createdAt, setCreatedAt] = useState(new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState("");
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([
     "Sitout",
@@ -98,15 +98,42 @@ export default function ApartmentRoomsPage() {
     },
   ];
 
-  const loadSuites = () => {
-    setSuites(getApartmentSuites());
-  };
-
   useEffect(() => {
-    loadSuites();
-    window.addEventListener("zino_apartments_update", loadSuites);
-    return () => window.removeEventListener("zino_apartments_update", loadSuites);
-  }, []);
+    const storeApts = storeProducts.filter((p) => p.source === ServiceSlug.APARTMENTS);
+    const mapped: ApartmentSuite[] = storeApts.map((p) => ({
+      id: p.id,
+      slug: p.sku.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      name: p.name,
+      subtitle: p.label || "Serviced Luxury Apartment",
+      category: (p.name.includes("2-Bedroom")
+        ? "2-Bedroom"
+        : p.name.includes("1-Bedroom")
+        ? "1-Bedroom"
+        : p.name.includes("Penthouse")
+        ? "Penthouse"
+        : "Studio") as ApartmentSuite["category"],
+      basePriceKobo: p.priceKobo || 3000000,
+      taxPct: 10,
+      cautionDepositKobo: 2000000,
+      adults: 2,
+      children: 1,
+      bedrooms: p.name.includes("2-Bedroom") ? 2 : 1,
+      bathrooms: p.name.includes("2-Bedroom") ? 2 : 1,
+      bedType: "1 King-Size Bed (6x6)",
+      sizeSqm: 65,
+      floor: "2nd Floor",
+      view: "Lekki Skyline View",
+      image: p.imageUrl || "",
+      gallery: p.images && p.images.length > 0 ? p.images : p.imageUrl ? [p.imageUrl] : [],
+      amenities: p.amenities || ["Sitout", "AC", "Kitchen", "Bath Heater", "Fiber WiFi", "24/7 Power"],
+      description: p.description || p.label || "Luxury apartment in Lekki Phase 1.",
+      sleepingArrangements: [{ room: "Master Bedroom", bed: "1 King-Size Bed" }],
+      rules: ["Check-in: 2:00 PM", "Check-out: 11:00 AM", "Refundable deposit required"],
+      availableUnits: p.totalStock || 4,
+      featured: p.isFeatured ?? true,
+    }));
+    setSuites(mapped);
+  }, [storeProducts]);
 
   const openCreateModal = () => {
     setEditingSuite(null);
@@ -122,7 +149,8 @@ export default function ApartmentRoomsPage() {
     setFloor("3rd Floor, West Wing");
     setView("Lekki Lagoon & Skyline View");
     setAvailableUnits(4);
-    setImageUrl(presetImages[0].url);
+    setImageUrl("");
+    setCreatedAt(new Date().toISOString().slice(0, 10));
     setDescription(
       "Luxury apartment suite featuring private sitout, air conditioning, fully fitted kitchen, and 24/7 generator electricity."
     );
@@ -187,8 +215,8 @@ export default function ApartmentRoomsPage() {
       sizeSqm,
       floor,
       view,
-      image: imageUrl.trim() || presetImages[0].url,
-      gallery: [imageUrl.trim() || presetImages[0].url],
+      image: imageUrl.trim(),
+      gallery: imageUrl.trim() ? [imageUrl.trim()] : [],
       amenities: selectedAmenities,
       description: description.trim(),
       sleepingArrangements: [
@@ -220,9 +248,11 @@ export default function ApartmentRoomsPage() {
       description: newSuite.description,
       priceKobo: newSuite.basePriceKobo,
       imageUrl: newSuite.image,
+      images: newSuite.gallery,
       capacity: `${adults} Adults`,
       amenities: newSuite.amenities,
       totalStock: availableUnits,
+      createdAt,
     });
 
     setIsModalOpen(false);
@@ -235,12 +265,10 @@ export default function ApartmentRoomsPage() {
   };
 
   const handleDelete = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete suite "${name}"?`)) {
-      deleteApartmentSuite(id);
-      deleteProduct(id);
-      setToast(`Deleted ${name}.`);
-      setTimeout(() => setToast(null), 4000);
-    }
+    deleteApartmentSuite(id);
+    deleteProduct(id);
+    setToast(`Deleted ${name}.`);
+    setTimeout(() => setToast(null), 4000);
   };
 
   return (
@@ -305,13 +333,17 @@ export default function ApartmentRoomsPage() {
             className="bg-white rounded-2xl border border-border p-5 shadow-2xs flex flex-col justify-between hover:shadow-md transition-shadow group"
           >
             <div>
-              <div className="aspect-[16/10] w-full rounded-xl bg-gray-50 overflow-hidden mb-4 border border-border relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={rt.image}
-                  alt={rt.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
+              <div className="aspect-[16/10] w-full rounded-xl bg-gray-50 overflow-hidden mb-4 border border-border relative flex items-center justify-center">
+                {rt.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={rt.image}
+                    alt={rt.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <ImageIcon className="w-8 h-8 text-gray-300" />
+                )}
                 <span className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-white/90 backdrop-blur-md text-[10px] font-mono font-bold text-heading shadow-xs">
                   {rt.category}
                 </span>
@@ -457,15 +489,14 @@ export default function ApartmentRoomsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-muted block">Nightly Rate (₦) *</label>
-                  <input
-                    type="number"
+                  <NumberInput
                     required
-                    min="1000"
-                    step="1000"
-                    placeholder="50000"
+                    min={1000}
+                    placeholder="50,000"
+                    prefix="₦"
                     value={nightlyRateNaira}
-                    onChange={(e) => setNightlyRateNaira(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-border bg-gray-50 focus:bg-white focus:outline-none focus:border-apartment text-xs"
+                    onChange={(v) => setNightlyRateNaira(v === "" ? "" : String(v))}
+                    className="rounded-xl bg-gray-50 focus:bg-white focus:border-apartment text-xs"
                   />
                   <span className="text-[10px] text-muted">
                     Display: {formatCurrency((Number(nightlyRateNaira) || 0) * 100)} / night
@@ -476,15 +507,14 @@ export default function ApartmentRoomsPage() {
                   <label className="text-muted block">
                     Refundable Caution Deposit (₦)
                   </label>
-                  <input
-                    type="number"
+                  <NumberInput
                     required
-                    min="0"
-                    step="1000"
-                    placeholder="20000"
+                    min={0}
+                    placeholder="20,000"
+                    prefix="₦"
                     value={cautionDepositNaira}
-                    onChange={(e) => setCautionDepositNaira(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-border bg-gray-50 focus:bg-white focus:outline-none focus:border-apartment text-xs"
+                    onChange={(v) => setCautionDepositNaira(v === "" ? "" : String(v))}
+                    className="rounded-xl bg-gray-50 focus:bg-white focus:border-apartment text-xs"
                   />
                 </div>
               </div>
@@ -493,77 +523,84 @@ export default function ApartmentRoomsPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div className="space-y-1">
                   <label className="text-muted block text-[10px]">Adults</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="10"
+                  <NumberInput
+                    min={1}
+                    max={10}
                     value={adults}
-                    onChange={(e) => setAdults(Number(e.target.value))}
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-border text-xs"
+                    onChange={(v) => setAdults(typeof v === "number" ? v : 1)}
+                    className="h-8 px-2.5 text-xs"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-muted block text-[10px]">Children</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="6"
+                  <NumberInput
+                    min={0}
+                    max={6}
                     value={children}
-                    onChange={(e) => setChildren(Number(e.target.value))}
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-border text-xs"
+                    onChange={(v) => setChildren(typeof v === "number" ? v : 0)}
+                    className="h-8 px-2.5 text-xs"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-muted block text-[10px]">Bedrooms</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="6"
+                  <NumberInput
+                    min={1}
+                    max={6}
                     value={bedrooms}
-                    onChange={(e) => setBedrooms(Number(e.target.value))}
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-border text-xs"
+                    onChange={(v) => setBedrooms(typeof v === "number" ? v : 1)}
+                    className="h-8 px-2.5 text-xs"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-muted block text-[10px]">Units In Stock</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="50"
+                  <NumberInput
+                    min={1}
+                    max={50}
                     value={availableUnits}
-                    onChange={(e) => setAvailableUnits(Number(e.target.value))}
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-border text-xs"
+                    onChange={(v) => setAvailableUnits(typeof v === "number" ? v : 1)}
+                    className="h-8 px-2.5 text-xs"
                   />
                 </div>
               </div>
 
               {/* Image URL & Preset Selection */}
-              <div className="space-y-1.5">
-                <label className="text-muted block">Apartment Image URL *</label>
-                <input
-                  type="url"
-                  required
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-gray-50 focus:bg-white text-xs"
-                />
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <span className="text-[10px] text-muted self-center">Presets:</span>
-                  {presetImages.map((p) => (
-                    <button
-                      key={p.label}
-                      type="button"
-                      onClick={() => setImageUrl(p.url)}
-                      className={`text-[10px] px-2 py-0.5 rounded-md border ${
-                        imageUrl === p.url
-                          ? "bg-amber-100 border-amber-500 text-amber-900 font-bold"
-                          : "bg-gray-50 border-border text-muted hover:bg-gray-100"
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-muted block">Apartment Image URL (Optional)</label>
+                  <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="Leave blank for no image or choose preset..."
+                    className="w-full px-3 py-2 rounded-xl border border-border bg-gray-50 focus:bg-white text-xs"
+                  />
                 </div>
+                <div className="space-y-1.5">
+                  <label className="text-muted block">Date Added</label>
+                  <input
+                    type="date"
+                    value={createdAt}
+                    onChange={(e) => setCreatedAt(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-border bg-gray-50 focus:bg-white text-xs"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="text-[10px] text-muted self-center">Presets:</span>
+                {presetImages.map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => setImageUrl(p.url)}
+                    className={`text-[10px] px-2 py-0.5 rounded-md border ${
+                      imageUrl === p.url
+                        ? "bg-amber-100 border-amber-500 text-amber-900 font-bold"
+                        : "bg-gray-50 border-border text-muted hover:bg-gray-100"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
               </div>
 
               {/* Amenities Checklist */}

@@ -28,8 +28,10 @@ import { ServiceSlug, SERVICE_CONFIG } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCurrency } from "@/lib/money";
+import { usePlatformStore } from "@/lib/platform-store";
 
 export default function TopBuildersDashboardPage() {
+  const { products: storeProducts } = usePlatformStore();
   const [showChartTable, setShowChartTable] = useState(false);
 
   // Weekly sales data from Mon-Sun matching spec
@@ -43,14 +45,24 @@ export default function TopBuildersDashboardPage() {
     { day: "Sun", sales: 0, count: 0 },
   ];
 
-  // 14 Seed Products from spec — 5 low stock
-  const lowStockItems = [
-    { code: "009", name: "PVC Ceiling Panel 5.95m", stock: 8, unit: "lgth", threshold: 10 },
-    { code: "014", name: "Wheelbarrow (Heavy Duty)", stock: 7, unit: "pc", threshold: 10 },
-    { code: "011", name: "Floor Tiles 60x60 (1.44m²)", stock: 15, unit: "ctn", threshold: 20 },
-    { code: "005", name: "Nails 3 inch", stock: 22.5, unit: "kg", threshold: 30 },
-    { code: "007", name: "Binding Wire", stock: 32, unit: "kg", threshold: 40 },
-  ];
+  // Live Low Stock Items from Unified Store
+  const lowStockItems = React.useMemo(
+    () =>
+      storeProducts
+        .filter(
+          (p) =>
+            p.source === ServiceSlug.BUILDERS &&
+            (p.status === "LOW_STOCK" || p.status === "OUT_OF_STOCK" || p.totalStock <= p.lowStockAt)
+        )
+        .map((p) => ({
+          code: p.sku,
+          name: p.name,
+          stock: p.totalStock,
+          unit: "unit",
+          threshold: p.lowStockAt,
+        })),
+    [storeProducts]
+  );
 
   // Recent sales matching seed
   const recentSales = [

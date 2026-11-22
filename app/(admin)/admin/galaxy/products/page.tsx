@@ -23,7 +23,7 @@ export default function GalaxyProductsPage() {
   const [search, setSearch] = useState("");
 
   const galaxyProducts = storeProducts.filter(
-    (p) => p.source === ServiceSlug.GALAXY || p.source === ServiceSlug.SPARK
+    (p) => p.source === ServiceSlug.GALAXY
   );
 
   const filtered = galaxyProducts.filter(
@@ -107,12 +107,16 @@ export default function GalaxyProductsPage() {
                 <tr key={p.id} className="hover:bg-gray-50/70">
                   <td className="py-3">
                     <div className="w-12 h-12 rounded-lg bg-gray-50 border border-gray-100 p-1 flex items-center justify-center overflow-hidden">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={p.imageUrl}
-                        alt={p.name}
-                        className="max-h-full max-w-full object-contain"
-                      />
+                      {p.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={p.imageUrl}
+                          alt={p.name}
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      ) : (
+                        <Smartphone className="w-5 h-5 text-gray-300" />
+                      )}
                     </div>
                   </td>
                   <td className="py-3 font-mono text-muted">{p.sku}</td>

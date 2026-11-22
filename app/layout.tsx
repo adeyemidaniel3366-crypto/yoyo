@@ -24,7 +24,13 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans bg-content-bg text-body antialiased selection:bg-indigo-500 selection:text-white">
-        {children}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-indigo-600 focus:text-white focus:text-xs focus:font-bold focus:shadow-lg"
+        >
+          Skip to main content
+        </a>
+        <div id="main-content">{children}</div>
       </body>
     </html>
   );

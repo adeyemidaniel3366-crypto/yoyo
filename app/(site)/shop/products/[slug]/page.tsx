@@ -37,15 +37,8 @@ export default function ProductDetailPage() {
   const [activeTab, setActiveTab] = useState<"SPECS" | "DESCRIPTION" | "REVIEWS">("SPECS");
   const [addedToast, setAddedToast] = useState(false);
 
-  // Find product by slug or id
+  // Find product by slug or id from unified store first, then catalog fallback
   const product: StoreProduct | undefined = React.useMemo(() => {
-    // First search default catalog
-    const fromCatalog = CATALOG_PRODUCTS.find(
-      (p) => p.slug === slug || p.id === slug || p.sku.toLowerCase() === slug?.toLowerCase()
-    );
-    if (fromCatalog) return fromCatalog;
-
-    // Search unified store products
     const fromStore = storeProducts.find(
       (p) =>
         p.id === slug ||
@@ -62,8 +55,8 @@ export default function ProductDetailPage() {
         category: fromStore.label || "Electronics",
         priceKobo: fromStore.priceKobo,
         originalPriceKobo: Math.round(fromStore.priceKobo * 1.12),
-        image: fromStore.imageUrl || "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=600",
-        images: fromStore.images?.length ? fromStore.images : [fromStore.imageUrl],
+        image: fromStore.imageUrl || "",
+        images: fromStore.images?.length ? fromStore.images : fromStore.imageUrl ? [fromStore.imageUrl] : [],
         badge: (fromStore.status === "OUT_OF_STOCK" ? "OUT_OF_STOCK" : "SALE") as StoreProduct["badge"],
         inStock: fromStore.status !== "OUT_OF_STOCK" && fromStore.totalStock > 0,
         stockCount: fromStore.totalStock,
@@ -78,7 +71,9 @@ export default function ProductDetailPage() {
       };
     }
 
-    return undefined;
+    return CATALOG_PRODUCTS.find(
+      (p) => p.slug === slug || p.id === slug || p.sku.toLowerCase() === slug?.toLowerCase()
+    );
   }, [slug, storeProducts]);
 
   const images = product?.images?.length ? product.images : [product?.image || ""];
@@ -203,12 +198,16 @@ export default function ProductDetailPage() {
                   {product.badge}
                 </span>
               )}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={currentImage}
-                alt={product.name}
-                className="max-h-full max-w-full object-contain transition-all duration-300 hover:scale-105"
-              />
+              {currentImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={currentImage}
+                  alt={product.name}
+                  className="max-h-full max-w-full object-contain transition-all duration-300 hover:scale-105"
+                />
+              ) : (
+                <Package className="w-16 h-16 text-gray-300" />
+              )}
             </div>
 
             {/* Thumbnail Carousel */}

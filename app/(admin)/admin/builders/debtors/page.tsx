@@ -18,6 +18,7 @@ import { SourceBadge } from "@/components/ui/source-badge";
 import { Avatar } from "@/components/ui/avatar";
 import { formatCurrency } from "@/lib/money";
 import { usePlatformStore } from "@/lib/platform-store";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface DebtorCustomer {
   id: string;
@@ -379,12 +380,12 @@ export default function TopBuildersDebtorsPage() {
 
               <div>
                 <label className="block font-semibold text-gray-700 mb-1">Initial Outstanding Debt (₦)</label>
-                <input
-                  type="number"
+                <NumberInput
                   placeholder="0"
+                  prefix="₦"
                   value={newCust.initialDebtNaira}
-                  onChange={(e) => setNewCust({ ...newCust, initialDebtNaira: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-builders"
+                  onChange={(v) => setNewCust({ ...newCust, initialDebtNaira: v === "" ? "" : String(v) })}
+                  className="rounded-xl focus:border-builders"
                 />
               </div>
 
@@ -440,14 +441,14 @@ export default function TopBuildersDebtorsPage() {
             <form onSubmit={handleReceivePayment} className="space-y-3 text-xs">
               <div>
                 <label className="block font-semibold text-gray-700 mb-1">Amount to Pay (₦) *</label>
-                <input
-                  type="number"
+                <NumberInput
                   required
-                  min="1"
+                  min={1}
                   max={payModalDebtor.totalOwedKobo / 100}
+                  prefix="₦"
                   value={payAmountNaira}
-                  onChange={(e) => setPayAmountNaira(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-builders"
+                  onChange={(v) => setPayAmountNaira(v === "" ? "" : String(v))}
+                  className="rounded-xl focus:border-builders"
                 />
               </div>
 

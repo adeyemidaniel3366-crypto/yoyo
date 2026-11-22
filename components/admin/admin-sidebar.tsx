@@ -15,6 +15,7 @@ import {
   Smartphone,
   UserCheck,
   Users,
+  Key,
   BarChart3,
   MapPin,
   Settings,
@@ -599,6 +600,18 @@ export function AdminSidebar({
                 <span>Consolidated P&L</span>
               </Link>
               <Link
+                href="/admin/staff"
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors",
+                  isLinkActive("/admin/staff")
+                    ? "bg-active text-white shadow-sm font-semibold"
+                    : "text-gray-300 hover:text-white hover:bg-white/5"
+                )}
+              >
+                <Users className="w-4 h-4 text-gray-400" />
+                <span>Staff Management</span>
+              </Link>
+              <Link
                 href="/admin/users/staff"
                 className={cn(
                   "flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors",
@@ -607,8 +620,8 @@ export function AdminSidebar({
                     : "text-gray-300 hover:text-white hover:bg-white/5"
                 )}
               >
-                <Users className="w-4 h-4 text-gray-400" />
-                <span>Staff Access</span>
+                <Key className="w-4 h-4 text-gray-400" />
+                <span>Staff Keycards &amp; PINs</span>
               </Link>
               <Link
                 href="/admin/settings"

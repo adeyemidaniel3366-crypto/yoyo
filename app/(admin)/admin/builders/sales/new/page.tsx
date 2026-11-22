@@ -18,8 +18,9 @@ import {
 } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
-import { recordPlatformTransaction } from "@/lib/platform-store";
+import { recordPlatformTransaction, usePlatformStore } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface BuilderProduct {
   code: string;
@@ -37,39 +38,28 @@ interface CartItem {
 
 export default function TopBuildersNewSalePage() {
   const router = useRouter();
+  const { products: storeProducts } = usePlatformStore();
 
-  // 14 Seed Products from spec
-  const products: BuilderProduct[] = [
-    { code: "001", name: "Dangote Cement 50kg", category: "Cement", unit: "bag", price: 9800, stock: 118 },
-    { code: "002", name: "BUA Cement 50kg", category: "Cement", unit: "bag", price: 9500, stock: 42 },
-    { code: "003", name: "Iron Rod 12mm", category: "Iron Rods", unit: "lgth", price: 12500, stock: 84 },
-    { code: "004", name: "Iron Rod 16mm", category: "Iron Rods", unit: "lgth", price: 21500, stock: 158 },
-    { code: "005", name: "Nails 3 inch", category: "Nails", unit: "kg", price: 1800, stock: 22.5 },
-    { code: "006", name: "Nails 2 inch", category: "Nails", unit: "kg", price: 1900, stock: 35 },
-    { code: "007", name: "Binding Wire", category: "Binding Wire", unit: "kg", price: 1600, stock: 32 },
-    { code: "008", name: "Aluminium Roofing Sheet 0.45mm", category: "Roofing", unit: "sht", price: 8500, stock: 123 },
-    { code: "009", name: "PVC Ceiling Panel 5.95m", category: "PVC Ceiling", unit: "lgth", price: 3200, stock: 8 },
-    { code: "010", name: "PVC Pipe 4 inch", category: "Plumbing", unit: "lgth", price: 6800, stock: 88 },
-    { code: "011", name: "Floor Tiles 60x60 (1.44m²)", category: "Tiles", unit: "ctn", price: 14500, stock: 15 },
-    { code: "012", name: "Emulsion Paint 20L (White)", category: "Paints", unit: "bkt", price: 38000, stock: 34 },
-    { code: "013", name: "Mortise Door Lock", category: "Door Locks", unit: "pc", price: 8500, stock: 43 },
-    { code: "014", name: "Wheelbarrow (Heavy Duty)", category: "Tools", unit: "pc", price: 48000, stock: 7 },
-  ];
+  const products: BuilderProduct[] = useMemo(
+    () =>
+      storeProducts
+        .filter((p) => p.source === ServiceSlug.BUILDERS && p.status !== "INACTIVE" && p.status !== "ARCHIVED")
+        .map((p) => ({
+          code: p.sku,
+          name: p.name,
+          category: p.label || "Building Materials",
+          unit: "unit",
+          price: Math.round((p.priceKobo || 0) / 100),
+          stock: p.totalStock,
+        })),
+    [storeProducts]
+  );
 
-  const categories = [
-    "All",
-    "Cement",
-    "Iron Rods",
-    "Nails",
-    "Binding Wire",
-    "Roofing",
-    "PVC Ceiling",
-    "Plumbing",
-    "Tiles",
-    "Paints",
-    "Door Locks",
-    "Tools",
-  ];
+  const categories = useMemo(() => {
+    const cats = new Set<string>(["All"]);
+    products.forEach((p) => cats.add(p.category));
+    return Array.from(cats);
+  }, [products]);
 
   // State
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -82,6 +72,7 @@ export default function TopBuildersNewSalePage() {
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "MONIEPOINT_POS" | "UBA">("CASH");
   const [amountPaid, setAmountPaid] = useState<number | "">("");
   const [fulfilment, setFulfilment] = useState<"SELF_COLLECTION" | "DELIVERED" | "TO_DELIVER">("SELF_COLLECTION");
+  const [saleDate, setSaleDate] = useState(new Date().toISOString().slice(0, 10));
   const [remarks, setRemarks] = useState("");
   const [successData, setSuccessData] = useState<{ invoiceNo: string; total: number } | null>(null);
 
@@ -151,6 +142,7 @@ export default function TopBuildersNewSalePage() {
         location: "Builders Yard",
         status: paidKobo >= totalKobo ? "PAID" : paidKobo > 0 ? "PART_PAID" : "UNPAID",
         actor: "Sales Staff (Builders Yard)",
+        createdAt: saleDate,
       });
       fallbackInvoiceNo = inv.invoiceNo;
       const res = await fetch("/api/builders/sales", {
@@ -300,13 +292,14 @@ export default function TopBuildersNewSalePage() {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <input
-                        type="number"
-                        min="1"
-                        value={item.qty}
-                        onChange={(e) => updateQty(item.product.code, parseInt(e.target.value) || 0)}
-                        className="w-14 h-7 text-center rounded border border-border bg-white text-xs font-bold"
-                      />
+                      <div className="w-16">
+                        <NumberInput
+                          min={1}
+                          value={item.qty}
+                          onChange={(v) => updateQty(item.product.code, typeof v === "number" ? v : 0)}
+                          className="h-7 px-1.5 text-center rounded text-xs font-bold"
+                        />
+                      </div>
                       <span className="font-bold text-heading w-16 text-right">
                         ₦{(item.product.price * item.qty).toLocaleString()}
                       </span>
@@ -337,29 +330,42 @@ export default function TopBuildersNewSalePage() {
               </span>
             </div>
 
-            {/* Customer Section */}
+            {/* Customer & Sale Date Section */}
             <div className="space-y-2 text-xs">
-              <label className="block font-bold text-heading">Customer</label>
-              <select
-                value={isWalkIn ? "WALK_IN" : customer}
-                onChange={(e) => {
-                  if (e.target.value === "WALK_IN") {
-                    setIsWalkIn(true);
-                  } else {
-                    setIsWalkIn(false);
-                    setCustomer(e.target.value);
-                  }
-                }}
-                className="w-full h-9 px-3 rounded-lg border border-border bg-white text-xs text-gray-900"
-              >
-                <option value="Adewumi Builders">Adewumi Builders (08000000101)</option>
-                <option value="Ibrahim & Sons Construction">Ibrahim & Sons Construction</option>
-                <option value="Pastor Femi Adebayo">Pastor Femi Adebayo</option>
-                <option value="Mama Bose Ventures">Mama Bose Ventures</option>
-                <option value="Chief Okonkwo">Chief Okonkwo</option>
-                <option value="Kelechi & Co. Plumbing">Kelechi & Co. Plumbing</option>
-                <option value="WALK_IN">+ Walk-in / New Customer</option>
-              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-bold text-heading mb-1">Customer</label>
+                  <select
+                    value={isWalkIn ? "WALK_IN" : customer}
+                    onChange={(e) => {
+                      if (e.target.value === "WALK_IN") {
+                        setIsWalkIn(true);
+                      } else {
+                        setIsWalkIn(false);
+                        setCustomer(e.target.value);
+                      }
+                    }}
+                    className="w-full h-9 px-2.5 rounded-lg border border-border bg-white text-xs text-gray-900"
+                  >
+                    <option value="Adewumi Builders">Adewumi Builders (08000000101)</option>
+                    <option value="Ibrahim & Sons Construction">Ibrahim &amp; Sons Construction</option>
+                    <option value="Pastor Femi Adebayo">Pastor Femi Adebayo</option>
+                    <option value="Mama Bose Ventures">Mama Bose Ventures</option>
+                    <option value="Chief Okonkwo">Chief Okonkwo</option>
+                    <option value="Kelechi & Co. Plumbing">Kelechi &amp; Co. Plumbing</option>
+                    <option value="WALK_IN">+ Walk-in / New Customer</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-heading mb-1">Sale Date</label>
+                  <input
+                    type="date"
+                    value={saleDate}
+                    onChange={(e) => setSaleDate(e.target.value)}
+                    className="w-full h-9 px-2.5 rounded-lg border border-border bg-white text-xs text-gray-900"
+                  />
+                </div>
+              </div>
 
               {isWalkIn && (
                 <div className="grid grid-cols-2 gap-2 mt-2">
@@ -402,13 +408,15 @@ export default function TopBuildersNewSalePage() {
               </div>
 
               <div className="flex items-center gap-2 mt-2">
-                <input
-                  type="number"
-                  placeholder="Amount Paid (₦)"
-                  value={amountPaid}
-                  onChange={(e) => setAmountPaid(e.target.value === "" ? "" : Number(e.target.value))}
-                  className="flex-1 h-9 px-3 rounded-lg border border-border text-xs font-bold"
-                />
+                <div className="flex-1">
+                  <NumberInput
+                    placeholder="Amount Paid (₦)"
+                    prefix="₦"
+                    value={amountPaid}
+                    onChange={(v) => setAmountPaid(v === "" ? "" : Number(v))}
+                    className="h-9 text-xs font-bold"
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={() => setAmountPaid(subtotalNaira)}

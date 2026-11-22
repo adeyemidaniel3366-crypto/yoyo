@@ -25,6 +25,7 @@ import {
 import { usePlatformStore } from "@/lib/platform-store";
 import { ServiceSlug } from "@/lib/constants";
 import { formatCurrency } from "@/lib/money";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface ApartmentBookingModalProps {
   suite: ApartmentSuite | null;

@@ -47,7 +47,6 @@ export function SceneCommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     { id: "app-visit", label: "Security & Visitor Check-In Kiosk", category: "Live Applications", href: "/visit", icon: UserCheck },
     { id: "ext-neadston", label: "Neadston Limited Partner Portal", category: "External Websites", href: "https://sales.neadstonltd.com/", isExternal: true, icon: ExternalLink },
     { id: "ext-estoworld", label: "Esto World Sales Ecosystem", category: "External Websites", href: "https://sales.estoworld.com/login", isExternal: true, icon: ExternalLink },
-    { id: "ext-github", label: "GitHub Profile & Repositories", category: "External Websites", href: "https://github.com/adeyemiZino3366-crypto", isExternal: true, icon: ExternalLink },
   ];
 
   const filtered = navigationItems.filter(

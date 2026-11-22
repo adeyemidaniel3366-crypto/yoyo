@@ -18,6 +18,7 @@ import { SourceBadge } from "@/components/ui/source-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCurrency } from "@/lib/money";
 import { usePlatformStore } from "@/lib/platform-store";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface InvoiceRow {
   id: string;
@@ -45,6 +46,7 @@ export default function BillstacksInvoicesPage() {
   const [newInv, setNewInv] = useState({
     client: "",
     amountNaira: "",
+    issueDate: new Date().toISOString().slice(0, 10),
     dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
     description: "Cloud Accounting & Invoicing Services",
     status: "UNPAID" as "PAID" | "UNPAID" | "OVERDUE" | "PARTIAL",
@@ -61,14 +63,14 @@ export default function BillstacksInvoicesPage() {
 
     const amountKobo = Math.round(Number(newInv.amountNaira) * 100);
     const invoiceNo = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
-    const today = new Date().toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+    const issueDateVal = newInv.issueDate || new Date().toISOString().slice(0, 10);
 
     const created: InvoiceRow = {
       id: `inv_${Date.now()}`,
       invoiceNo,
       client: newInv.client.trim(),
       amountKobo,
-      issueDate: today,
+      issueDate: issueDateVal,
       dueDate: newInv.dueDate,
       status: newInv.status,
     };
@@ -84,12 +86,14 @@ export default function BillstacksInvoicesPage() {
       amountKobo,
       location: "Billstacks Cloud HQ",
       status: created.status,
+      createdAt: issueDateVal,
     });
 
     setCreateModalOpen(false);
     setNewInv({
       client: "",
       amountNaira: "",
+      issueDate: new Date().toISOString().slice(0, 10),
       dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
       description: "Cloud Accounting & Invoicing Services",
       status: "UNPAID",
@@ -245,18 +249,30 @@ export default function BillstacksInvoicesPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
                     Invoice Amount (₦) *
                   </label>
-                  <input
-                    type="number"
+                  <NumberInput
                     required
-                    min="1"
-                    placeholder="e.g. 750000"
+                    min={1}
+                    placeholder="e.g. 750,000"
+                    prefix="₦"
                     value={newInv.amountNaira}
-                    onChange={(e) => setNewInv({ ...newInv, amountNaira: e.target.value })}
+                    onChange={(v) => setNewInv({ ...newInv, amountNaira: v === "" ? "" : String(v) })}
+                    className="rounded-xl text-xs focus:border-billstacks"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Issue Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newInv.issueDate}
+                    onChange={(e) => setNewInv({ ...newInv, issueDate: e.target.value })}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks"
                   />
                 </div>

@@ -7,6 +7,7 @@ import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { formatCurrency } from "@/lib/money";
 import { usePlatformStore } from "@/lib/platform-store";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface SparkPurchase {
   id: string;
@@ -196,25 +197,24 @@ export default function SparkPurchasesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Quantity *</label>
-                  <input
-                    type="number"
+                  <NumberInput
                     required
-                    min="1"
+                    min={1}
                     value={newPo.qty}
-                    onChange={(e) => setNewPo({ ...newPo, qty: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-spark"
+                    onChange={(v) => setNewPo({ ...newPo, qty: v === "" ? "" : String(v) })}
+                    className="rounded-xl focus:border-spark"
                   />
                 </div>
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Total Cost (₦) *</label>
-                  <input
-                    type="number"
+                  <NumberInput
                     required
-                    min="1"
-                    placeholder="e.g. 1950000"
+                    min={1}
+                    prefix="₦"
+                    placeholder="e.g. 1,950,000"
                     value={newPo.costNaira}
-                    onChange={(e) => setNewPo({ ...newPo, costNaira: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-spark"
+                    onChange={(v) => setNewPo({ ...newPo, costNaira: v === "" ? "" : String(v) })}
+                    className="rounded-xl focus:border-spark"
                   />
                 </div>
               </div>

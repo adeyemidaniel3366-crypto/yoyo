@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const path = require("path");
+
 const securityHeaders = [
   {
     key: "Strict-Transport-Security",
@@ -57,6 +59,13 @@ const nextConfig = {
   },
   env: {
     NEXT_PUBLIC_PLATFORM_NAME: process.env.NEXT_PUBLIC_PLATFORM_NAME || "Zino One",
+  },
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "react-is": path.resolve(__dirname, "node_modules/react-is"),
+    };
+    return config;
   },
   async headers() {
     return [

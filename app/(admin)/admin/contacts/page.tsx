@@ -24,6 +24,7 @@ import { Drawer } from "@/components/ui/drawer";
 import { Avatar } from "@/components/ui/avatar";
 import { formatCurrency } from "@/lib/money";
 import { usePlatformStore } from "@/lib/platform-store";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface ContactRow {
   id: string;
@@ -624,14 +625,14 @@ export default function ContactsDirectoryPage() {
               </div>
               <div>
                 <label className="block font-bold text-heading mb-1">Amount to Receive (₦) *</label>
-                <input
-                  type="number"
+                <NumberInput
                   required
-                  min="1"
-                  step="any"
+                  min={1}
+                  allowDecimal
+                  prefix="₦"
                   value={paymentAmountNaira}
-                  onChange={(e) => setPaymentAmountNaira(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-border font-mono font-bold text-sm outline-none focus:border-emerald-600"
+                  onChange={(v) => setPaymentAmountNaira(v === "" ? "" : String(v))}
+                  className="h-10 rounded-xl font-mono font-bold text-sm focus:border-emerald-600"
                 />
               </div>
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-border">

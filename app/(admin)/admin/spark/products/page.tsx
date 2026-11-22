@@ -15,6 +15,7 @@ import { ServiceSlug, SERVICE_CONFIG, LOCATIONS } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import { formatCurrency } from "@/lib/money";
+import { usePlatformStore } from "@/lib/platform-store";
 
 interface SparkProduct {
   id: string;
@@ -28,110 +29,31 @@ interface SparkProduct {
 }
 
 export default function SparkProductsPage() {
+  const { products: storeProducts } = usePlatformStore();
   const [selectedCategory, setSelectedCategory] = useState("ALL");
 
-  const products: SparkProduct[] = [
-    {
-      id: "sp_1",
-      sku: "13360",
-      name: "Zealot S69M Bluetooth Speaker",
-      category: "Audio",
-      costKobo: 2200000,
-      priceKobo: 2850000,
-      totalStock: 0,
-      location: "Warehouse — Asset Corps Plaza Computer Village",
-    },
-    {
-      id: "sp_2",
-      sku: "13444",
-      name: "Sandisk ultra microSDXC UHS-I Card 80mb/s - 16GB",
-      category: "Storage",
-      costKobo: 320000,
-      priceKobo: 450000,
-      totalStock: 0,
-      location: "Zino Spark Olayeni Shop",
-    },
-    {
-      id: "sp_3",
-      sku: "13099",
-      name: "JBL Sound System BAR 1300, 11.1 Chanel - 27kg",
-      category: "Audio",
-      costKobo: 125000000,
-      priceKobo: 145000000,
-      totalStock: 0,
-      location: "Zino Spark Medical Road",
-    },
-    {
-      id: "sp_4",
-      sku: "13216",
-      name: "Verbatim Vi3000 SSD PCIe M.2 2280 internal SSD 1TB NVMe",
-      category: "Storage",
-      costKobo: 6200000,
-      priceKobo: 7800000,
-      totalStock: 0,
-      location: "Zino Spark Adepele",
-    },
-    {
-      id: "sp_5",
-      sku: "13346",
-      name: "Sandisk Cruzer Glide 3.0 USB FLASH Drive - 16GB",
-      category: "Storage",
-      costKobo: 280000,
-      priceKobo: 380000,
-      totalStock: 0,
-      location: "Warehouse — Asset Corps Plaza Computer Village",
-    },
-    {
-      id: "sp_6",
-      sku: "13268",
-      name: "Samsung 990 PRO 4TB pcle 4.0 NVMe M.2 SSD 7450MB/s 4TB",
-      category: "Storage",
-      costKobo: 32000000,
-      priceKobo: 37500000,
-      totalStock: 0,
-      location: "Zino Spark Adepele",
-    },
-    {
-      id: "sp_7",
-      sku: "13376",
-      name: "Synology 8 Bay Rackstation RS1221RP+",
-      category: "Networking",
-      costKobo: 145000000,
-      priceKobo: 172000000,
-      totalStock: 0,
-      location: "Zino Spark Medical Road",
-    },
-    {
-      id: "sp_8",
-      sku: "13230",
-      name: "Synology 4 Bay DS425+",
-      category: "Networking",
-      costKobo: 68000000,
-      priceKobo: 79500000,
-      totalStock: 0,
-      location: "Zino Spark Adepele",
-    },
-    {
-      id: "sp_9",
-      sku: "13246",
-      name: "Sandisk Extreme PRO portable SSD 2000Mb/s - 4TB",
-      category: "Storage",
-      costKobo: 31000000,
-      priceKobo: 36000000,
-      totalStock: 0,
-      location: "Zino Spark Olayeni Shop",
-    },
-    {
-      id: "sp_10",
-      sku: "13317",
-      name: "DIGIRICH V-CUT USB FLASH DRIVE 32GB",
-      category: "Storage",
-      costKobo: 380000,
-      priceKobo: 550000,
-      totalStock: 0,
-      location: "Zino Spark Adepele",
-    },
-  ];
+  const products: SparkProduct[] = React.useMemo(
+    () =>
+      storeProducts
+        .filter((p) => p.source === ServiceSlug.SPARK)
+        .map((p) => ({
+          id: p.id,
+          sku: p.sku,
+          name: p.name,
+          category: p.label || "Electronics",
+          costKobo: p.costKobo || Math.round(p.priceKobo * 0.75),
+          priceKobo: p.priceKobo,
+          totalStock: p.totalStock,
+          location: "Zino Spark Medical Road",
+        })),
+    [storeProducts]
+  );
+
+  const categories = React.useMemo(() => {
+    const cats = new Set<string>(["ALL"]);
+    products.forEach((p) => cats.add(p.category));
+    return Array.from(cats);
+  }, [products]);
 
   const filteredProducts = selectedCategory === "ALL"
     ? products
@@ -230,7 +152,7 @@ export default function SparkProductsPage() {
 
       {/* Category Filter */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        {["ALL", "Audio", "Storage", "Networking"].map((cat) => (
+        {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}

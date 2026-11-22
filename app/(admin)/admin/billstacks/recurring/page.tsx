@@ -6,6 +6,7 @@ import { Repeat, Plus, ArrowLeft, Play, Pause, X, CheckCircle2 } from "lucide-re
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { formatCurrency } from "@/lib/money";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface RecurringProfile {
   id: string;
@@ -226,14 +227,14 @@ export default function BillstacksRecurringPage() {
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
                     Cadence Amount (₦) *
                   </label>
-                  <input
-                    type="number"
+                  <NumberInput
                     required
-                    min="1"
-                    placeholder="e.g. 750000"
+                    min={1}
+                    placeholder="e.g. 750,000"
+                    prefix="₦"
                     value={newProfile.amountNaira}
-                    onChange={(e) => setNewProfile({ ...newProfile, amountNaira: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-billstacks"
+                    onChange={(v) => setNewProfile({ ...newProfile, amountNaira: v === "" ? "" : String(v) })}
+                    className="rounded-xl text-xs focus:border-billstacks"
                   />
                 </div>
                 <div>

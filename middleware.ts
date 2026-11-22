@@ -10,6 +10,22 @@ import type { NextRequest } from "next/server";
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
+  // Staff portal protection (/staff/dashboard and sub-routes, excluding /staff/login)
+  if (pathname.startsWith("/staff") && !pathname.startsWith("/staff/login")) {
+    const hasStaffOrAdminSession =
+      Boolean(req.cookies.get("zino-staff-session")?.value) ||
+      Boolean(req.cookies.get("__Secure-authjs.session-token")?.value) ||
+      Boolean(req.cookies.get("authjs.session-token")?.value);
+
+    if (!hasStaffOrAdminSession) {
+      const staffLoginUrl = new URL("/staff/login", req.url);
+      staffLoginUrl.searchParams.set("callbackUrl", `${pathname}${search}`);
+      return NextResponse.redirect(staffLoginUrl);
+    }
+
+    return NextResponse.next();
+  }
+
   const isProtected =
     pathname.startsWith("/admin") || pathname.startsWith("/account");
 
@@ -31,5 +47,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/account/:path*"],
+  matcher: ["/admin/:path*", "/account/:path*", "/staff/:path*"],
 };

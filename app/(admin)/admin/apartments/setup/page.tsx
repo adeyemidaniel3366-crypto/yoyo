@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { NumberInput } from "@/components/ui/number-input";
 
 export default function ApartmentSetupPage() {
   const [saved, setSaved] = useState(false);
@@ -102,11 +103,12 @@ export default function ApartmentSetupPage() {
           </div>
           <div>
             <label className="text-xs font-semibold text-heading block mb-1">Apartment Tax %</label>
-            <input
-              type="number"
+            <NumberInput
               value={settings.taxPercentage}
-              onChange={(e) => setSettings({ ...settings, taxPercentage: e.target.value })}
-              className="w-full h-10 px-3 rounded-xl border border-border text-xs text-heading"
+              onChange={(v) => setSettings({ ...settings, taxPercentage: v === "" ? "" : String(v) })}
+              allowDecimal
+              suffix="%"
+              className="h-10 rounded-xl text-xs"
             />
           </div>
         </div>

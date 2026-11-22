@@ -130,19 +130,6 @@ export function SceneProjectModal({ project, onClose }: SceneProjectModalProps) 
                 <span>Launch Live System</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
-
-              {project.githubHref && (
-                <a
-                  href={project.githubHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => sceneAudio.playClick()}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-white hover:bg-[#FCEFC3] border border-[#12110E]/10 text-xs font-mono text-[#12110E] font-medium transition-all"
-                >
-                  <Github className="w-3.5 h-3.5" />
-                  <span>GitHub Repository</span>
-                </a>
-              )}
             </div>
 
             <button
