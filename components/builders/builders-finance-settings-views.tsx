@@ -1283,7 +1283,7 @@ export function UsersRolesView({
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
-  const [role, setRole] = useState<"Owner" | "Sales Rep" | "Storekeeper">("Sales Rep");
+  const [role, setRole] = useState<BuilderUserRecord["role"]>("Sales Rep");
   const [status, setStatus] = useState<"Active" | "Suspended">("Active");
 
   const openAddModal = () => {
@@ -1524,11 +1524,13 @@ export function UsersRolesView({
                   <label className="block font-bold text-[#12264A] mb-1">Role</label>
                   <select
                     value={role}
-                    onChange={(e) => setRole(e.target.value as any)}
+                    onChange={(e) => setRole(e.target.value as BuilderUserRecord["role"])}
                     className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white"
                   >
                     <option value="Owner">Owner</option>
+                    <option value="Manager">Manager</option>
                     <option value="Sales Rep">Sales Rep</option>
+                    <option value="Cashier">Cashier</option>
                     <option value="Storekeeper">Storekeeper</option>
                   </select>
                 </div>

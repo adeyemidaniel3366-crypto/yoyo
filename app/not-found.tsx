@@ -40,7 +40,7 @@ export default function NotFoundPage() {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+        <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
           <Link
             href="/"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#EB4203] hover:bg-[#EB4203]/90 text-white font-bold text-xs shadow-sm transition-all"
@@ -50,9 +50,27 @@ export default function NotFoundPage() {
           </Link>
           <Link
             href="/apartments"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#12110E] font-semibold text-xs transition-colors"
+            className="inline-flex items-center justify-center px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#12110E] font-semibold text-xs transition-colors"
           >
-            <span>Luxury Suites</span>
+            Apartments
+          </Link>
+          <Link
+            href="/shop"
+            className="inline-flex items-center justify-center px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#12110E] font-semibold text-xs transition-colors"
+          >
+            Device Galaxy
+          </Link>
+          <Link
+            href="/builders"
+            className="inline-flex items-center justify-center px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#12110E] font-semibold text-xs transition-colors"
+          >
+            Top Builders
+          </Link>
+          <Link
+            href="/billstacks"
+            className="inline-flex items-center justify-center px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#12110E] font-semibold text-xs transition-colors"
+          >
+            Billstacks
           </Link>
         </div>
       </main>

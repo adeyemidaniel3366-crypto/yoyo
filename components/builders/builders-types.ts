@@ -129,7 +129,7 @@ export interface BuilderUserRecord {
   name: string;
   username: string;
   phone: string;
-  role: "Owner" | "Sales Rep" | "Storekeeper";
+  role: "Owner" | "Manager" | "Sales Rep" | "Cashier" | "Storekeeper";
   status: "Active" | "Suspended";
   lastSignIn: string;
   isCurrentUser?: boolean;

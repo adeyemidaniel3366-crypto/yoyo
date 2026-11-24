@@ -58,25 +58,7 @@ export async function getDashboardSummary(
   const todayDateOnly = toDateOnly(todayStr);
 
   try {
-  const [
-    salesCurr,
-    salesPrev,
-    returnsCurr,
-    expensesCurr,
-    ordersCurr,
-    poCurr,
-    poDue,
-    invoiceDue,
-    activeBookings,
-    delayedCheckouts,
-    visitorsToday,
-    recentActivityRaw,
-    salesLast30Raw,
-    salesYearRaw,
-    lowStockCount,
-    salesPaymentDueRows,
-    purchasePaymentDueRows,
-  ] = await Promise.all([
+  const queryPromise = Promise.all([
     prisma.sale.aggregate({
       where: {
         source: { in: allowedServices },
@@ -218,6 +200,30 @@ export async function getDashboardSummary(
       take: 10,
     }),
   ]);
+
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("Database report aggregate timed out")), 1500)
+  );
+
+  const [
+    salesCurr,
+    salesPrev,
+    returnsCurr,
+    expensesCurr,
+    ordersCurr,
+    poCurr,
+    poDue,
+    invoiceDue,
+    activeBookings,
+    delayedCheckouts,
+    visitorsToday,
+    recentActivityRaw,
+    salesLast30Raw,
+    salesYearRaw,
+    lowStockCount,
+    salesPaymentDueRows,
+    purchasePaymentDueRows,
+  ] = await Promise.race([queryPromise, timeoutPromise]);
 
   const totalSalesKobo = addKobo(
     salesCurr._sum.totalKobo ?? 0,

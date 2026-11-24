@@ -16,72 +16,57 @@ import {
   AlertCircle,
   Users,
 } from "lucide-react";
-
-const STAFF_DIRECTORY = [
-  {
-    email: "staff@zinoone.com",
-    name: "Chinedu Eze",
-    role: "Operations Staff",
-    branch: "Computer Village (Medical Rd)",
-  },
-  {
-    email: "concierge@zinoone.com",
-    name: "Adaeze Okafor",
-    role: "Front Desk Staff",
-    branch: "Zino Luxury Apartments (Lekki)",
-  },
-  {
-    email: "yard@zinoone.com",
-    name: "Tunde Bakare",
-    role: "Yard Operations Staff",
-    branch: "Top Builders Supply Yard",
-  },
-];
+import { verifyStaffLogin, getStaffCredentials } from "@/lib/auth-storage";
 
 export default function StaffLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("staff@zinoone.com");
-  const [password, setPassword] = useState("Staff2026!");
+  // Form fields start EMPTY — no hardcoded demo autofill!
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const handleAutoFill = () => {
-    setEmail("staff@zinoone.com");
-    setPassword("Staff2026!");
-    setError(null);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!email.trim() || !password.trim()) {
-      setError("Please enter both your staff email and password.");
+    const cleanId = identifier.trim();
+    const cleanPass = password.trim();
+
+    if (!cleanId || !cleanPass) {
+      setError("Please enter your staff username/email and password.");
       return;
     }
 
     setIsLoading(true);
     try {
-      const matched =
-        STAFF_DIRECTORY.find(
-          (s) => s.email.toLowerCase() === email.trim().toLowerCase()
-        ) || {
-          email: email.trim(),
-          name: email.trim().split("@")[0].replace(/[._]/g, " "),
-          role: "Operations Staff",
-          branch: "Zino One Operations",
-        };
+      // 1. Verify against Staff Management persistent credentials
+      const matched = verifyStaffLogin(cleanId, cleanPass);
 
-      // Set dedicated staff session cookie & store profile for the staff portal
+      if (!matched) {
+        setError(
+          "Invalid staff credentials. Please check your username/email and password, or contact your Super Admin in Staff Management to assign or reset your credentials."
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Set dedicated staff session cookie & store profile for the staff portal
       document.cookie =
         "zino-staff-session=staff-active; path=/; max-age=86400; SameSite=Lax";
       if (typeof window !== "undefined") {
         window.localStorage.setItem(
           "zino_staff_profile",
           JSON.stringify({
-            ...matched,
+            id: matched.id,
+            staffCode: matched.staffCode,
+            name: matched.name,
+            email: matched.email || matched.username,
+            role: matched.role || "Operations Staff",
+            department: matched.department || "Operations",
+            branch: matched.branch || "Zino One Central Hub",
             accessLevel: "STAFF",
             signedInAt: new Date().toISOString(),
           })
@@ -151,35 +136,8 @@ export default function StaffLoginPage() {
               Staff Portal Sign In
             </h1>
             <p className="text-xs text-gray-600">
-              Operational access to inventory alerts, invoices, catalog, room board &amp; notifications.
+              Enter your assigned staff login credentials issued from Super Admin Staff Management.
             </p>
-          </div>
-
-          {/* Demo Credentials Helper */}
-          <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-2 text-xs font-mono">
-            <div className="flex items-center justify-between">
-              <span className="font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5 text-[11px]">
-                <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Staff Credentials</span>
-              </span>
-              <button
-                type="button"
-                onClick={handleAutoFill}
-                className="text-indigo-700 hover:text-indigo-900 font-bold underline cursor-pointer"
-              >
-                Auto-Fill
-              </button>
-            </div>
-            <div className="space-y-1 text-gray-800 text-[11px] bg-white p-2.5 rounded-xl border border-indigo-100">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Email:</span>
-                <strong>staff@zinoone.com</strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Password:</span>
-                <strong>Staff2026!</strong>
-              </div>
-            </div>
           </div>
 
           {error && (
@@ -198,28 +156,28 @@ export default function StaffLoginPage() {
               className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-2"
             >
               <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>Signed in! Redirecting to Staff Dashboard...</span>
+              <span>Signed in successfully! Redirecting to Staff Dashboard...</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label
-                htmlFor="staff-email"
+                htmlFor="staff-identifier"
                 className="block text-xs font-bold text-gray-900 mb-1.5"
               >
-                Staff Email
+                Staff Username or Email<span className="text-rose-500">*</span>
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
-                  id="staff-email"
-                  type="email"
+                  id="staff-identifier"
+                  type="text"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="staff@zinoone.com"
-                  className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-indigo-600"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder="e.g. chinedu.eze@zinogroup.com"
+                  className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10 transition-all"
                 />
               </div>
             </div>
@@ -229,7 +187,7 @@ export default function StaffLoginPage() {
                 htmlFor="staff-password"
                 className="block text-xs font-bold text-gray-900 mb-1.5"
               >
-                Password
+                Staff Password<span className="text-rose-500">*</span>
               </label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -239,8 +197,8 @@ export default function StaffLoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full h-11 pl-10 pr-10 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-indigo-600"
+                  placeholder="Enter assigned password"
+                  className="w-full h-11 pl-10 pr-10 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10 transition-all"
                 />
                 <button
                   type="button"
@@ -260,22 +218,25 @@ export default function StaffLoginPage() {
             <button
               type="submit"
               disabled={isLoading || success}
-              className="w-full h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold text-sm transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>{isLoading ? "Signing in..." : "Sign In to Staff Portal"}</span>
+              <span>{isLoading ? "Verifying..." : "Sign in to Staff Portal"}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
 
-          <div className="pt-3 border-t border-gray-200 flex items-center justify-center gap-1.5 text-[11px] text-gray-500">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Role-scoped operational session · Secure staff access</span>
+          <div className="pt-2 text-center text-xs text-gray-500 border-t border-gray-100">
+            <span>Need credentials? </span>
+            <span className="font-semibold text-gray-700">
+              Logins and passwords for staff must be assigned by Super Admin in the Staff Management console.
+            </span>
           </div>
         </div>
       </main>
 
-      <footer className="px-6 py-4 text-center text-[11px] text-gray-500">
-        © {new Date().getFullYear()} Zino One Unified Operations · Staff Portal
+      {/* Footer */}
+      <footer className="px-6 py-4 text-center text-xs text-gray-500">
+        © {new Date().getFullYear()} Zino One Staff Portal · All Rights Reserved
       </footer>
     </div>
   );

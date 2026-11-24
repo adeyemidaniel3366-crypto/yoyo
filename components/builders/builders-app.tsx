@@ -25,7 +25,18 @@ import {
   LogOut,
   CheckCircle2,
   ArrowLeft,
+  UserPlus,
+  HelpCircle,
+  ArrowRight,
+  ShieldCheck,
 } from "lucide-react";
+import {
+  SECURITY_QUESTIONS,
+  registerBuilderAccount,
+  verifyBuilderLogin,
+  getBuilderByUsername,
+  resetBuilderPassword,
+} from "@/lib/auth-storage";
 import { ServiceSlug } from "@/lib/constants";
 import { usePlatformStore } from "@/lib/platform-store";
 import {
@@ -77,9 +88,33 @@ export function TopBuildersApp({ initialLoggedIn = false }: { initialLoggedIn?: 
 
   const [hydrated, setHydrated] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(initialLoggedIn);
-  const [loginUsername, setLoginUsername] = useState("chimatop");
-  const [loginPassword, setLoginPassword] = useState("••••••••");
+  // Form fields start EMPTY — no hardcoded demo autofill!
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [authMode, setAuthMode] = useState<"SIGN_IN" | "SIGN_UP" | "FORGOT_PASSWORD">("SIGN_IN");
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Sign up form state
+  const [signUpName, setSignUpName] = useState("");
+  const [signUpUsername, setSignUpUsername] = useState("");
+  const [signUpRole, setSignUpRole] = useState<"Owner" | "Manager" | "Sales Rep" | "Cashier">("Manager");
+  const [signUpPassword, setSignUpPassword] = useState("");
+  const [signUpConfirmPassword, setSignUpConfirmPassword] = useState("");
+  const [signUpQuestion, setSignUpQuestion] = useState<string>(SECURITY_QUESTIONS[0]);
+  const [signUpAnswer, setSignUpAnswer] = useState("");
+  const [signUpPin, setSignUpPin] = useState("");
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false);
+
+  // Forgot password form state
+  const [forgotUsername, setForgotUsername] = useState("");
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1);
+  const [retrievedQuestion, setRetrievedQuestion] = useState("");
+  const [securityAnswerAttempt, setSecurityAnswerAttempt] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
   const [currentUser, setCurrentUser] = useState({
     name: "Chima Ezenwa",
     username: "@chimatop",
@@ -366,89 +401,582 @@ export function TopBuildersApp({ initialLoggedIn = false }: { initialLoggedIn?: 
             </p>
           </div>
 
-          {/* Right Sign In Card */}
-          <div className="md:col-span-6">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const clean = loginUsername.replace(/^@/, "").trim() || "chimatop";
-                const matchedUser = users.find(
-                  (u) => u.username.toLowerCase() === `@${clean.toLowerCase()}`
-                );
-                const dispName = matchedUser ? matchedUser.name : "Chima Ezenwa";
-                const initials = dispName
-                  .split(" ")
-                  .map((p) => p[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase();
+          {/* Right Auth Card: SIGN_IN / SIGN_UP / FORGOT_PASSWORD */}
+          <div className="md:col-span-6 w-full">
+            {authMode === "SIGN_IN" && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const clean = loginUsername.replace(/^@/, "").trim();
+                  if (!clean || !loginPassword) {
+                    setAuthError("Please enter your username and password.");
+                    return;
+                  }
 
-                setCurrentUser({
-                  name: dispName,
-                  username: `@${clean}`,
-                  initials: initials || "CE",
-                  role: matchedUser?.role || "Owner",
-                });
-                setIsLoggedIn(true);
-                showToast(`Welcome back, ${dispName}!`);
-              }}
-              className="bg-white rounded-2xl border border-slate-200/90 p-7 sm:p-8 shadow-xl space-y-5 max-w-md mx-auto"
-            >
-              <h2 className="text-2xl font-extrabold text-[#12264A]">Sign in</h2>
+                  const matchedAccount = verifyBuilderLogin(clean, loginPassword);
+                  if (matchedAccount) {
+                    const initials = matchedAccount.name
+                      .split(" ")
+                      .map((p) => p[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase();
 
-              <div className="space-y-4 text-xs">
+                    setCurrentUser({
+                      name: matchedAccount.name,
+                      username: `@${matchedAccount.username}`,
+                      initials: initials || "TB",
+                      role: matchedAccount.role,
+                    });
+                    setIsLoggedIn(true);
+                    setAuthError(null);
+                    showToast(`Welcome back, ${matchedAccount.name}!`);
+                    return;
+                  }
+
+                  // Fallback: check memory users list
+                  const userInList = users.find(
+                    (u) =>
+                      u.username.toLowerCase() === `@${clean.toLowerCase()}` ||
+                      u.username.toLowerCase() === clean.toLowerCase()
+                  );
+                  if (userInList) {
+                    const initials = userInList.name
+                      .split(" ")
+                      .map((p) => p[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase();
+
+                    setCurrentUser({
+                      name: userInList.name,
+                      username: userInList.username.startsWith("@")
+                        ? userInList.username
+                        : `@${userInList.username}`,
+                      initials: initials || "TB",
+                      role: userInList.role,
+                    });
+                    setIsLoggedIn(true);
+                    setAuthError(null);
+                    showToast(`Welcome back, ${userInList.name}!`);
+                    return;
+                  }
+
+                  setAuthError("Invalid username or password. Please verify your credentials.");
+                }}
+                className="bg-white rounded-2xl border border-slate-200/90 p-7 sm:p-8 shadow-xl space-y-5 max-w-md mx-auto"
+              >
                 <div>
-                  <label className="block font-bold text-[#12264A] mb-1.5">Username</label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <h2 className="text-2xl font-extrabold text-[#12264A]">Sign in</h2>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Enter your Top Builders credentials to access the sales book & stock sheet.
+                  </p>
+                </div>
+
+                {authError && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-medium">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                    <span>{authError}</span>
+                  </div>
+                )}
+
+                <div className="space-y-4 text-xs">
+                  <div>
+                    <label className="block font-bold text-[#12264A] mb-1.5">Username</label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        required
+                        value={loginUsername}
+                        onChange={(e) => {
+                          setLoginUsername(e.target.value);
+                          if (authError) setAuthError(null);
+                        }}
+                        placeholder="e.g. chimatop"
+                        className="w-full h-11 pl-10 pr-3 rounded-xl border border-slate-200 bg-[#EEF3FB] text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#1D63ED]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block font-bold text-[#12264A]">Password</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode("FORGOT_PASSWORD");
+                          setForgotStep(1);
+                          setForgotUsername(loginUsername);
+                          setAuthError(null);
+                        }}
+                        className="text-[11px] font-semibold text-[#1D63ED] hover:underline"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        value={loginPassword}
+                        onChange={(e) => {
+                          setLoginPassword(e.target.value);
+                          if (authError) setAuthError(null);
+                        }}
+                        placeholder="Enter your password"
+                        className="w-full h-11 pl-10 pr-10 rounded-xl border border-slate-200 bg-[#EEF3FB] text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#1D63ED]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full h-11 rounded-xl bg-[#1D63ED] hover:bg-blue-700 text-white font-bold text-sm shadow-md transition-colors"
+                >
+                  Sign in
+                </button>
+
+                <div className="pt-3 border-t border-slate-100 text-center text-xs text-slate-500">
+                  Don&apos;t have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode("SIGN_UP");
+                      setAuthError(null);
+                    }}
+                    className="text-[#1D63ED] font-bold hover:underline inline-flex items-center gap-1"
+                  >
+                    <span>Sign up now</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {authMode === "SIGN_UP" && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!signUpName.trim() || !signUpUsername.trim() || !signUpPassword) {
+                    setAuthError("Please fill in all required fields.");
+                    return;
+                  }
+                  if (signUpPassword.length < 6) {
+                    setAuthError("Password must be at least 6 characters.");
+                    return;
+                  }
+                  if (signUpPassword !== signUpConfirmPassword) {
+                    setAuthError("Passwords do not match.");
+                    return;
+                  }
+                  if (!signUpAnswer.trim()) {
+                    setAuthError("Please provide an answer to your security question.");
+                    return;
+                  }
+
+                  const reg = registerBuilderAccount({
+                    name: signUpName.trim(),
+                    username: signUpUsername.trim(),
+                    password: signUpPassword,
+                    role: signUpRole,
+                    securityQuestion: signUpQuestion,
+                    securityAnswer: signUpAnswer.trim(),
+                    pin: signUpPin.trim() || signUpAnswer.trim(),
+                  });
+
+                  if (!reg.success || !reg.account) {
+                    setAuthError(reg.error || "Failed to create account.");
+                    return;
+                  }
+
+                  const cleanUser = reg.account.username;
+                  if (
+                    !users.some(
+                      (u) => u.username.replace(/^@/, "").toLowerCase() === cleanUser.toLowerCase()
+                    )
+                  ) {
+                    setUsers((prev) => [
+                      ...prev,
+                      {
+                        id: `usr_${Date.now()}`,
+                        name: reg.account!.name,
+                        username: `@${cleanUser}`,
+                        phone: "",
+                        role: reg.account!.role,
+                        status: "Active",
+                        lastSignIn: "Just now",
+                      },
+                    ]);
+                  }
+
+                  const initials = reg.account.name
+                    .split(" ")
+                    .map((p) => p[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase();
+
+                  setCurrentUser({
+                    name: reg.account.name,
+                    username: `@${reg.account.username}`,
+                    initials: initials || "TB",
+                    role: reg.account.role,
+                  });
+                  setIsLoggedIn(true);
+                  setAuthError(null);
+                  showToast(`Account created! Welcome, ${reg.account.name}`);
+                }}
+                className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-7 shadow-xl space-y-4 max-w-md mx-auto"
+              >
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-extrabold text-[#12264A]">Create Account</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Register your Top Builders login and recovery security question.
+                  </p>
+                </div>
+
+                {authError && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-medium">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                    <span>{authError}</span>
+                  </div>
+                )}
+
+                <div className="space-y-3 text-xs max-h-[60vh] overflow-y-auto pr-1">
+                  <div>
+                    <label className="block font-bold text-[#12264A] mb-1">Full Name *</label>
                     <input
                       type="text"
                       required
-                      value={loginUsername}
-                      onChange={(e) => setLoginUsername(e.target.value)}
-                      placeholder="chimatop"
-                      className="w-full h-11 pl-10 pr-3 rounded-xl border border-slate-200 bg-[#EEF3FB] text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#1D63ED]"
+                      value={signUpName}
+                      onChange={(e) => setSignUpName(e.target.value)}
+                      placeholder="e.g. Chima Ezenwa"
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-[#EEF3FB] text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#1D63ED]"
                     />
                   </div>
-                </div>
 
-                <div>
-                  <label className="block font-bold text-[#12264A] mb-1.5">Password</label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      className="w-full h-11 pl-10 pr-10 rounded-xl border border-slate-200 bg-[#EEF3FB] text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#1D63ED]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block font-bold text-[#12264A] mb-1">Username *</label>
+                      <input
+                        type="text"
+                        required
+                        value={signUpUsername}
+                        onChange={(e) => setSignUpUsername(e.target.value)}
+                        placeholder="e.g. chimatop"
+                        className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-[#EEF3FB] text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#1D63ED]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#12264A] mb-1">Role *</label>
+                      <select
+                        value={signUpRole}
+                        onChange={(e) =>
+                          setSignUpRole(e.target.value as "Owner" | "Manager" | "Sales Rep" | "Cashier")
+                        }
+                        className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-[#EEF3FB] text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#1D63ED]"
+                      >
+                        <option value="Owner">Owner</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Sales Rep">Sales Rep</option>
+                        <option value="Cashier">Cashier</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block font-bold text-[#12264A] mb-1">Password *</label>
+                      <div className="relative">
+                        <input
+                          type={showSignUpPassword ? "text" : "password"}
+                          required
+                          value={signUpPassword}
+                          onChange={(e) => setSignUpPassword(e.target.value)}
+                          placeholder="Min 6 chars"
+                          className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-[#EEF3FB] text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#1D63ED]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSignUpPassword(!showSignUpPassword)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"
+                        >
+                          {showSignUpPassword ? (
+                            <EyeOff className="w-3.5 h-3.5" />
+                          ) : (
+                            <Eye className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#12264A] mb-1">Confirm *</label>
+                      <input
+                        type={showSignUpPassword ? "text" : "password"}
+                        required
+                        value={signUpConfirmPassword}
+                        onChange={(e) => setSignUpConfirmPassword(e.target.value)}
+                        placeholder="Re-type"
+                        className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-[#EEF3FB] text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#1D63ED]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100">
+                    <label className="block font-bold text-[#12264A] mb-1">
+                      Security Question (for password reset) *
+                    </label>
+                    <select
+                      value={signUpQuestion}
+                      onChange={(e) => setSignUpQuestion(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-[#EEF3FB] text-slate-800 font-medium text-xs focus:outline-none focus:bg-white focus:border-[#1D63ED]"
                     >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
+                      {SECURITY_QUESTIONS.map((q) => (
+                        <option key={q} value={q}>
+                          {q}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[#12264A] mb-1">
+                      Your Answer / PIN *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={signUpAnswer}
+                      onChange={(e) => setSignUpAnswer(e.target.value)}
+                      placeholder="e.g. My memorable moment, 4-digit PIN, or mother's name"
+                      className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-[#EEF3FB] text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#1D63ED]"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Used to verify your identity if you ever forget your password.
+                    </p>
                   </div>
                 </div>
+
+                <button
+                  type="submit"
+                  className="w-full h-11 rounded-xl bg-[#1D63ED] hover:bg-blue-700 text-white font-bold text-sm shadow-md transition-colors"
+                >
+                  Create Account & Sign In
+                </button>
+
+                <div className="pt-2 border-t border-slate-100 text-center text-xs text-slate-500">
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode("SIGN_IN");
+                      setAuthError(null);
+                    }}
+                    className="text-[#1D63ED] font-bold hover:underline"
+                  >
+                    Sign in
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {authMode === "FORGOT_PASSWORD" && (
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-7 sm:p-8 shadow-xl space-y-5 max-w-md mx-auto">
+                <div>
+                  <h2 className="text-2xl font-extrabold text-[#12264A]">Reset Password</h2>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Recover your Top Builders access using your registered security question.
+                  </p>
+                </div>
+
+                {authError && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-medium">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                    <span>{authError}</span>
+                  </div>
+                )}
+
+                {forgotStep === 1 ? (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const clean = forgotUsername.replace(/^@/, "").trim();
+                      if (!clean) {
+                        setAuthError("Please enter your username.");
+                        return;
+                      }
+                      const acc = getBuilderByUsername(clean);
+                      if (!acc) {
+                        setAuthError("No Top Builders account found with that username.");
+                        return;
+                      }
+                      setRetrievedQuestion(
+                        acc.securityQuestion || "What is your security answer or PIN?"
+                      );
+                      setForgotStep(2);
+                      setAuthError(null);
+                    }}
+                    className="space-y-4 text-xs"
+                  >
+                    <div>
+                      <label className="block font-bold text-[#12264A] mb-1.5">
+                        Enter your Username
+                      </label>
+                      <div className="relative">
+                        <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          required
+                          value={forgotUsername}
+                          onChange={(e) => setForgotUsername(e.target.value)}
+                          placeholder="e.g. chimatop"
+                          className="w-full h-11 pl-10 pr-3 rounded-xl border border-slate-200 bg-[#EEF3FB] text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#1D63ED]"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full h-11 rounded-xl bg-[#1D63ED] hover:bg-blue-700 text-white font-bold text-sm shadow-md transition-colors"
+                    >
+                      Find Account & Security Question
+                    </button>
+
+                    <div className="pt-2 text-center text-xs">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode("SIGN_IN");
+                          setAuthError(null);
+                        }}
+                        className="text-slate-500 hover:text-slate-700 font-semibold inline-flex items-center gap-1"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        <span>Back to Sign In</span>
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!securityAnswerAttempt.trim()) {
+                        setAuthError("Please provide the answer to your security question.");
+                        return;
+                      }
+                      if (!newPassword || newPassword.length < 6) {
+                        setAuthError("New password must be at least 6 characters.");
+                        return;
+                      }
+                      if (newPassword !== confirmNewPassword) {
+                        setAuthError("Passwords do not match.");
+                        return;
+                      }
+
+                      const res = resetBuilderPassword(
+                        forgotUsername,
+                        securityAnswerAttempt.trim(),
+                        newPassword
+                      );
+                      if (!res.success) {
+                        setAuthError(res.error || "Incorrect security answer or PIN.");
+                        return;
+                      }
+
+                      showToast(
+                        "Password reset successfully! Please sign in with your new password."
+                      );
+                      setLoginUsername(forgotUsername.replace(/^@/, ""));
+                      setLoginPassword(newPassword);
+                      setAuthMode("SIGN_IN");
+                      setAuthError(null);
+                    }}
+                    className="space-y-4 text-xs"
+                  >
+                    <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-[#173A80] space-y-1">
+                      <p className="font-bold text-[10px] uppercase tracking-wider text-[#1D63ED] flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span>Security Question for @{forgotUsername.replace(/^@/, "")}</span>
+                      </p>
+                      <p className="font-bold text-sm text-[#12264A]">{retrievedQuestion}</p>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-[#12264A] mb-1.5">
+                        Your Security Answer or PIN *
+                      </label>
+                      <div className="relative">
+                        <HelpCircle className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          required
+                          value={securityAnswerAttempt}
+                          onChange={(e) => setSecurityAnswerAttempt(e.target.value)}
+                          placeholder="Enter your registered answer or PIN"
+                          className="w-full h-11 pl-10 pr-3 rounded-xl border border-slate-200 bg-[#EEF3FB] text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#1D63ED]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-bold text-[#12264A] mb-1">New Password</label>
+                        <input
+                          type="password"
+                          required
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Min 6 chars"
+                          className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-[#EEF3FB] text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#1D63ED]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-[#12264A] mb-1">Confirm New</label>
+                        <input
+                          type="password"
+                          required
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          placeholder="Re-type"
+                          className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-[#EEF3FB] text-slate-800 font-medium focus:outline-none focus:bg-white focus:border-[#1D63ED]"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-colors"
+                    >
+                      Update Password & Sign In
+                    </button>
+
+                    <div className="pt-2 text-center text-xs">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode("SIGN_IN");
+                          setAuthError(null);
+                        }}
+                        className="text-slate-500 hover:text-slate-700 font-semibold inline-flex items-center gap-1"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        <span>Cancel</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
-
-              <button
-                type="submit"
-                className="w-full h-11 rounded-xl bg-[#1D63ED] hover:bg-blue-700 text-white font-bold text-sm shadow-md transition-colors"
-              >
-                Sign in
-              </button>
-
-              <p className="text-center text-xs text-slate-500 pt-1">
-                Forgot password? Ask the owner to reset it.
-              </p>
-            </form>
+            )}
           </div>
         </div>
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ServiceSlug } from "./constants";
 import { formatCurrency } from "./money";
+import { syncProductToBackend, syncTransactionToBackend } from "./api-sync";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -811,6 +812,9 @@ export function recordPlatformTransaction(params: {
   const currentActivities = readStorage(STORAGE_KEYS.ACTIVITIES, DEFAULT_UNIFIED_ACTIVITIES);
   writeStorage(STORAGE_KEYS.ACTIVITIES, [newActivity, ...currentActivities.slice(0, 29)]);
 
+  // Background optimistic sync to backend API when online
+  void syncTransactionToBackend(newInvoice);
+
   return newInvoice;
 }
 
@@ -972,6 +976,10 @@ export function usePlatformStore() {
         location: "Admin Dashboard",
       };
       writeStorage(STORAGE_KEYS.ACTIVITIES, [actItem, ...currentActs.slice(0, 29)]);
+
+      // Background optimistic sync to backend API when online
+      void syncProductToBackend(normalized);
+
       return normalized;
     },
     []

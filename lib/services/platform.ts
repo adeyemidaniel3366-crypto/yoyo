@@ -29,8 +29,21 @@ import { renderEmailTemplate } from "../email/templates";
 import { getEnv } from "../env";
 
 export async function checkHealth() {
-  await prisma.$queryRaw`SELECT 1`;
-  return { ok: true, db: "up", time: new Date().toISOString() };
+  try {
+    const checkPromise = prisma.$queryRaw`SELECT 1`;
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("DB health check timeout")), 1500)
+    );
+    await Promise.race([checkPromise, timeoutPromise]);
+    return { ok: true, db: "up", time: new Date().toISOString() };
+  } catch (err) {
+    return {
+      ok: false,
+      db: "down",
+      error: err instanceof Error ? err.message : "Database connection failed",
+      time: new Date().toISOString(),
+    };
+  }
 }
 
 // ---------- Contacts ----------

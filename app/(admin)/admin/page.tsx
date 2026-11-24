@@ -76,6 +76,9 @@ import {
 import { formatCurrency } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { NumberInput, formatNumbersInText } from "@/components/ui/number-input";
+import { computeStoreFinancialTotals, probeBackendHealth, type BackendHealthStatus } from "@/lib/api-sync";
+import { FinancialSummarySection } from "@/components/admin/dashboard/FinancialSummarySection";
+import { TargetsProgressSection } from "@/components/admin/dashboard/TargetsProgressSection";
 
 // ---------------------------------------------------------------------------
 // Activity Type Badge
@@ -297,6 +300,7 @@ export default function UnifiedAdminDashboard() {
     activities,
     paymentDues,
     targets,
+    visitors,
     roomStatuses,
     globalServiceFilter,
     globalLocationFilter,
@@ -309,6 +313,25 @@ export default function UnifiedAdminDashboard() {
     toggleRoomStatus,
     recordTransaction,
   } = usePlatformStore();
+
+  const [backendHealth, setBackendHealth] = useState<BackendHealthStatus | null>(null);
+
+  useEffect(() => {
+    probeBackendHealth().then(setBackendHealth);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setProductModalOpen(false);
+        setTargetModalOpen(false);
+        setTxModalOpen(false);
+        setIsSecurityDrawerOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const [chartGrouping, setChartGrouping] = useState<"service" | "location">("service");
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -672,21 +695,26 @@ export default function UnifiedAdminDashboard() {
   // Synchronize topbar global service filter with invoice & product tabs
   const activeServiceScope = globalServiceFilter;
 
-  // Use the same filtered server summary for all primary financial totals.
+  // Use the server summary if live data is returned, or seamlessly fall back to local platform store
   const financialTotals = useMemo(() => {
     const cards = dashboardData?.cards || [];
     const value = (key: string) => cards.find((card: any) => card.key === key)?.valueKobo ?? 0;
     const totalRevenueKobo = value("totalSales");
     const netProfitKobo = value("net");
 
-    return {
-      totalRevenueKobo,
-      totalExpenseKobo: Math.max(0, totalRevenueKobo - netProfitKobo),
-      netProfitKobo,
-      bookingsCount: value("activeBookings"),
-      visitorsCount: value("visitorsToday"),
-    };
-  }, [dashboardData]);
+    if (!dashboardData?.isUnavailable && totalRevenueKobo > 0) {
+      return {
+        totalRevenueKobo,
+        totalExpenseKobo: Math.max(0, totalRevenueKobo - netProfitKobo),
+        netProfitKobo,
+        bookingsCount: value("activeBookings"),
+        visitorsCount: value("visitorsToday"),
+      };
+    }
+
+    // Live store fallback aggregation
+    return computeStoreFinancialTotals(invoices, products, visitors, activeServiceScope);
+  }, [dashboardData, invoices, products, visitors, activeServiceScope]);
 
   // Compute dynamic dues
   const salesPaymentDueRows = useMemo(
@@ -1265,6 +1293,22 @@ export default function UnifiedAdminDashboard() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-mono font-bold border",
+                backendHealth?.db === "up"
+                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30"
+                  : "bg-amber-500/15 text-amber-200 border-amber-400/30"
+              )}
+            >
+              <span
+                className={cn(
+                  "w-2 h-2 rounded-full",
+                  backendHealth?.db === "up" ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                )}
+              />
+              <span>{backendHealth?.db === "up" ? "PostgreSQL Connected" : "Local Sync Mode"}</span>
+            </span>
             <button
               type="button"
               onClick={handleExportAuditCSV}
@@ -1368,94 +1412,31 @@ export default function UnifiedAdminDashboard() {
       </div>
 
       {/* ── A: Financial Summary (Revenue / Expenses / Net Profit) ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <FinancialCard
-          title="Revenue Today"
-          value={formatMoney(financialTotals.totalRevenueKobo)}
-          delta={18.4}
-          isPositive={true}
-          accentColor="#28A745"
-          subtitle={
-            activeServiceScope === "ALL"
-              ? "All 6 services combined"
-              : `${SERVICE_CONFIG[activeServiceScope].name} revenue`
-          }
-        />
-        <FinancialCard
-          title="Total Expenses Today"
-          value={formatMoney(financialTotals.totalExpenseKobo)}
-          delta={-5.2}
-          isPositive={true}
-          accentColor="#E74C3C"
-          subtitle="Ops, payroll, restocks & purchases"
-        />
-        <FinancialCard
-          title="Net Profit This Month"
-          value={formatMoney(financialTotals.netProfitKobo)}
-          delta={22.1}
-          isPositive={true}
-          accentColor="#4F46E5"
-          subtitle="Revenue minus all recorded expenses"
-        />
-      </div>
+      <FinancialSummarySection
+        totalRevenueKobo={financialTotals.totalRevenueKobo}
+        totalExpenseKobo={financialTotals.totalExpenseKobo}
+        netProfitKobo={financialTotals.netProfitKobo}
+        activeServiceScope={activeServiceScope}
+        formatMoney={formatMoney}
+      />
 
       {/* ── B: Monthly Targets vs Actuals (Functional Edit Modal) ── */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-2xs">
-        <div className="flex items-center justify-between gap-2 pb-3 mb-5 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <Target className="w-4 h-4 text-active" />
-            <h3 className="text-base font-semibold text-gray-900">
-              Monthly Targets vs Live Actuals
-            </h3>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setTargetForm({
-                salesNaira: Math.round(targets.salesTargetKobo / 100),
-                expenseNaira: Math.round(targets.expenseBudgetKobo / 100),
-                bookingsTarget: targets.bookingsTarget,
-                visitorsTarget: targets.visitorsTarget,
-              });
-              setTargetModalOpen(true);
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-800 hover:bg-gray-50 transition-colors"
-          >
-            <Pencil className="w-3 h-3 text-active" />
-            <span>Edit Targets</span>
-          </button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <TargetBar
-            label="Sales & Revenue Target"
-            current={Math.round(financialTotals.totalRevenueKobo / 100)}
-            target={Math.round(targets.salesTargetKobo / 100)}
-            unit="₦"
-            color="#4F46E5"
-          />
-          <TargetBar
-            label="Expense Budget Utilization"
-            current={Math.round(financialTotals.totalExpenseKobo / 100)}
-            target={Math.round(targets.expenseBudgetKobo / 100)}
-            unit="₦"
-            color="#E74C3C"
-          />
-          <TargetBar
-            label="Apartment Bookings Target"
-            current={financialTotals.bookingsCount}
-            target={targets.bookingsTarget}
-            unit=""
-            color="#1E3A5F"
-          />
-          <TargetBar
-            label="Visitor Check-In Target"
-            current={financialTotals.visitorsCount}
-            target={targets.visitorsTarget}
-            unit=""
-            color="#7C3AED"
-          />
-        </div>
-      </div>
+      <TargetsProgressSection
+        targets={targets}
+        totalRevenueKobo={financialTotals.totalRevenueKobo}
+        totalExpenseKobo={financialTotals.totalExpenseKobo}
+        bookingsCount={financialTotals.bookingsCount}
+        visitorsCount={financialTotals.visitorsCount}
+        onEditClick={() => {
+          setTargetForm({
+            salesNaira: Math.round(targets.salesTargetKobo / 100),
+            expenseNaira: Math.round(targets.expenseBudgetKobo / 100),
+            bookingsTarget: targets.bookingsTarget,
+            visitorsTarget: targets.visitorsTarget,
+          });
+          setTargetModalOpen(true);
+        }}
+      />
 
       {/* ── Row 1: 8 KPI Stat Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
