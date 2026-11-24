@@ -828,3 +828,75 @@ body {
 .admin-data-table input.data-table-search::placeholder {
   color: #9ca3af !important;
 }
+
+/* ---------------------------------------------------------------------------
+   Top Builders Document Print Styles (Receipt & Invoice)
+   --------------------------------------------------------------------------- */
+@media print {
+  /* Hide normal background, headers, sidebar, topbar, controls */
+  .builders-no-print {
+    display: none !important;
+  }
+
+  body:has(#builders-printable-document) {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Ensure modal ancestors do not clip or constrain printing */
+  .builders-print-backdrop {
+    position: static !important;
+    inset: auto !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    display: block !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .builders-print-card {
+    position: static !important;
+    background: transparent !important;
+    max-width: none !important;
+    max-height: none !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+    display: block !important;
+  }
+
+  .builders-print-canvas {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+    display: flex !important;
+    justify-content: center !important;
+  }
+
+  #builders-printable-document {
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 auto !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Force exact color reproduction for headers and badges */
+  #builders-printable-document * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

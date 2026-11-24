@@ -6,7 +6,6 @@ import {
   X,
   ExternalLink,
   ArrowRight,
-  Github,
   CheckCircle2,
   Server,
   Database,

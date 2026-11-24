@@ -20,11 +20,52 @@ import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCurrency } from "@/lib/money";
+import { usePlatformStore } from "@/lib/platform-store";
 
 export default function BillstacksDashboardPage() {
+  const { invoices: storeInvoices, products: storeProducts } = usePlatformStore();
   const [liveData, setLiveData] = React.useState<any>(null);
   const [sendLoading, setSendLoading] = React.useState<string | null>(null);
   const [toastMsg, setToastMsg] = React.useState<string | null>(null);
+
+  const billstacksStoreInvoices = React.useMemo(
+    () => storeInvoices.filter((i) => i.source === ServiceSlug.BILLSTACKS),
+    [storeInvoices]
+  );
+
+  const activeBillstacksPlans = React.useMemo(
+    () =>
+      storeProducts.filter(
+        (p) =>
+          p.source === ServiceSlug.BILLSTACKS &&
+          p.status !== "INACTIVE" &&
+          p.status !== "ARCHIVED"
+      ),
+    [storeProducts]
+  );
+
+  const computedMetrics = React.useMemo(() => {
+    const revenueKobo = billstacksStoreInvoices
+      .filter((i) => i.activityType !== "EXPENSE" && i.status === "PAID")
+      .reduce((acc, i) => acc + i.amountKobo, 0);
+    const outstandingList = billstacksStoreInvoices.filter(
+      (i) => i.activityType !== "EXPENSE" && (i.status === "PENDING" || i.status === "UNPAID")
+    );
+    const outstandingKobo = outstandingList.reduce((acc, i) => acc + i.amountKobo, 0);
+    const overdueList = billstacksStoreInvoices.filter((i) => i.status === "OVERDUE");
+    const overdueKobo = overdueList.reduce((acc, i) => acc + i.amountKobo, 0);
+    const expensesKobo = billstacksStoreInvoices
+      .filter((i) => i.activityType === "EXPENSE")
+      .reduce((acc, i) => acc + i.amountKobo, 0);
+    return {
+      revenueKobo,
+      outstandingKobo,
+      pendingCount: outstandingList.length,
+      overdueKobo,
+      overdueCount: overdueList.length,
+      expensesKobo,
+    };
+  }, [billstacksStoreInvoices]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -61,56 +102,26 @@ export default function BillstacksDashboardPage() {
     }
   };
 
-  const defaultInvoices = [
-    {
-      id: "inv_1",
-      invoiceNo: "INV-000084",
-      client: "Prime Technologies",
-      amountKobo: 145000000,
-      paidKobo: 75000000,
-      status: "PART_PAID",
-      dueDate: "25 Nov 2026",
-    },
-    {
-      id: "inv_2",
-      invoiceNo: "INV-000083",
-      client: "Nexus Global Hub",
-      amountKobo: 45000000,
-      paidKobo: 45000000,
-      status: "PAID",
-      dueDate: "14 Nov 2026",
-    },
-    {
-      id: "inv_3",
-      invoiceNo: "INV-000082",
-      client: "Lekki Media Consult",
-      amountKobo: 28000000,
-      paidKobo: 0,
-      status: "OVERDUE",
-      dueDate: "02 Nov 2026",
-    },
-    {
-      id: "inv_4",
-      invoiceNo: "INV-000081",
-      client: "Horizon Logistics",
-      amountKobo: 95000000,
-      paidKobo: 95000000,
-      status: "PAID",
-      dueDate: "01 Nov 2026",
-    },
-  ];
-
-  const invoices = liveData?.recentInvoices && liveData.recentInvoices.length > 0
-    ? liveData.recentInvoices.map((inv: any) => ({
-        id: inv.id,
-        invoiceNo: inv.invoiceNo,
-        client: inv.contact?.name || inv.clientName || "Client",
-        amountKobo: inv.totalKobo || 0,
-        paidKobo: inv.paidKobo || 0,
-        status: inv.status,
-        dueDate: typeof inv.dueDate === "string" ? inv.dueDate.slice(0, 10) : "25 Nov 2026",
-      }))
-    : defaultInvoices;
+  const invoices =
+    liveData?.recentInvoices && liveData.recentInvoices.length > 0
+      ? liveData.recentInvoices.map((inv: any) => ({
+          id: inv.id,
+          invoiceNo: inv.invoiceNo,
+          client: inv.contact?.name || inv.clientName || "Client",
+          amountKobo: inv.totalKobo || 0,
+          paidKobo: inv.paidKobo || 0,
+          status: inv.status,
+          dueDate: typeof inv.dueDate === "string" ? inv.dueDate.slice(0, 10) : "25 Nov 2026",
+        }))
+      : billstacksStoreInvoices.map((inv) => ({
+          id: inv.id,
+          invoiceNo: inv.invoiceNo,
+          client: inv.customer,
+          amountKobo: inv.amountKobo,
+          paidKobo: inv.status === "PAID" ? inv.amountKobo : 0,
+          status: inv.status,
+          dueDate: inv.createdAt,
+        }));
 
   return (
     <div className="space-y-6">
@@ -162,45 +173,45 @@ export default function BillstacksDashboardPage() {
         </div>
       </div>
 
-      {/* 4 Metric Cards */}
+      {/* 4 Metric Cards — Unified Live Store Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-2xs">
           <p className="text-xs text-gray-600 font-medium">Revenue This Month</p>
-          <h3 className="text-2xl font-black text-gray-900 mt-1">
-            {liveData?.revenueKobo != null ? formatCurrency(liveData.revenueKobo) : "₦3,145,000"}
+          <h3 className="text-2xl font-black text-gray-900 mt-1 tabular-nums">
+            {formatCurrency(liveData?.revenueKobo ?? computedMetrics.revenueKobo)}
           </h3>
           <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
             <TrendingUp className="w-3.5 h-3.5" />
-            <span>+14.2% vs last month</span>
+            <span>{activeBillstacksPlans.length} active subscription plan(s)</span>
           </p>
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-2xs">
           <p className="text-xs text-gray-600 font-medium">Outstanding Invoices</p>
-          <h3 className="text-2xl font-black text-amber-500 mt-1">
-            {liveData?.outstandingKobo != null ? formatCurrency(liveData.outstandingKobo) : "₦980,000"}
+          <h3 className="text-2xl font-black text-amber-500 mt-1 tabular-nums">
+            {formatCurrency(liveData?.outstandingKobo ?? computedMetrics.outstandingKobo)}
           </h3>
           <p className="text-[11px] text-gray-600 mt-1">
-            {liveData?.pendingCount != null ? `${liveData.pendingCount} invoices pending` : "2 invoices pending"}
+            {liveData?.pendingCount ?? computedMetrics.pendingCount} invoices pending
           </p>
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-2xs">
           <p className="text-xs text-gray-600 font-medium">Overdue Invoices</p>
-          <h3 className="text-2xl font-black text-rose-600 mt-1">
-            {liveData?.overdueKobo != null ? formatCurrency(liveData.overdueKobo) : "₦280,000"}
+          <h3 className="text-2xl font-black text-rose-600 mt-1 tabular-nums">
+            {formatCurrency(liveData?.overdueKobo ?? computedMetrics.overdueKobo)}
           </h3>
           <p className="text-[11px] text-rose-600 font-semibold mt-1">
-            {liveData?.overdueCount != null ? `${liveData.overdueCount} overdue clients` : "1 overdue client"}
+            {liveData?.overdueCount ?? computedMetrics.overdueCount} overdue clients
           </p>
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-2xs">
-          <p className="text-xs text-gray-600 font-medium">Expenses This Month</p>
-          <h3 className="text-2xl font-black text-gray-900 mt-1">
-            {liveData?.expensesKobo != null ? formatCurrency(liveData.expensesKobo) : "₦420,000"}
+          <p className="text-xs text-gray-600 font-medium">Expenses &amp; Bills</p>
+          <h3 className="text-2xl font-black text-gray-900 mt-1 tabular-nums">
+            {formatCurrency(liveData?.expensesKobo ?? computedMetrics.expensesKobo)}
           </h3>
-          <p className="text-[11px] text-gray-600 mt-1">Recorded receipts</p>
+          <p className="text-[11px] text-gray-600 mt-1">Synced from Billstacks ledger</p>
         </div>
       </div>
 

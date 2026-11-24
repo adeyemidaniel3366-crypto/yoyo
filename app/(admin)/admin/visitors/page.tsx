@@ -86,16 +86,53 @@ export default function VisitorManagementDashboardPage() {
     { title: "Active Inside Premises", value: String(visitors.filter((v) => v.status === "CHECKED_IN").length), bg: "bg-[#8B5CF6] text-white" },
   ];
 
-  // 12 Nov - 18 Nov Chart Data
-  const weeklyVisitorData = [
-    { date: "12", preReg: 0, frontDesk: 0 },
-    { date: "13", preReg: 0, frontDesk: 0 },
-    { date: "14", preReg: 0, frontDesk: 0 },
-    { date: "15", preReg: 0, frontDesk: 0 },
-    { date: "16", preReg: 0, frontDesk: 0 },
-    { date: "17", preReg: 0, frontDesk: 0 },
-    { date: "18", preReg: 0, frontDesk: 0 },
-  ];
+  // Dynamic 7-day Chart Data synced from live visitors
+  const weeklyVisitorData = React.useMemo(() => {
+    const days: { date: string; fullDate: string; preReg: number; frontDesk: number }[] = [];
+    const now = new Date();
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const dayNum = String(d.getDate()).padStart(2, "0");
+      const isoDate = d.toISOString().slice(0, 10);
+      days.push({
+        date: dayNum,
+        fullDate: isoDate,
+        preReg: 0,
+        frontDesk: 0,
+      });
+    }
+
+    visitors.forEach((v) => {
+      const vDate = v.visitDate || v.appointmentDate || v.checkIn?.slice(0, 10);
+      const isPreReg =
+        v.purpose?.toLowerCase().includes("appoint") ||
+        v.purpose?.toLowerCase().includes("pre") ||
+        Boolean(v.appointmentDate);
+
+      const targetDay = days.find(
+        (day) => day.fullDate === vDate || (vDate && vDate.endsWith(`-${day.date}`))
+      );
+
+      if (targetDay) {
+        if (isPreReg) {
+          targetDay.preReg += 1;
+        } else {
+          targetDay.frontDesk += 1;
+        }
+      } else {
+        const lastDay = days[days.length - 1];
+        if (isPreReg) {
+          lastDay.preReg += 1;
+        } else {
+          lastDay.frontDesk += 1;
+        }
+      }
+    });
+
+    return days;
+  }, [visitors]);
 
   return (
     <div className="space-y-6">
@@ -143,7 +180,7 @@ export default function VisitorManagementDashboardPage() {
             <h4 className="font-bold text-heading text-sm">Pre-Registered Visitors</h4>
             <span className="text-xs text-muted font-medium flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />
-              <span>12 Nov - 18 Nov</span>
+              <span>Past 7 Days</span>
             </span>
           </div>
           <div className="w-full h-48">
@@ -151,7 +188,7 @@ export default function VisitorManagementDashboardPage() {
               <LineChart data={weeklyVisitorData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F1F3F5" vertical={false} />
                 <XAxis dataKey="date" stroke="#8A8A9A" fontSize={11} tickLine={false} />
-                <YAxis stroke="#8A8A9A" fontSize={11} tickLine={false} domain={[0, 2]} />
+                <YAxis stroke="#8A8A9A" fontSize={11} tickLine={false} allowDecimals={false} />
                 <Tooltip />
                 <Line type="monotone" dataKey="preReg" stroke="#1E3A8A" strokeWidth={2} dot={false} />
               </LineChart>
@@ -165,7 +202,7 @@ export default function VisitorManagementDashboardPage() {
             <h4 className="font-bold text-heading text-sm">Front-Desk Visitors</h4>
             <span className="text-xs text-muted font-medium flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />
-              <span>12 Nov - 18 Nov</span>
+              <span>Past 7 Days</span>
             </span>
           </div>
           <div className="w-full h-48">
@@ -173,7 +210,7 @@ export default function VisitorManagementDashboardPage() {
               <LineChart data={weeklyVisitorData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F1F3F5" vertical={false} />
                 <XAxis dataKey="date" stroke="#8A8A9A" fontSize={11} tickLine={false} />
-                <YAxis stroke="#8A8A9A" fontSize={11} tickLine={false} domain={[0, 2]} />
+                <YAxis stroke="#8A8A9A" fontSize={11} tickLine={false} allowDecimals={false} />
                 <Tooltip />
                 <Line type="monotone" dataKey="frontDesk" stroke="#1E3A8A" strokeWidth={2} dot={false} />
               </LineChart>

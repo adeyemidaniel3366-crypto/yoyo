@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   CreditCard,
@@ -15,6 +15,7 @@ import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCurrency } from "@/lib/money";
+import { usePlatformStore } from "@/lib/platform-store";
 
 interface PaymentRow {
   id: string;
@@ -27,16 +28,23 @@ interface PaymentRow {
   date: string;
 }
 
-const PAYMENTS: PaymentRow[] = [
-  { id: "p1", ref: "APT-PAY-98120", guest: "Adaeze Okafor", room: "RM-201 (Deluxe)", amountKobo: 9900000, gateway: "PAYSTACK", status: "PAID", date: "19 Nov 2026, 14:22" },
-  { id: "p2", ref: "APT-PAY-98119", guest: "Engr. Tunde Bakare", room: "RM-101 (Classic)", amountKobo: 4400000, gateway: "BANK_TRANSFER", status: "PAID", date: "18 Nov 2026, 11:05" },
-  { id: "p3", ref: "APT-PAY-98118", guest: "Chief Okonkwo", room: "RM-301 (2BR)", amountKobo: 38500000, gateway: "PAYSTACK", status: "PAID", date: "17 Nov 2026, 09:30" },
-  { id: "p4", ref: "APT-PAY-98117", guest: "Dr. Babatunde Alabi", room: "RM-102 (Classic)", amountKobo: 1100000, gateway: "POS", status: "PAID", date: "10 Nov 2026, 17:40" },
-];
-
 export default function ApartmentPaymentsPage() {
-  const [payments] = useState<PaymentRow[]>(PAYMENTS);
+  const { invoices } = usePlatformStore();
   const [search, setSearch] = useState("");
+
+  const payments: PaymentRow[] = useMemo(() => {
+    const aptInvoices = invoices.filter((i) => i.source === ServiceSlug.APARTMENTS);
+    return aptInvoices.map((inv) => ({
+      id: inv.id,
+      ref: inv.invoiceNo || `APT-${inv.id}`,
+      guest: inv.customer,
+      room: inv.activitySummary.split("—")[1]?.trim() || "Deluxe Suite",
+      amountKobo: inv.amountKobo,
+      gateway: "PAYSTACK" as const,
+      status: (inv.status === "PAID" || inv.status === "CONFIRMED" ? "PAID" : "PENDING") as "PAID" | "PENDING",
+      date: inv.createdAt,
+    }));
+  }, [invoices]);
 
   const filtered = payments.filter(
     (p) =>
@@ -47,6 +55,8 @@ export default function ApartmentPaymentsPage() {
   const totalCollectedKobo = payments
     .filter((p) => p.status === "PAID")
     .reduce((sum, p) => sum + p.amountKobo, 0);
+
+  const cautionDepositsKobo = filtered.length > 0 ? filtered.length * 5000000 : 0;
 
   return (
     <div className="space-y-6">
@@ -95,7 +105,9 @@ export default function ApartmentPaymentsPage() {
 
         <div className="bg-white p-5 rounded-2xl border border-border">
           <p className="text-xs text-muted font-medium">Caution Deposits Held</p>
-          <h3 className="text-2xl font-black text-blue-600 mt-1">₦200,000</h3>
+          <h3 className="text-2xl font-black text-blue-600 mt-1">
+            {formatCurrency(cautionDepositsKobo)}
+          </h3>
           <p className="text-[11px] text-muted mt-1">Refundable upon checkout inspection</p>
         </div>
       </div>
@@ -126,21 +138,29 @@ export default function ApartmentPaymentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-50/70">
-                  <td className="py-3 font-mono font-bold text-apartment">{p.ref}</td>
-                  <td className="py-3 font-medium text-heading">{p.guest}</td>
-                  <td className="py-3 text-muted">{p.room}</td>
-                  <td className="py-3 font-semibold text-heading">{p.gateway}</td>
-                  <td className="py-3 text-right font-black text-heading">
-                    {formatCurrency(p.amountKobo)}
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-gray-400 italic">
+                    No data founds
                   </td>
-                  <td className="py-3 text-center">
-                    <StatusBadge status={p.status} size="sm" />
-                  </td>
-                  <td className="py-3 text-muted">{p.date}</td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map((p) => (
+                  <tr key={p.id} className="hover:bg-gray-50/70">
+                    <td className="py-3 font-mono font-bold text-apartment">{p.ref}</td>
+                    <td className="py-3 font-medium text-heading">{p.guest}</td>
+                    <td className="py-3 text-muted">{p.room}</td>
+                    <td className="py-3 font-semibold text-heading">{p.gateway}</td>
+                    <td className="py-3 text-right font-black text-heading">
+                      {formatCurrency(p.amountKobo)}
+                    </td>
+                    <td className="py-3 text-center">
+                      <StatusBadge status={p.status} size="sm" />
+                    </td>
+                    <td className="py-3 text-muted">{p.date}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

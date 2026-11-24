@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Layers,
   FileSpreadsheet,
@@ -14,6 +14,7 @@ import { ServiceSlug, SERVICE_CONFIG } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { formatCurrency } from "@/lib/money";
+import { usePlatformStore } from "@/lib/platform-store";
 
 interface ServicePL {
   slug: ServiceSlug;
@@ -26,67 +27,64 @@ interface ServicePL {
 }
 
 export default function ConsolidatedReportsPage() {
-  const plData: ServicePL[] = [
-    {
-      slug: ServiceSlug.SPARK,
-      revenueKobo: 1845000000,
-      costKobo: 1320000000,
-      grossProfitKobo: 525000000,
-      expensesKobo: 145000000,
-      netProfitKobo: 380000000,
-      marginPct: 20.6,
-    },
-    {
-      slug: ServiceSlug.BUILDERS,
-      revenueKobo: 1240000000,
-      costKobo: 910000000,
-      grossProfitKobo: 330000000,
-      expensesKobo: 85000000,
-      netProfitKobo: 245000000,
-      marginPct: 19.8,
-    },
-    {
-      slug: ServiceSlug.GALAXY,
-      revenueKobo: 480000000,
-      costKobo: 336000000,
-      grossProfitKobo: 144000000,
-      expensesKobo: 42000000,
-      netProfitKobo: 102000000,
-      marginPct: 21.3,
-    },
-    {
-      slug: ServiceSlug.APARTMENTS,
-      revenueKobo: 285000000,
-      costKobo: 45000000,
-      grossProfitKobo: 240000000,
-      expensesKobo: 92000000,
-      netProfitKobo: 148000000,
-      marginPct: 51.9,
-    },
-    {
-      slug: ServiceSlug.BILLSTACKS,
-      revenueKobo: 145000000,
-      costKobo: 15000000,
-      grossProfitKobo: 130000000,
-      expensesKobo: 38000000,
-      netProfitKobo: 92000000,
-      marginPct: 63.4,
-    },
-    {
-      slug: ServiceSlug.VISITORS,
-      revenueKobo: 0,
-      costKobo: 0,
-      grossProfitKobo: 0,
-      expensesKobo: 25000000,
-      netProfitKobo: -25000000,
-      marginPct: 0,
-    },
-  ];
+  const { invoices } = usePlatformStore();
+
+  const plData: ServicePL[] = useMemo(() => {
+    const services = [
+      ServiceSlug.SPARK,
+      ServiceSlug.BUILDERS,
+      ServiceSlug.GALAXY,
+      ServiceSlug.APARTMENTS,
+      ServiceSlug.BILLSTACKS,
+      ServiceSlug.VISITORS,
+    ];
+
+    return services.map((slug) => {
+      const serviceInvoices = invoices.filter((i) => i.source === slug);
+      const paidInvoices = serviceInvoices.filter(
+        (i) => i.status === "PAID" || i.status === "CONFIRMED"
+      );
+      const rev = paidInvoices.reduce((sum, i) => sum + i.amountKobo, 0);
+
+      // Derive costs & expenses based on unit business model
+      let costRatio = 0.65;
+      let expRatio = 0.12;
+
+      if (slug === ServiceSlug.APARTMENTS) {
+        costRatio = 0.15;
+        expRatio = 0.32;
+      } else if (slug === ServiceSlug.BILLSTACKS) {
+        costRatio = 0.1;
+        expRatio = 0.25;
+      } else if (slug === ServiceSlug.VISITORS) {
+        costRatio = 0;
+        expRatio = 0;
+      }
+
+      const cost = Math.round(rev * costRatio);
+      const gross = rev - cost;
+      const expenses = Math.round(rev * expRatio);
+      const net = gross - expenses;
+      const margin = rev > 0 ? (net / rev) * 100 : 0;
+
+      return {
+        slug,
+        revenueKobo: rev,
+        costKobo: cost,
+        grossProfitKobo: gross,
+        expensesKobo: expenses,
+        netProfitKobo: net,
+        marginPct: Number(margin.toFixed(1)),
+      };
+    });
+  }, [invoices]);
 
   const totalRevenue = plData.reduce((s, i) => s + i.revenueKobo, 0);
   const totalCost = plData.reduce((s, i) => s + i.costKobo, 0);
   const totalExpenses = plData.reduce((s, i) => s + i.expensesKobo, 0);
   const totalNet = plData.reduce((s, i) => s + i.netProfitKobo, 0);
+  const netMarginDisplay =
+    totalRevenue > 0 ? ((totalNet / totalRevenue) * 100).toFixed(1) : "0.0";
 
   return (
     <div className="space-y-6">
@@ -119,37 +117,45 @@ export default function ConsolidatedReportsPage() {
 
       {/* Top Total Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs min-w-0 overflow-hidden">
-          <p className="text-xs text-muted font-medium truncate">Consolidated Revenue</p>
-          <h3 className="text-lg sm:text-xl font-black text-heading mt-1 tabular-nums truncate" title={formatCurrency(totalRevenue)}>
-            {formatCurrency(totalRevenue)}
-          </h3>
-          <p className="text-[11px] text-emerald-600 font-semibold mt-1 truncate">Gross Inflows Across 6 Units</p>
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-border shadow-2xs min-w-0 overflow-hidden flex flex-col justify-between">
+          <div>
+            <p className="text-xs text-muted font-medium truncate">Consolidated Revenue</p>
+            <h3 className="text-base sm:text-lg xl:text-xl font-black text-heading mt-1 tabular-nums break-words tracking-tight" title={formatCurrency(totalRevenue)}>
+              {formatCurrency(totalRevenue)}
+            </h3>
+          </div>
+          <p className="text-[11px] text-emerald-600 font-semibold mt-2 truncate">Gross Inflows Across 6 Units</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs min-w-0 overflow-hidden">
-          <p className="text-xs text-muted font-medium truncate">Cost of Goods Sold (COGS)</p>
-          <h3 className="text-lg sm:text-xl font-black text-muted mt-1 tabular-nums truncate" title={formatCurrency(totalCost)}>
-            {formatCurrency(totalCost)}
-          </h3>
-          <p className="text-[11px] text-muted mt-1 truncate">Spark + Builders + Galaxy</p>
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-border shadow-2xs min-w-0 overflow-hidden flex flex-col justify-between">
+          <div>
+            <p className="text-xs text-muted font-medium truncate">Cost of Goods Sold (COGS)</p>
+            <h3 className="text-base sm:text-lg xl:text-xl font-black text-muted mt-1 tabular-nums break-words tracking-tight" title={formatCurrency(totalCost)}>
+              {formatCurrency(totalCost)}
+            </h3>
+          </div>
+          <p className="text-[11px] text-muted mt-2 truncate">Spark + Builders + Galaxy</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs min-w-0 overflow-hidden">
-          <p className="text-xs text-muted font-medium truncate">Operating Expenses</p>
-          <h3 className="text-lg sm:text-xl font-black text-rose-600 mt-1 tabular-nums truncate" title={formatCurrency(totalExpenses)}>
-            {formatCurrency(totalExpenses)}
-          </h3>
-          <p className="text-[11px] text-muted mt-1 truncate">Salaries, utilities &amp; rent</p>
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-border shadow-2xs min-w-0 overflow-hidden flex flex-col justify-between">
+          <div>
+            <p className="text-xs text-muted font-medium truncate">Operating Expenses</p>
+            <h3 className="text-base sm:text-lg xl:text-xl font-black text-rose-600 mt-1 tabular-nums break-words tracking-tight" title={formatCurrency(totalExpenses)}>
+              {formatCurrency(totalExpenses)}
+            </h3>
+          </div>
+          <p className="text-[11px] text-muted mt-2 truncate">Salaries, utilities &amp; rent</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-border shadow-2xs min-w-0 overflow-hidden">
-          <p className="text-xs text-muted font-medium truncate">Net Consolidated Profit</p>
-          <h3 className="text-lg sm:text-xl font-black text-emerald-600 mt-1 tabular-nums truncate" title={formatCurrency(totalNet)}>
-            {formatCurrency(totalNet)}
-          </h3>
-          <p className="text-[11px] text-emerald-600 font-semibold mt-1 truncate">
-            {((totalNet / totalRevenue) * 100).toFixed(1)}% Net Margin
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-border shadow-2xs min-w-0 overflow-hidden flex flex-col justify-between">
+          <div>
+            <p className="text-xs text-muted font-medium truncate">Net Consolidated Profit</p>
+            <h3 className="text-base sm:text-lg xl:text-xl font-black text-emerald-600 mt-1 tabular-nums break-words tracking-tight" title={formatCurrency(totalNet)}>
+              {formatCurrency(totalNet)}
+            </h3>
+          </div>
+          <p className="text-[11px] text-emerald-600 font-semibold mt-2 truncate">
+            {netMarginDisplay}% Net Margin
           </p>
         </div>
       </div>

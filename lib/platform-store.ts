@@ -90,6 +90,28 @@ export interface UnifiedCartItem {
   image: string;
 }
 
+export interface UnifiedPaymentSettings {
+  paystack: {
+    enabled: boolean;
+    publishKey: string;
+    secretKey: string;
+  };
+  razorpay: {
+    enabled: boolean;
+    keyId: string;
+    keySecret: string;
+  };
+  stripe: {
+    enabled: boolean;
+    publishKey: string;
+    secretKey: string;
+  };
+  paypal: {
+    enabled: boolean;
+    merchantAccount: string;
+  };
+}
+
 export interface UnifiedMonthlyTargets {
   salesTargetKobo: number;
   expenseBudgetKobo: number;
@@ -655,6 +677,38 @@ export const DEFAULT_VISITORS: UnifiedVisitorLog[] = [
   },
 ];
 
+export const DEFAULT_ROOM_STATUSES: Record<string, "AVAILABLE" | "OCCUPIED" | "CLEANING"> = {
+  p_apt_1: "AVAILABLE",
+  p_apt_2: "OCCUPIED",
+  p_apt_3: "AVAILABLE",
+  suite_101: "OCCUPIED",
+  suite_102: "AVAILABLE",
+  suite_201: "AVAILABLE",
+  suite_301: "OCCUPIED",
+};
+
+export const DEFAULT_PAYMENT_SETTINGS: UnifiedPaymentSettings = {
+  paystack: {
+    enabled: true,
+    publishKey: "pk_test_9291b248a34d88e0b234199c",
+    secretKey: "sk_test_••••••••••••••••••••••••",
+  },
+  razorpay: {
+    enabled: false,
+    keyId: "",
+    keySecret: "",
+  },
+  stripe: {
+    enabled: true,
+    publishKey: "pk_live_51P8892Zbcd112A90",
+    secretKey: "sk_live_••••••••••••••••••••••••",
+  },
+  paypal: {
+    enabled: true,
+    merchantAccount: "billing@zinoone.com",
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Storage Keys & Event Sync
 // ---------------------------------------------------------------------------
@@ -667,8 +721,10 @@ const STORAGE_KEYS = {
   TARGETS: "zino_unified_targets_v2",
   CART: "zino_unified_cart_v2",
   VISITORS: "zino_unified_visitors_v2",
+  ROOM_STATUSES: "zino_unified_room_statuses_v2",
   GLOBAL_SERVICE_FILTER: "zino_global_service_filter_v2",
   GLOBAL_LOCATION_FILTER: "zino_global_location_filter_v2",
+  PAYMENT_SETTINGS: "zino_payment_settings_v1",
 };
 
 const STORE_EVENT = "zino-platform-store-sync";
@@ -827,6 +883,8 @@ export function usePlatformStore() {
   const [targets, setTargets] = useState<UnifiedMonthlyTargets>(DEFAULT_MONTHLY_TARGETS);
   const [cartItems, setCartItems] = useState<UnifiedCartItem[]>(DEFAULT_CART_ITEMS);
   const [visitors, setVisitors] = useState<UnifiedVisitorLog[]>(DEFAULT_VISITORS);
+  const [roomStatuses, setRoomStatuses] = useState<Record<string, "AVAILABLE" | "OCCUPIED" | "CLEANING">>(DEFAULT_ROOM_STATUSES);
+  const [paymentSettings, setPaymentSettings] = useState<UnifiedPaymentSettings>(DEFAULT_PAYMENT_SETTINGS);
   const [globalServiceFilter, setGlobalServiceFilter] = useState<ServiceSlug | "ALL">("ALL");
   const [globalLocationFilter, setGlobalLocationFilter] = useState<string>("ALL");
 
@@ -838,6 +896,8 @@ export function usePlatformStore() {
     setTargets(readStorage(STORAGE_KEYS.TARGETS, DEFAULT_MONTHLY_TARGETS));
     setCartItems(readStorage(STORAGE_KEYS.CART, DEFAULT_CART_ITEMS));
     setVisitors(readStorage(STORAGE_KEYS.VISITORS, DEFAULT_VISITORS));
+    setRoomStatuses(readStorage(STORAGE_KEYS.ROOM_STATUSES, DEFAULT_ROOM_STATUSES));
+    setPaymentSettings(readStorage(STORAGE_KEYS.PAYMENT_SETTINGS, DEFAULT_PAYMENT_SETTINGS));
     setGlobalServiceFilter(readStorage(STORAGE_KEYS.GLOBAL_SERVICE_FILTER, "ALL"));
     setGlobalLocationFilter(readStorage(STORAGE_KEYS.GLOBAL_LOCATION_FILTER, "ALL"));
   }, []);
@@ -1095,6 +1155,34 @@ export function usePlatformStore() {
     );
   }, []);
 
+  const setRoomStatus = useCallback((roomId: string, status: "AVAILABLE" | "OCCUPIED" | "CLEANING") => {
+    const current = readStorage(STORAGE_KEYS.ROOM_STATUSES, DEFAULT_ROOM_STATUSES);
+    const updated = { ...current, [roomId]: status };
+    writeStorage(STORAGE_KEYS.ROOM_STATUSES, updated);
+  }, []);
+
+  const toggleRoomStatus = useCallback((roomId: string) => {
+    const current = readStorage(STORAGE_KEYS.ROOM_STATUSES, DEFAULT_ROOM_STATUSES);
+    const curr = current[roomId] || "AVAILABLE";
+    const next = curr === "AVAILABLE" ? "OCCUPIED" : curr === "OCCUPIED" ? "CLEANING" : "AVAILABLE";
+    const updated = { ...current, [roomId]: next };
+    writeStorage(STORAGE_KEYS.ROOM_STATUSES, updated);
+    return next;
+  }, []);
+
+  const updatePaymentSettings = useCallback((updated: Partial<UnifiedPaymentSettings>) => {
+    const current = readStorage(STORAGE_KEYS.PAYMENT_SETTINGS, DEFAULT_PAYMENT_SETTINGS);
+    const next: UnifiedPaymentSettings = {
+      paystack: { ...current.paystack, ...(updated.paystack || {}) },
+      razorpay: { ...current.razorpay, ...(updated.razorpay || {}) },
+      stripe: { ...current.stripe, ...(updated.stripe || {}) },
+      paypal: { ...current.paypal, ...(updated.paypal || {}) },
+    };
+    writeStorage(STORAGE_KEYS.PAYMENT_SETTINGS, next);
+    setPaymentSettings(next);
+    return next;
+  }, []);
+
   return {
     products,
     invoices,
@@ -1103,6 +1191,8 @@ export function usePlatformStore() {
     targets,
     cartItems,
     visitors,
+    roomStatuses,
+    paymentSettings,
     globalServiceFilter,
     globalLocationFilter,
     saveProduct,
@@ -1119,6 +1209,9 @@ export function usePlatformStore() {
     addVisitor,
     checkoutVisitor,
     deleteVisitor,
+    setRoomStatus,
+    toggleRoomStatus,
+    updatePaymentSettings,
     recordTransaction: recordPlatformTransaction,
   };
 }

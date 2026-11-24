@@ -205,6 +205,9 @@ export default function DeviceGalaxyShopPage() {
                     src={mergedProducts[0].image}
                     alt={mergedProducts[0].name}
                     className="max-h-full max-w-full object-contain"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                    }}
                   />
                 ) : (
                   <Package className="w-12 h-12 text-gray-300" />
@@ -335,6 +338,9 @@ export default function DeviceGalaxyShopPage() {
                       src={p.image}
                       alt={p.name}
                       className="max-h-full max-w-full w-auto h-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = "none";
+                      }}
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center text-gray-300">
@@ -431,6 +437,9 @@ export default function DeviceGalaxyShopPage() {
                     src={previewProduct.image}
                     alt={previewProduct.name}
                     className="max-h-full max-w-full object-contain"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                    }}
                   />
                 ) : (
                   <Package className="w-14 h-14 text-gray-300" />

@@ -297,6 +297,7 @@ export default function UnifiedAdminDashboard() {
     activities,
     paymentDues,
     targets,
+    roomStatuses,
     globalServiceFilter,
     globalLocationFilter,
     updateGlobalServiceFilter,
@@ -305,6 +306,7 @@ export default function UnifiedAdminDashboard() {
     restockProduct,
     settlePaymentDue,
     updateTargets,
+    toggleRoomStatus,
     recordTransaction,
   } = usePlatformStore();
 
@@ -432,21 +434,55 @@ export default function UnifiedAdminDashboard() {
   const [networkLatency, setNetworkLatency] = useState<number | null>(null);
   const [isSyncingAll, setIsSyncingAll] = useState(false);
 
-  // ── Apartment Suite Quick Status Board State ──
-  const [suiteStatuses, setSuiteStatuses] = useState<Record<string, "AVAILABLE" | "OCCUPIED" | "CLEANING">>({
-    suite_101: "OCCUPIED",
-    suite_102: "AVAILABLE",
-    suite_201: "AVAILABLE",
-    suite_301: "OCCUPIED",
-  });
+  // ── Apartment Suite Quick Status Board State (Live from Platform Store) ──
+  const apartmentRooms = useMemo(() => {
+    const storeApartments = products.filter(
+      (p) => p.source === ServiceSlug.APARTMENTS && p.status !== "INACTIVE" && p.status !== "ARCHIVED"
+    );
+    if (storeApartments.length > 0) {
+      return storeApartments.map((p, idx) => ({
+        id: p.id,
+        title: p.name,
+        rateKobo: p.priceKobo || 5000000,
+        features: p.label || p.description || "Luxury Serviced Suite",
+        floor: p.sku ? `Suite Ref: ${p.sku}` : `Floor ${idx + 1}`,
+      }));
+    }
+    return [
+      {
+        id: "suite_101",
+        title: "Deluxe Studio Suite",
+        rateKobo: 5000000,
+        features: "1 Bed · 1 Bath · 45 sqm",
+        floor: "1st Floor, East Wing",
+      },
+      {
+        id: "suite_102",
+        title: "Executive 1-Bedroom",
+        rateKobo: 7500000,
+        features: "1 Bed · Lounge · 75 sqm",
+        floor: "2nd Floor, Ocean View",
+      },
+      {
+        id: "suite_201",
+        title: "Luxury 2-Bedroom Suite",
+        rateKobo: 11000000,
+        features: "2 Bed · Kitchen · 115 sqm",
+        floor: "3rd Floor, West Wing",
+      },
+      {
+        id: "suite_301",
+        title: "Presidential Penthouse",
+        rateKobo: 18000000,
+        features: "3 Bed · Private Terrace · 210 sqm",
+        floor: "Top Penthouse Floor",
+      },
+    ];
+  }, [products]);
 
   const handleToggleRoomStatus = (suiteKey: string, suiteTitle: string) => {
-    setSuiteStatuses((prev) => {
-      const current = prev[suiteKey] || "AVAILABLE";
-      const next = current === "AVAILABLE" ? "OCCUPIED" : current === "OCCUPIED" ? "CLEANING" : "AVAILABLE";
-      showToast(`${suiteTitle} status changed to ${next}`);
-      return { ...prev, [suiteKey]: next };
-    });
+    const next = toggleRoomStatus(suiteKey);
+    showToast(`${suiteTitle} status changed to ${next}`);
   };
 
   // ── Quick Operations Simulator Handlers ──
@@ -1666,37 +1702,8 @@ export default function UnifiedAdminDashboard() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            {
-              id: "suite_101",
-              title: "Deluxe Studio Suite",
-              rateKobo: 5000000,
-              features: "1 Bed · 1 Bath · 45 sqm",
-              floor: "1st Floor, East Wing",
-            },
-            {
-              id: "suite_102",
-              title: "Executive 1-Bedroom",
-              rateKobo: 7500000,
-              features: "1 Bed · Lounge · 75 sqm",
-              floor: "2nd Floor, Ocean View",
-            },
-            {
-              id: "suite_201",
-              title: "Luxury 2-Bedroom Suite",
-              rateKobo: 11000000,
-              features: "2 Bed · Kitchen · 115 sqm",
-              floor: "3rd Floor, West Wing",
-            },
-            {
-              id: "suite_301",
-              title: "Presidential Penthouse",
-              rateKobo: 18000000,
-              features: "3 Bed · Private Terrace · 210 sqm",
-              floor: "Top Penthouse Floor",
-            },
-          ].map((room) => {
-            const status = suiteStatuses[room.id] || "AVAILABLE";
+          {apartmentRooms.map((room) => {
+            const status = roomStatuses[room.id] || "AVAILABLE";
             const statusConfig = {
               AVAILABLE: {
                 label: "AVAILABLE",

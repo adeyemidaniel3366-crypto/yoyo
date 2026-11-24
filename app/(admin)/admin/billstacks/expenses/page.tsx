@@ -19,16 +19,17 @@ interface ExpenseRow {
   paymentMode: string;
 }
 
-const EXPENSES: ExpenseRow[] = [
-  { id: "e1", category: "Cloud Hosting", description: "AWS & Vercel Enterprise Cloud Compute", vendor: "Amazon Web Services", amountKobo: 12000000, date: "19 Nov 2026", paymentMode: "Corporate Card" },
-  { id: "e2", category: "Office & Power", description: "Diesel Generator Refueling (1,000L)", vendor: "TotalEnergies Nigeria", amountKobo: 13500000, date: "18 Nov 2026", paymentMode: "Bank Transfer" },
-  { id: "e3", category: "Software Licensing", description: "Google Workspace & Slack Enterprise", vendor: "Google Cloud", amountKobo: 4500000, date: "15 Nov 2026", paymentMode: "Corporate Card" },
-  { id: "e4", category: "Legal & Audit", description: "Quarterly Tax Filing & Advisory", vendor: "KPMG Nigeria", amountKobo: 35000000, date: "10 Nov 2026", paymentMode: "Bank Transfer" },
-];
-
 export default function BillstacksExpensesPage() {
   const { recordTransaction } = usePlatformStore();
-  const [expenses, setExpenses] = useState<ExpenseRow[]>(EXPENSES);
+  const [expenses, setExpenses] = useState<ExpenseRow[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem("zino_billstacks_expenses_v2");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -64,7 +65,13 @@ export default function BillstacksExpensesPage() {
       paymentMode: newExp.paymentMode,
     };
 
-    setExpenses([created, ...expenses]);
+    const nextExpenses = [created, ...expenses];
+    setExpenses(nextExpenses);
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem("zino_billstacks_expenses_v2", JSON.stringify(nextExpenses));
+      } catch {}
+    }
 
     recordTransaction({
       source: ServiceSlug.BILLSTACKS,
@@ -87,7 +94,7 @@ export default function BillstacksExpensesPage() {
       paymentMode: "Bank Transfer",
       date: new Date().toISOString().slice(0, 10),
     });
-    showToast(`Expense of ₦${Number(created.amountKobo / 100).toLocaleString()} recorded and deducted from executive summary!`);
+    showToast(`Expense of ₦${Number(created.amountKobo / 100).toLocaleString()} recorded!`);
   };
 
   const filtered = expenses.filter(
@@ -98,6 +105,12 @@ export default function BillstacksExpensesPage() {
   );
 
   const totalExpenseKobo = expenses.reduce((acc, it) => acc + it.amountKobo, 0);
+  const cloudKobo = expenses
+    .filter((e) => e.category === "Cloud Hosting")
+    .reduce((s, e) => s + e.amountKobo, 0);
+  const facilityKobo = expenses
+    .filter((e) => e.category === "Office & Power")
+    .reduce((s, e) => s + e.amountKobo, 0);
 
   return (
     <div className="space-y-6">
@@ -145,13 +158,17 @@ export default function BillstacksExpensesPage() {
         </div>
         <div className="bg-white p-5 rounded-2xl border border-border">
           <p className="text-xs text-muted">Cloud &amp; Infrastructure</p>
-          <h3 className="text-2xl font-black text-heading mt-1">₦165,000</h3>
-          <p className="text-[11px] text-muted mt-1">AWS &amp; Vercel</p>
+          <h3 className="text-2xl font-black text-heading mt-1">
+            {formatCurrency(cloudKobo)}
+          </h3>
+          <p className="text-[11px] text-muted mt-1">Hosting &amp; Cloud</p>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-border">
           <p className="text-xs text-muted">Facility &amp; Diesel Overhead</p>
-          <h3 className="text-2xl font-black text-heading mt-1">₦135,000</h3>
-          <p className="text-[11px] text-muted mt-1">Backup generator fuel</p>
+          <h3 className="text-2xl font-black text-heading mt-1">
+            {formatCurrency(facilityKobo)}
+          </h3>
+          <p className="text-[11px] text-muted mt-1">Utilities &amp; Office</p>
         </div>
       </div>
 
@@ -180,18 +197,26 @@ export default function BillstacksExpensesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map((e) => (
-                <tr key={e.id} className="hover:bg-gray-50/70">
-                  <td className="py-3 font-semibold text-billstacks">{e.category}</td>
-                  <td className="py-3 font-medium text-heading">{e.description}</td>
-                  <td className="py-3 text-muted">{e.vendor}</td>
-                  <td className="py-3 text-muted">{e.paymentMode}</td>
-                  <td className="py-3 text-muted">{e.date}</td>
-                  <td className="py-3 text-right font-black text-rose-600">
-                    {formatCurrency(e.amountKobo)}
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-400 italic">
+                    No data founds
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map((e) => (
+                  <tr key={e.id} className="hover:bg-gray-50/70">
+                    <td className="py-3 font-semibold text-billstacks">{e.category}</td>
+                    <td className="py-3 font-medium text-heading">{e.description}</td>
+                    <td className="py-3 text-muted">{e.vendor}</td>
+                    <td className="py-3 text-muted">{e.paymentMode}</td>
+                    <td className="py-3 text-muted">{e.date}</td>
+                    <td className="py-3 text-right font-black text-rose-600">
+                      {formatCurrency(e.amountKobo)}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

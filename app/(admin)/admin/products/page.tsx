@@ -102,6 +102,12 @@ function ProductModal({
     createdAt: new Date().toISOString().slice(0, 10),
     ...product,
   });
+  const [priceNaira, setPriceNaira] = useState<number>(
+    product?.priceKobo ? Math.round(product.priceKobo / 100) : 0
+  );
+  const [costNaira, setCostNaira] = useState<number>(
+    product?.costKobo ? Math.round(product.costKobo / 100) : 0
+  );
   const [imageUrl, setImageUrl] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -121,8 +127,8 @@ function ProductModal({
       sku: form.sku ?? "",
       name: form.name ?? "",
       description: form.description ?? "",
-      priceKobo: Number(form.priceKobo) || 0,
-      costKobo: Number(form.costKobo) || 0,
+      priceKobo: Math.round((Number(priceNaira) || 0) * 100),
+      costKobo: Math.round((Number(costNaira) || 0) * 100),
       images: form.images ?? [],
       status: form.status ?? "ACTIVE",
       totalStock: form.totalStock ?? 0,
@@ -206,35 +212,41 @@ function ProductModal({
               className="w-full px-3 py-2 rounded-lg border border-border text-sm text-heading focus:outline-none focus:border-active resize-none" />
           </div>
 
-          {/* Price + Cost */}
+          {/* Price + Cost in Standard Naira */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-heading block mb-1.5">Selling Price (₦ kobo)</label>
-                        <NumberInput
-                          value={form.priceKobo ?? 0}
-                          onChange={(v) => set("priceKobo", v as number)}
-                          placeholder="e.g. 2500000"
-                          min={0}
-                          step={100}
-                          allowNegative={false}
-                          allowDecimal={false}
-                          prefix="₦"
-                        />
-              <p className="text-[10px] text-muted mt-0.5">{formatCurrency(Number(form.priceKobo) || 0)}</p>
+              <label className="text-xs font-semibold text-heading block mb-1.5">Selling Price (₦)</label>
+              <NumberInput
+                value={priceNaira}
+                onChange={(v) => {
+                  setErrorMsg(null);
+                  setPriceNaira(v === "" ? 0 : (v as number));
+                }}
+                placeholder="e.g. 25,000"
+                min={0}
+                step={500}
+                allowNegative={false}
+                allowDecimal={false}
+                prefix="₦"
+              />
+              <p className="text-[10px] text-muted mt-0.5">{formatCurrency(priceNaira * 100)}</p>
             </div>
             <div>
-              <label className="text-xs font-semibold text-heading block mb-1.5">Cost Price (₦ kobo)</label>
-                        <NumberInput
-                          value={form.costKobo ?? 0}
-                          onChange={(v) => set("costKobo", v as number)}
-                          placeholder="e.g. 2000000"
-                          min={0}
-                          step={100}
-                          allowNegative={false}
-                          allowDecimal={false}
-                          prefix="₦"
-                        />
-              <p className="text-[10px] text-muted mt-0.5">{formatCurrency(Number(form.costKobo) || 0)}</p>
+              <label className="text-xs font-semibold text-heading block mb-1.5">Cost Price (₦)</label>
+              <NumberInput
+                value={costNaira}
+                onChange={(v) => {
+                  setErrorMsg(null);
+                  setCostNaira(v === "" ? 0 : (v as number));
+                }}
+                placeholder="e.g. 20,000"
+                min={0}
+                step={500}
+                allowNegative={false}
+                allowDecimal={false}
+                prefix="₦"
+              />
+              <p className="text-[10px] text-muted mt-0.5">{formatCurrency(costNaira * 100)}</p>
             </div>
           </div>
 

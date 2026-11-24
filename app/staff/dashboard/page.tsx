@@ -235,12 +235,59 @@ export default function StaffDashboardPage() {
     invoices,
     paymentDues,
     visitors,
+    roomStatuses,
+    toggleRoomStatus,
     saveProduct,
     deleteProduct,
     addVisitor,
     checkoutVisitor,
     deleteVisitor,
   } = usePlatformStore();
+
+  const apartmentRooms = useMemo(() => {
+    const storeApartments = products.filter(
+      (p) => p.source === ServiceSlug.APARTMENTS && p.status !== "INACTIVE" && p.status !== "ARCHIVED"
+    );
+    if (storeApartments.length > 0) {
+      return storeApartments.map((p, idx) => ({
+        id: p.id,
+        title: p.name,
+        rateKobo: p.priceKobo || 5000000,
+        features: p.label || p.description || "Luxury Serviced Suite",
+        floor: p.sku ? `Suite Ref: ${p.sku}` : `Floor ${idx + 1}`,
+      }));
+    }
+    return [
+      {
+        id: "suite_101",
+        title: "Deluxe Studio Suite",
+        rateKobo: 5000000,
+        features: "1 Bed · 1 Bath · 45 sqm",
+        floor: "1st Floor, East Wing",
+      },
+      {
+        id: "suite_102",
+        title: "Executive 1-Bedroom",
+        rateKobo: 7500000,
+        features: "1 Bed · Lounge · 75 sqm",
+        floor: "2nd Floor, Ocean View",
+      },
+      {
+        id: "suite_201",
+        title: "Luxury 2-Bedroom Suite",
+        rateKobo: 11000000,
+        features: "2 Bed · Kitchen · 115 sqm",
+        floor: "3rd Floor, West Wing",
+      },
+      {
+        id: "suite_301",
+        title: "Presidential Penthouse",
+        rateKobo: 18000000,
+        features: "3 Bed · Private Terrace · 210 sqm",
+        floor: "Top Penthouse Floor",
+      },
+    ];
+  }, [products]);
 
   const [activeSection, setActiveSection] = useState<StaffSection>("dashboard");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -694,7 +741,8 @@ export default function StaffDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {APARTMENT_ROOMS.map((room) => {
+        {apartmentRooms.map((room) => {
+          const status = roomStatuses[room.id] || "AVAILABLE";
           const statusConfig = {
             AVAILABLE: {
               label: "AVAILABLE",
@@ -711,36 +759,46 @@ export default function StaffDashboardPage() {
               bg: "bg-amber-50 text-amber-700 border-amber-200",
               dot: "bg-amber-500",
             },
-          }[room.status];
+          }[status];
 
           return (
             <div
               key={room.id}
-              className="p-4 rounded-xl border border-gray-200 bg-slate-50/50 space-y-2 min-w-0 overflow-hidden"
+              className="p-4 rounded-xl border border-gray-200 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all space-y-2 min-w-0 overflow-hidden flex flex-col justify-between"
             >
-              <div className="flex flex-wrap items-center justify-between gap-1.5 min-w-0">
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 max-w-full",
-                    statusConfig.bg
-                  )}
-                >
-                  <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", statusConfig.dot)} />
-                  <span className="truncate">{statusConfig.label}</span>
-                </span>
-                <span className="text-[11px] font-mono font-bold text-gray-900 truncate">
-                  {formatCurrency(room.rateKobo)}/night
-                </span>
+              <div className="space-y-2 min-w-0">
+                <div className="flex flex-wrap items-center justify-between gap-1.5 min-w-0">
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 max-w-full",
+                      statusConfig.bg
+                    )}
+                  >
+                    <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", statusConfig.dot)} />
+                    <span className="truncate">{statusConfig.label}</span>
+                  </span>
+                  <span className="text-[11px] font-mono font-bold text-gray-900 truncate">
+                    {formatCurrency(room.rateKobo)}/night
+                  </span>
+                </div>
+                <h3 className="font-bold text-sm text-gray-900 truncate" title={room.title}>
+                  {room.title}
+                </h3>
+                <p className="text-[11px] text-gray-600 truncate" title={room.features}>
+                  {room.features}
+                </p>
+                <p className="text-[10px] font-mono text-gray-500 truncate" title={room.floor}>
+                  {room.floor}
+                </p>
               </div>
-              <h3 className="font-bold text-sm text-gray-900 truncate" title={room.title}>
-                {room.title}
-              </h3>
-              <p className="text-[11px] text-gray-600 truncate" title={room.features}>
-                {room.features}
-              </p>
-              <p className="text-[10px] font-mono text-gray-500 truncate" title={room.floor}>
-                {room.floor}
-              </p>
+              <button
+                type="button"
+                onClick={() => toggleRoomStatus(room.id)}
+                className="mt-3 w-full py-1.5 px-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-100 text-[11px] font-semibold text-gray-800 transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+              >
+                <span>Toggle Status</span>
+                <span className="text-[10px] text-gray-500 font-normal">({statusConfig.label})</span>
+              </button>
             </div>
           );
         })}
