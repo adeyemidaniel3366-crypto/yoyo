@@ -1,5 +1,9 @@
 "use client";
 
+import { ServiceSlug } from "./constants";
+
+export type StaffSubsidiaryAccess = ServiceSlug | "ALL";
+
 // ---------------------------------------------------------------------------
 // Zino One — Unified Auth & Security Questions Storage
 // Handles Super Admin, Staff Management Credentials, and Top Builders Auth
@@ -343,6 +347,7 @@ export interface StaffCredential {
   password: string;
   role: string;
   department: string;
+  subsidiary?: StaffSubsidiaryAccess;
   branch: string;
   pin: string;
   status: "ACTIVE" | "ON_LEAVE" | "OFF_DUTY" | "SUSPENDED";
@@ -359,6 +364,7 @@ const DEFAULT_STAFF_CREDENTIALS: StaffCredential[] = [
     password: "Staff2026!",
     role: "Chief Financial Officer & Controller",
     department: "Executive & Finance",
+    subsidiary: ServiceSlug.BILLSTACKS,
     branch: "HQ Victoria Island, Lagos",
     pin: "1234",
     status: "ACTIVE",
@@ -373,6 +379,7 @@ const DEFAULT_STAFF_CREDENTIALS: StaffCredential[] = [
     password: "Staff2026!",
     role: "Lead POS Store Manager",
     department: "Retail Operations",
+    subsidiary: ServiceSlug.SPARK,
     branch: "Computer Village (Medical Rd)",
     pin: "1234",
     status: "ACTIVE",
@@ -387,6 +394,7 @@ const DEFAULT_STAFF_CREDENTIALS: StaffCredential[] = [
     password: "Staff2026!",
     role: "Front Desk & Guest Concierge Lead",
     department: "Hospitality Management",
+    subsidiary: ServiceSlug.APARTMENTS,
     branch: "Zino Luxury Apartments (Lekki Phase 1)",
     pin: "1234",
     status: "ACTIVE",
@@ -401,6 +409,7 @@ const DEFAULT_STAFF_CREDENTIALS: StaffCredential[] = [
     password: "Staff2026!",
     role: "Yard Logistics & Dispatch Supervisor",
     department: "Yard & Logistics",
+    subsidiary: ServiceSlug.BUILDERS,
     branch: "Top Builders Main Supply Yard",
     pin: "1234",
     status: "ACTIVE",
@@ -415,6 +424,7 @@ const DEFAULT_STAFF_CREDENTIALS: StaffCredential[] = [
     password: "Staff2026!",
     role: "Operations Specialist",
     department: "Zino Operations",
+    subsidiary: "ALL",
     branch: "Zino One Central Hub",
     pin: "1234",
     status: "ACTIVE",

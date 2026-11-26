@@ -63,6 +63,7 @@ export function ApartmentBookingModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedBooking, setConfirmedBooking] =
     useState<ApartmentBooking | null>(null);
+  const [paymentAuthUrl, setPaymentAuthUrl] = useState<string | null>(null);
 
   if (!suite) return null;
 
@@ -95,6 +96,7 @@ export function ApartmentBookingModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           roomTypeId: suite.id,
+          roomTypeSlug: suite.slug,
           checkIn,
           checkOut,
           adults: Number(adults),
@@ -114,6 +116,9 @@ export function ApartmentBookingModal({
           ref = resData.data.ref || ref;
           if (resData.data.room?.number) {
             assignedRoom = `Suite ${resData.data.room.number}`;
+          }
+          if (resData.data.payment?.authorizationUrl) {
+            setPaymentAuthUrl(resData.data.payment.authorizationUrl);
           }
           isServerConfirmed = true;
         }
@@ -197,6 +202,16 @@ export function ApartmentBookingModal({
                   {confirmedBooking.bookingRef}
                 </strong>
               </p>
+              {paymentAuthUrl && (
+                <div className="pt-2">
+                  <a
+                    href={paymentAuthUrl}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-colors"
+                  >
+                    <span>Complete Online Payment Checkout</span>
+                  </a>
+                </div>
+              )}
             </div>
 
             {/* Voucher Card */}

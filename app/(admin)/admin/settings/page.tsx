@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Settings,
   Save,
@@ -13,13 +13,19 @@ import {
 } from "lucide-react";
 import { ServiceSlug, SERVICE_CONFIG, PLATFORM_NAME } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { usePlatformStore } from "@/lib/platform-store";
 
 export default function PlatformSettingsPage() {
+  const { paymentSettings, updatePaymentSettings } = usePlatformStore();
   const [platformName, setPlatformName] = useState(PLATFORM_NAME);
   const [currency] = useState("NGN (Nigerian Naira - ₦)");
-  const [paystackKey, setPaystackKey] = useState("pk_test_************************");
+  const [paystackKey, setPaystackKey] = useState(
+    paymentSettings.paystack.publishKey || "pk_test_************************"
+  );
   const [flutterwaveKey, setFlutterwaveKey] = useState("FLWPUBK_TEST-****************");
   const [isSaved, setIsSaved] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string>("Settings Saved!");
+  const [isSaving, setIsSaving] = useState(false);
 
   const [serviceStatus, setServiceStatus] = useState<Record<ServiceSlug, boolean>>({
     [ServiceSlug.BILLSTACKS]: true,
@@ -30,10 +36,64 @@ export default function PlatformSettingsPage() {
     [ServiceSlug.VISITORS]: true,
   });
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (res?.ok && res?.data) {
+          const s = res.data as Record<string, any>;
+          if (typeof s.PLATFORM_NAME === "string" && s.PLATFORM_NAME) {
+            setPlatformName(s.PLATFORM_NAME);
+          }
+          if (typeof s.PAYSTACK_PUBLIC_KEY === "string" && s.PAYSTACK_PUBLIC_KEY) {
+            setPaystackKey(s.PAYSTACK_PUBLIC_KEY);
+          }
+          if (typeof s.FLUTTERWAVE_PUBLIC_KEY === "string" && s.FLUTTERWAVE_PUBLIC_KEY) {
+            setFlutterwaveKey(s.FLUTTERWAVE_PUBLIC_KEY);
+          }
+          if (s.SERVICE_STATUS && typeof s.SERVICE_STATUS === "object") {
+            setServiceStatus((prev) => ({ ...prev, ...s.SERVICE_STATUS }));
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+    setIsSaving(true);
+    try {
+      // Sync local store payment settings
+      if (paystackKey && !paystackKey.includes("****")) {
+        updatePaymentSettings({
+          paystack: { ...paymentSettings.paystack, publishKey: paystackKey.trim() },
+        });
+      }
+
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            PLATFORM_NAME: platformName.trim() || PLATFORM_NAME,
+            PAYSTACK_PUBLIC_KEY: paystackKey.trim(),
+            FLUTTERWAVE_PUBLIC_KEY: flutterwaveKey.trim(),
+            SERVICE_STATUS: serviceStatus,
+          },
+        }),
+      });
+      if (res.ok) {
+        setSaveMessage("Settings Saved to Database!");
+      } else {
+        setSaveMessage("Settings Saved Locally!");
+      }
+    } catch {
+      setSaveMessage("Settings Saved Locally!");
+    } finally {
+      setIsSaving(false);
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3000);
+    }
   };
 
   return (
@@ -55,7 +115,7 @@ export default function PlatformSettingsPage() {
         {isSaved && (
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200 animate-fade-in">
             <CheckCircle2 className="w-4 h-4" />
-            <span>Settings Saved!</span>
+            <span>{saveMessage}</span>
           </div>
         )}
       </div>
@@ -190,10 +250,11 @@ export default function PlatformSettingsPage() {
         <div className="flex justify-end">
           <button
             type="submit"
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-active text-white text-xs font-bold uppercase tracking-wider hover:bg-indigo-700 transition-colors shadow-sm"
+            disabled={isSaving}
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-active text-white text-xs font-bold uppercase tracking-wider hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-60"
           >
             <Save className="w-4 h-4" />
-            <span>Save Settings</span>
+            <span>{isSaving ? "Saving..." : "Save Settings"}</span>
           </button>
         </div>
       </form>

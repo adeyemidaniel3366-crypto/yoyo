@@ -132,6 +132,28 @@ export async function syncProductToBackend(product: Partial<UnifiedProduct>): Pr
 }
 
 /**
+ * Background optimistic sync for deleting products
+ */
+export async function deleteProductFromBackend(idOrSku: string): Promise<boolean> {
+  try {
+    const health = await probeBackendHealth();
+    if (!health.ok) return false;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+    const res = await fetch(`/api/products/${encodeURIComponent(idOrSku)}`, {
+      method: "DELETE",
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Background optimistic sync for platform transactions/sales
  */
 export async function syncTransactionToBackend(tx: Partial<UnifiedInvoiceActivity>): Promise<boolean> {

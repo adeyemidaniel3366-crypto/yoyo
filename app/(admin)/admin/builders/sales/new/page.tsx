@@ -164,7 +164,10 @@ export default function TopBuildersNewSalePage() {
         }),
       });
       const data = await res.json();
-      const finalInvoiceNo = (res.ok && data.ok && data.data?.invoiceNo) ? data.data.invoiceNo : fallbackInvoiceNo;
+      const finalInvoiceNo =
+        res.ok && data.ok && (data.data?.receiptNo || data.data?.invoiceNo)
+          ? data.data.receiptNo || data.data.invoiceNo
+          : fallbackInvoiceNo;
       setSuccessData({ invoiceNo: finalInvoiceNo, total: subtotalNaira });
     } catch {
       setSuccessData({ invoiceNo: fallbackInvoiceNo, total: subtotalNaira });

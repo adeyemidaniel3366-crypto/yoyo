@@ -27,6 +27,61 @@ export interface UploadResult {
   mimeType: string;
 }
 
+function signS3PutHeaders(params: {
+  url: URL;
+  contentType: string;
+  body: Buffer;
+  accessKey: string;
+  secretKey: string;
+  region: string;
+}): Record<string, string> {
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, "");
+  const dateStamp = amzDate.slice(0, 8);
+  const payloadHash = crypto.createHash("sha256").update(params.body).digest("hex");
+  const host = params.url.host;
+
+  const canonicalHeaders =
+    `content-type:${params.contentType}\n` +
+    `host:${host}\n` +
+    `x-amz-content-sha256:${payloadHash}\n` +
+    `x-amz-date:${amzDate}\n`;
+  const signedHeaders = "content-type;host;x-amz-content-sha256;x-amz-date";
+
+  const canonicalRequest = [
+    "PUT",
+    params.url.pathname,
+    params.url.searchParams.toString(),
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash,
+  ].join("\n");
+
+  const algorithm = "AWS4-HMAC-SHA256";
+  const credentialScope = `${dateStamp}/${params.region}/s3/aws4_request`;
+  const stringToSign = [
+    algorithm,
+    amzDate,
+    credentialScope,
+    crypto.createHash("sha256").update(canonicalRequest).digest("hex"),
+  ].join("\n");
+
+  const hmac = (key: Buffer | string, data: string) =>
+    crypto.createHmac("sha256", key).update(data).digest();
+  const kDate = hmac(`AWS4${params.secretKey}`, dateStamp);
+  const kRegion = hmac(kDate, params.region);
+  const kService = hmac(kRegion, "s3");
+  const kSigning = hmac(kService, "aws4_request");
+  const signature = crypto.createHmac("sha256", kSigning).update(stringToSign).digest("hex");
+
+  return {
+    "Content-Type": params.contentType,
+    "x-amz-content-sha256": payloadHash,
+    "x-amz-date": amzDate,
+    Authorization: `${algorithm} Credential=${params.accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+  };
+}
+
 export async function handleFileUpload(
   file: File,
   purposeRaw: string
@@ -84,13 +139,23 @@ export async function handleFileUpload(
   const env = getEnv();
 
   if (env.S3_BUCKET && env.S3_ENDPOINT) {
-    // S3-compatible PUT upload (no extra SDK required)
+    // S3-compatible PUT upload with AWS Signature V4 signing when credentials are provided
     const uploadUrl = `${env.S3_ENDPOINT.replace(/\/$/, "")}/${env.S3_BUCKET}/${key}`;
+    const headers: Record<string, string> =
+      env.S3_ACCESS_KEY && env.S3_SECRET_KEY
+        ? signS3PutHeaders({
+            url: new URL(uploadUrl),
+            contentType: finalMime,
+            body: buffer,
+            accessKey: env.S3_ACCESS_KEY,
+            secretKey: env.S3_SECRET_KEY,
+            region: process.env.S3_REGION || "auto",
+          })
+        : { "Content-Type": finalMime };
+
     const res = await fetch(uploadUrl, {
       method: "PUT",
-      headers: {
-        "Content-Type": finalMime,
-      },
+      headers,
       body: new Uint8Array(buffer),
     });
     if (!res.ok) {

@@ -2,6 +2,9 @@
 // Zino Luxury Apartments — Master Apartment & Booking Data Model
 // ---------------------------------------------------------------------------
 
+import { readProductsStorage } from "./platform-store";
+import { ServiceSlug } from "./constants";
+
 export interface ApartmentSuite {
   id: string;
   slug: string;
@@ -299,6 +302,50 @@ export const DEFAULT_APARTMENT_SUITES: ApartmentSuite[] = [
 export function getApartmentSuites(): ApartmentSuite[] {
   if (typeof window === "undefined") return DEFAULT_APARTMENT_SUITES;
   try {
+    // 1. Read directly from the unified platform store catalog so admin edits/deletions reflect immediately
+    const products = readProductsStorage();
+    const storeApartments = products.filter(
+      (p) => p.source === ServiceSlug.APARTMENTS && p.status !== "INACTIVE" && p.status !== "ARCHIVED"
+    );
+
+    if (storeApartments.length > 0) {
+      return storeApartments.map((p) => {
+        const cat = (p.name.includes("2-Bedroom")
+          ? "2-Bedroom"
+          : p.name.includes("1-Bedroom")
+          ? "1-Bedroom"
+          : p.name.includes("Penthouse")
+          ? "Penthouse"
+          : "Studio") as ApartmentSuite["category"];
+        return {
+          id: p.id,
+          slug: p.sku ? p.sku.toLowerCase().replace(/[^a-z0-9]+/g, "-") : p.id,
+          name: p.name,
+          subtitle: p.label || "Serviced Luxury Apartment",
+          category: cat,
+          basePriceKobo: p.priceKobo || 3000000,
+          taxPct: 10,
+          cautionDepositKobo: 2000000,
+          adults: cat === "2-Bedroom" ? 4 : 2,
+          children: 1,
+          bedrooms: cat === "2-Bedroom" ? 2 : 1,
+          bathrooms: cat === "2-Bedroom" ? 2 : 1,
+          bedType: "1 King-Size Bed (6x6)",
+          sizeSqm: 65,
+          floor: "2nd Floor",
+          view: "Lekki Skyline View",
+          image: p.imageUrl || "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=1000",
+          gallery: p.images && p.images.length > 0 ? p.images : p.imageUrl ? [p.imageUrl] : ["https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=1000"],
+          amenities: p.amenities || ["Sitout", "AC", "Kitchen", "WiFi", "Bath Heater", "24/7 Power"],
+          description: p.description || p.label || "Luxury apartment in Lekki Phase 1.",
+          sleepingArrangements: [{ room: "Master Bedroom", bed: "1 King-Size Bed" }],
+          rules: ["Check-in: 2:00 PM", "Check-out: 11:00 AM", "Refundable deposit required"],
+          availableUnits: p.totalStock || 4,
+          featured: p.isFeatured ?? true,
+        };
+      });
+    }
+
     const raw = localStorage.getItem(APARTMENT_STORAGE_KEYS.SUITES);
     if (!raw) return DEFAULT_APARTMENT_SUITES;
     const parsed = JSON.parse(raw);

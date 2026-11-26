@@ -3,7 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { ServiceSlug } from "./constants";
 import { formatCurrency } from "./money";
-import { syncProductToBackend, syncTransactionToBackend } from "./api-sync";
+import {
+  deleteProductFromBackend,
+  syncProductToBackend,
+  syncTransactionToBackend,
+} from "./api-sync";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -184,15 +188,15 @@ export const DEFAULT_UNIFIED_PRODUCTS: UnifiedProduct[] = [
     source: ServiceSlug.GALAXY,
     sku: "LXR-SL500-2TB",
     name: "Lexar SL500 Portable SSD 2TB",
-    label: "Hot E-Commerce Deal",
+    label: "Portable Storage",
     description: "Ultra-Slim Aluminum USB 3.2 Gen 2x2 Portable External SSD — 2000MB/s",
     priceKobo: 22000000,
     costKobo: 17000000,
     priceDisplay: "₦220,000",
     imageUrl: "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=600&auto=format&fit=crop&q=80",
     images: ["https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=600&auto=format&fit=crop&q=80"],
-    status: "LOW_STOCK",
-    totalStock: 2,
+    status: "ACTIVE",
+    totalStock: 12,
     lowStockAt: 5,
     isFeatured: true,
     isNew: true,
@@ -212,6 +216,150 @@ export const DEFAULT_UNIFIED_PRODUCTS: UnifiedProduct[] = [
     status: "ACTIVE",
     totalStock: 4,
     lowStockAt: 2,
+    isFeatured: true,
+    isNew: false,
+  },
+  {
+    id: "p_galaxy_3",
+    source: ServiceSlug.GALAXY,
+    sku: "SAM-990PRO-4TB",
+    name: "Samsung 990 PRO 4TB PCIe 4.0 NVMe M.2 SSD",
+    label: "SSDs & Storage",
+    description: "High performance NVMe SSD with smart heatsink and 7450MB/s read speeds",
+    priceKobo: 48000000,
+    costKobo: 39000000,
+    priceDisplay: "₦480,000",
+    imageUrl: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=700&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=700&auto=format&fit=crop&q=80"],
+    status: "ACTIVE",
+    totalStock: 8,
+    lowStockAt: 3,
+    isFeatured: true,
+    isNew: false,
+  },
+  {
+    id: "p_galaxy_4",
+    source: ServiceSlug.GALAXY,
+    sku: "APPLE-MBP16-M3MAX",
+    name: "Apple MacBook Pro 16\" M3 Max (36GB / 1TB SSD)",
+    label: "Laptops & Computing",
+    description: "Pro performance laptop with Liquid Retina XDR display and M3 Max silicon",
+    priceKobo: 485000000,
+    costKobo: 420000000,
+    priceDisplay: "₦4,850,000",
+    imageUrl: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=700&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=700&auto=format&fit=crop&q=80"],
+    status: "ACTIVE",
+    totalStock: 4,
+    lowStockAt: 2,
+    isFeatured: true,
+    isNew: true,
+  },
+  {
+    id: "p_galaxy_5",
+    source: ServiceSlug.GALAXY,
+    sku: "JBL-BAR1300-PRO",
+    name: "JBL Bar 1300 11.1.4 Dolby Atmos Surround System",
+    label: "Audio & Home Theater",
+    description: "1170W wireless surround system with detachable rear speakers & 10\" sub",
+    priceKobo: 185000000,
+    costKobo: 155000000,
+    priceDisplay: "₦1,850,000",
+    imageUrl: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=700&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=700&auto=format&fit=crop&q=80"],
+    status: "ACTIVE",
+    totalStock: 5,
+    lowStockAt: 2,
+    isFeatured: true,
+    isNew: true,
+  },
+  {
+    id: "p_galaxy_6",
+    source: ServiceSlug.GALAXY,
+    sku: "SONY-WH1000XM5",
+    name: "Sony WH-1000XM5 Wireless ANC Headphones",
+    label: "Audio & Headphones",
+    description: "Industry-leading noise cancelling headphones with 30-hour battery life",
+    priceKobo: 45000000,
+    costKobo: 37000000,
+    priceDisplay: "₦450,000",
+    imageUrl: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=700&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=700&auto=format&fit=crop&q=80"],
+    status: "ACTIVE",
+    totalStock: 14,
+    lowStockAt: 4,
+    isFeatured: true,
+    isNew: false,
+  },
+  {
+    id: "p_galaxy_7",
+    source: ServiceSlug.GALAXY,
+    sku: "ANKER-PRIME-27K",
+    name: "Anker Prime 27,650mAh Power Bank (250W)",
+    label: "Accessories & Power",
+    description: "250W 3-port ultra-fast power bank with smart LCD digital display",
+    priceKobo: 16500000,
+    costKobo: 13000000,
+    priceDisplay: "₦165,000",
+    imageUrl: "https://images.unsplash.com/photo-1609592424160-59a60641eb3a?w=700&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1609592424160-59a60641eb3a?w=700&auto=format&fit=crop&q=80"],
+    status: "ACTIVE",
+    totalStock: 18,
+    lowStockAt: 5,
+    isFeatured: false,
+    isNew: true,
+  },
+  {
+    id: "p_galaxy_8",
+    source: ServiceSlug.GALAXY,
+    sku: "DELL-U3224KB-6K",
+    name: "Dell UltraSharp 32\" 6K UHD IPS Black Monitor",
+    label: "Monitors & Workspace",
+    description: "6K resolution monitor with IPS Black, 4K webcam and 140W Thunderbolt 4 hub",
+    priceKobo: 295000000,
+    costKobo: 250000000,
+    priceDisplay: "₦2,950,000",
+    imageUrl: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=700&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=700&auto=format&fit=crop&q=80"],
+    status: "LOW_STOCK",
+    totalStock: 3,
+    lowStockAt: 2,
+    isFeatured: false,
+    isNew: false,
+  },
+  {
+    id: "p_galaxy_9",
+    source: ServiceSlug.GALAXY,
+    sku: "ZLT-S69M-13360",
+    name: "Zealot S69M 50W Outdoor Bluetooth Speaker",
+    label: "Audio & Speakers",
+    description: "50W waterproof IPX7 party speaker with dual bass drivers",
+    priceKobo: 12000000,
+    costKobo: 9500000,
+    priceDisplay: "₦120,000",
+    imageUrl: "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=700&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=700&auto=format&fit=crop&q=80"],
+    status: "OUT_OF_STOCK",
+    totalStock: 0,
+    lowStockAt: 5,
+    isFeatured: false,
+    isNew: false,
+  },
+  {
+    id: "p_galaxy_10",
+    source: ServiceSlug.GALAXY,
+    sku: "LOGI-MXM3S-GRAPH",
+    name: "Logitech MX Master 3S Wireless Mouse",
+    label: "Accessories & Peripherals",
+    description: "Ergonomic 8000 DPI quiet click wireless mouse with MagSpeed scrolling",
+    priceKobo: 18500000,
+    costKobo: 14500000,
+    priceDisplay: "₦185,000",
+    imageUrl: "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=700&auto=format&fit=crop&q=80",
+    images: ["https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=700&auto=format&fit=crop&q=80"],
+    status: "ACTIVE",
+    totalStock: 16,
+    lowStockAt: 5,
     isFeatured: true,
     isNew: false,
   },
@@ -715,7 +863,8 @@ export const DEFAULT_PAYMENT_SETTINGS: UnifiedPaymentSettings = {
 // ---------------------------------------------------------------------------
 
 const STORAGE_KEYS = {
-  PRODUCTS: "zino_unified_catalog_v2",
+  PRODUCTS: "zino_unified_catalog_v3",
+  DELETED_PRODUCTS: "zino_deleted_product_ids_v1",
   INVOICES: "zino_unified_invoices_v2",
   ACTIVITIES: "zino_unified_activities_v2",
   DUES: "zino_unified_dues_v2",
@@ -729,6 +878,78 @@ const STORAGE_KEYS = {
 };
 
 const STORE_EVENT = "zino-platform-store-sync";
+
+export function readProductsStorage(): UnifiedProduct[] {
+  if (typeof window === "undefined") return DEFAULT_UNIFIED_PRODUCTS;
+  try {
+    const deletedList = readStorage<string[]>(STORAGE_KEYS.DELETED_PRODUCTS, []);
+    const deletedSet = new Set(deletedList.map((d) => String(d).toLowerCase()));
+
+    let raw = window.localStorage.getItem(STORAGE_KEYS.PRODUCTS);
+    // If v3 doesn't exist yet, inspect legacy v2 to carry over custom products while ensuring all defaults exist
+    if (!raw) {
+      const v2Raw = window.localStorage.getItem("zino_unified_catalog_v2");
+      let baseList = DEFAULT_UNIFIED_PRODUCTS;
+      if (v2Raw) {
+        try {
+          const v2List = JSON.parse(v2Raw) as UnifiedProduct[];
+          if (Array.isArray(v2List) && v2List.length > 0) {
+            const existingIds = new Set(v2List.map((p) => p.id));
+            const existingSkus = new Set(v2List.map((p) => p.sku.toLowerCase()));
+            const missing = DEFAULT_UNIFIED_PRODUCTS.filter(
+              (dp) =>
+                !existingIds.has(dp.id) &&
+                !existingSkus.has(dp.sku.toLowerCase()) &&
+                !deletedSet.has(dp.id.toLowerCase()) &&
+                !deletedSet.has(dp.sku.toLowerCase())
+            );
+            baseList = [...v2List, ...missing];
+          }
+        } catch {}
+      }
+      baseList = baseList.filter(
+        (p) => !deletedSet.has(p.id.toLowerCase()) && !deletedSet.has(p.sku.toLowerCase())
+      );
+      window.localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(baseList));
+      return baseList;
+    }
+
+    const parsed = JSON.parse(raw) as UnifiedProduct[];
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      const filteredDefaults = DEFAULT_UNIFIED_PRODUCTS.filter(
+        (dp) => !deletedSet.has(dp.id.toLowerCase()) && !deletedSet.has(dp.sku.toLowerCase())
+      );
+      window.localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(filteredDefaults));
+      return filteredDefaults;
+    }
+
+    // Filter parsed list against deleted set to ensure deleted demo products never reappear
+    const cleanedParsed = parsed.filter(
+      (p) => !deletedSet.has(p.id.toLowerCase()) && !deletedSet.has(p.sku.toLowerCase())
+    );
+
+    // Only inject missing defaults if they are NOT in deletedSet
+    const existingIds = new Set(cleanedParsed.map((p) => p.id));
+    const existingSkus = new Set(cleanedParsed.map((p) => p.sku.toLowerCase()));
+    const missing = DEFAULT_UNIFIED_PRODUCTS.filter(
+      (dp) =>
+        !existingIds.has(dp.id) &&
+        !existingSkus.has(dp.sku.toLowerCase()) &&
+        !deletedSet.has(dp.id.toLowerCase()) &&
+        !deletedSet.has(dp.sku.toLowerCase())
+    );
+
+    if (missing.length > 0 || cleanedParsed.length !== parsed.length) {
+      const merged = [...cleanedParsed, ...missing];
+      window.localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(merged));
+      return merged;
+    }
+
+    return cleanedParsed;
+  } catch {
+    return DEFAULT_UNIFIED_PRODUCTS;
+  }
+}
 
 function readStorage<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -893,7 +1114,7 @@ export function usePlatformStore() {
   const [globalLocationFilter, setGlobalLocationFilter] = useState<string>("ALL");
 
   const syncFromStorage = useCallback(() => {
-    setProducts(readStorage(STORAGE_KEYS.PRODUCTS, DEFAULT_UNIFIED_PRODUCTS));
+    setProducts(readProductsStorage());
     setInvoices(readStorage(STORAGE_KEYS.INVOICES, DEFAULT_UNIFIED_INVOICES));
     setActivities(readStorage(STORAGE_KEYS.ACTIVITIES, DEFAULT_UNIFIED_ACTIVITIES));
     setPaymentDues(readStorage(STORAGE_KEYS.DUES, DEFAULT_PAYMENT_DUES));
@@ -919,12 +1140,30 @@ export function usePlatformStore() {
 
   const saveProduct = useCallback(
     (product: Partial<UnifiedProduct> & { name: string; source: ServiceSlug }) => {
-      const current = readStorage(STORAGE_KEYS.PRODUCTS, DEFAULT_UNIFIED_PRODUCTS);
+      const current = readProductsStorage();
       const isExisting = Boolean(product.id && current.some((p) => p.id === product.id));
+
+      // If user adds or re-saves a product, remove its ID/SKU from the deletion blacklist
+      const deletedList = readStorage<string[]>(STORAGE_KEYS.DELETED_PRODUCTS, []);
+      if (deletedList.length > 0) {
+        const idLower = (product.id || "").toLowerCase();
+        const skuLower = (product.sku || "").toLowerCase();
+        const filteredDeleted = deletedList.filter(
+          (d) => d.toLowerCase() !== idLower && d.toLowerCase() !== skuLower
+        );
+        if (filteredDeleted.length !== deletedList.length) {
+          writeStorage(STORAGE_KEYS.DELETED_PRODUCTS, filteredDeleted);
+        }
+      }
+
+      // Synchronize priceKobo with priceDisplay edits from admin form
+      const rawDigits = Number(String(product.priceDisplay || "").replace(/[^0-9]/g, ""));
       const priceKobo =
-        typeof product.priceKobo === "number" && product.priceKobo > 0
+        rawDigits > 0
+          ? rawDigits * 100
+          : typeof product.priceKobo === "number" && product.priceKobo > 0
           ? product.priceKobo
-          : Number(String(product.priceDisplay || "0").replace(/[^0-9]/g, "")) * 100 || 0;
+          : 0;
       const priceDisplay =
         product.priceDisplay && product.priceDisplay.trim()
           ? product.priceDisplay
@@ -986,10 +1225,23 @@ export function usePlatformStore() {
   );
 
   const deleteProduct = useCallback((id: string) => {
-    const current = readStorage(STORAGE_KEYS.PRODUCTS, DEFAULT_UNIFIED_PRODUCTS);
+    const current = readProductsStorage();
     const target = current.find((p) => p.id === id);
     const updated = current.filter((p) => p.id !== id);
+
+    // Permanently record ID and SKU in deletion blacklist so deleted demo products never reappear!
+    const deletedList = readStorage<string[]>(STORAGE_KEYS.DELETED_PRODUCTS, []);
+    const newDeleted = new Set(deletedList.map((d) => String(d).toLowerCase()));
+    newDeleted.add(id.toLowerCase());
+    if (target?.sku) {
+      newDeleted.add(target.sku.toLowerCase());
+    }
+    writeStorage(STORAGE_KEYS.DELETED_PRODUCTS, Array.from(newDeleted));
+
     writeStorage(STORAGE_KEYS.PRODUCTS, updated);
+
+    // Background optimistic sync to backend API when online
+    void deleteProductFromBackend(target?.sku || id);
 
     if (target) {
       const currentActs = readStorage(STORAGE_KEYS.ACTIVITIES, DEFAULT_UNIFIED_ACTIVITIES);
@@ -1009,7 +1261,7 @@ export function usePlatformStore() {
   }, []);
 
   const restockProduct = useCallback((id: string, addedQty = 25) => {
-    const current = readStorage(STORAGE_KEYS.PRODUCTS, DEFAULT_UNIFIED_PRODUCTS);
+    const current = readProductsStorage();
     const updated = current.map((p) => {
       if (p.id !== id) return p;
       const newStock = (p.totalStock || 0) + addedQty;

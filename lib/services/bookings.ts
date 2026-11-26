@@ -89,6 +89,7 @@ export async function checkAvailability(
 export async function createBooking(
   input: {
     roomTypeId: string;
+    roomTypeSlug?: string | null;
     checkIn: string;
     checkOut: string;
     adults: number;
@@ -116,16 +117,33 @@ export async function createBooking(
   }
 
   const created = await prisma.$transaction(async (tx) => {
+    // Resolve RoomType by id, slug, or fallback roomTypeSlug before row locking (§9.4)
+    const slugCandidates = [input.roomTypeId, input.roomTypeSlug].filter(
+      (v): v is string => Boolean(v && v.trim())
+    );
+    const resolvedRoomType = await tx.roomType.findFirst({
+      where: {
+        OR: [
+          { id: input.roomTypeId },
+          { slug: { in: slugCandidates } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (!resolvedRoomType) {
+      throw new NotFoundError("Room type not found");
+    }
+
     // Row lock on RoomType to prevent concurrent double-booking (§9.4)
     const locked = await tx.$queryRaw<Array<{ id: string }>>`
-      SELECT "id" FROM "RoomType" WHERE "id" = ${input.roomTypeId} FOR UPDATE
+      SELECT "id" FROM "RoomType" WHERE "id" = ${resolvedRoomType.id} FOR UPDATE
     `;
     if (locked.length === 0) {
       throw new NotFoundError("Room type not found");
     }
 
     const roomType = await tx.roomType.findUnique({
-      where: { id: input.roomTypeId },
+      where: { id: resolvedRoomType.id },
     });
     if (!roomType || !roomType.isActive) {
       throw new NotFoundError("Room type not found or inactive");
@@ -354,9 +372,21 @@ export async function checkInBooking(
       throw new BusinessError("Booking must be CONFIRMED before check-in");
     }
 
-    const assignedRoomId = roomId ?? existing.roomId;
+    let assignedRoomId = roomId ?? existing.roomId;
     if (!assignedRoomId) {
-      throw new BusinessError("A room must be assigned before check-in");
+      const firstAvailable = await tx.room.findFirst({
+        where: {
+          roomTypeId: existing.roomTypeId,
+          status: RoomStatus.AVAILABLE,
+        },
+        orderBy: { number: "asc" },
+      });
+      if (firstAvailable) {
+        assignedRoomId = firstAvailable.id;
+      }
+    }
+    if (!assignedRoomId) {
+      throw new BusinessError("No available room of this type to check in");
     }
 
     const room = await tx.room.findUnique({ where: { id: assignedRoomId } });

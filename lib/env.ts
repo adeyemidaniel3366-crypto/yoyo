@@ -106,7 +106,7 @@ export function getEnv(): AppEnv {
     SMTP_PORT: Number(process.env.SMTP_PORT ?? "587"),
     SMTP_USER: process.env.SMTP_USER ?? "",
     SMTP_PASS: process.env.SMTP_PASS ?? "",
-    EMAIL_FROM: process.env.EMAIL_FROM ?? "Zino One <no-reply@zinoone.com>",
+    EMAIL_FROM: process.env.EMAIL_FROM ?? process.env.SMTP_FROM ?? "Zino One <no-reply@zinoone.com>",
     TERMII_API_KEY: process.env.TERMII_API_KEY ?? "",
     TERMII_SENDER_ID: process.env.TERMII_SENDER_ID ?? "ZinoOne",
     S3_ENDPOINT: process.env.S3_ENDPOINT ?? "",

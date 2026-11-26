@@ -205,9 +205,37 @@ export async function recordWebhookEventOnce(params: {
   }
 }
 
-export async function verifyAndSettlePayment(reference: string) {
-  const payment = await prisma.payment.findUnique({ where: { reference } });
+export async function verifyAndSettlePayment(
+  reference: string,
+  mockStatus?: string
+) {
+  let payment = null;
+  try {
+    payment = await prisma.payment.findUnique({ where: { reference } });
+  } catch {
+    // DB offline fallback for sandbox mock checkouts
+    if (process.env.NODE_ENV !== "production" && mockStatus === "PAID") {
+      return {
+        reference,
+        status: PaymentStatus.PAID,
+        amountKobo: 0,
+        amountDisplay: formatNGN(0),
+        sandbox: true,
+      };
+    }
+    throw new NotFoundError("Payment reference not found");
+  }
+
   if (!payment) {
+    if (process.env.NODE_ENV !== "production" && mockStatus === "PAID") {
+      return {
+        reference,
+        status: PaymentStatus.PAID,
+        amountKobo: 0,
+        amountDisplay: formatNGN(0),
+        sandbox: true,
+      };
+    }
     throw new NotFoundError("Payment reference not found");
   }
   if (payment.status === PaymentStatus.PAID) {
@@ -221,6 +249,29 @@ export async function verifyAndSettlePayment(reference: string) {
   }
 
   const gateway = (payment.gateway as PaymentGateway) || "PAYSTACK";
+  const hasGatewayKey =
+    gateway === "FLUTTERWAVE"
+      ? Boolean(process.env.FLUTTERWAVE_SECRET_KEY)
+      : Boolean(process.env.PAYSTACK_SECRET_KEY);
+
+  // Allow sandbox mock settlement ONLY when not in production and keys aren't configured
+  if (!hasGatewayKey && process.env.NODE_ENV !== "production" && mockStatus === "PAID") {
+    const res = await settlePaymentByReference({
+      reference,
+      paidAmountKobo: payment.amountKobo,
+      gateway,
+      gatewayRef: `MOCK-${Date.now()}`,
+      eventStatus: "PAID",
+    });
+    return {
+      reference,
+      status: res.settled ? PaymentStatus.PAID : PaymentStatus.PENDING,
+      amountKobo: payment.amountKobo,
+      amountDisplay: formatNGN(payment.amountKobo),
+      sandbox: true,
+    };
+  }
+
   const verification = await verifyPayment(reference, gateway);
 
   if (verification.status === "PAID") {

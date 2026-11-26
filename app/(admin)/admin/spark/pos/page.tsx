@@ -149,7 +149,10 @@ export default function ZinoSparkPosPage() {
         }),
       });
       const data = await res.json();
-      const finalInvoiceNo = (res.ok && data.ok && data.data?.invoiceNo) ? data.data.invoiceNo : inv.invoiceNo;
+      const finalInvoiceNo =
+        res.ok && data.ok && (data.data?.receiptNo || data.data?.invoiceNo)
+          ? data.data.receiptNo || data.data.invoiceNo
+          : inv.invoiceNo;
       setCompletedReceipt({
         invoiceNo: finalInvoiceNo,
         amountKobo: totalKobo,

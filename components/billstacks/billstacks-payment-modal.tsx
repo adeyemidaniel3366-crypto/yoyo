@@ -125,7 +125,7 @@ export function BillstacksPaymentModal({
 
   const anyGatewayEnabled = gateways.some((g) => g.enabled);
 
-  const handleProcessPayment = () => {
+  const handleProcessPayment = async () => {
     if (!selectedGateway) return;
     setIsProcessing(true);
 
@@ -138,37 +138,62 @@ export function BillstacksPaymentModal({
         : selectedGateway === "paypal"
         ? "PAYPAL"
         : "RZP";
-    const ref = `${prefix}-REF-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${Math.floor(
+    let ref = `${prefix}-REF-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${Math.floor(
       100000 + Math.random() * 900000
     )}`;
     const paidAt = now.toLocaleString();
 
-    setTimeout(() => {
-      setIsProcessing(false);
-      setPaymentComplete(true);
-      const res = {
-        reference: ref,
-        gateway:
-          selectedGateway === "paystack"
-            ? "Paystack"
-            : selectedGateway === "stripe"
-            ? "Stripe"
-            : selectedGateway === "paypal"
-            ? "PayPal"
-            : "Razorpay",
-        paidAt,
-        amount: amountNaira,
-      };
-      setReceiptDetails(res);
-      if (onPaymentSuccess) {
-        onPaymentSuccess({
-          gateway: res.gateway,
-          reference: res.reference,
-          amountNaira: res.amount,
-          paidAt: res.paidAt,
-        });
+    try {
+      const apiRes = await fetch("/api/payments/initialize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gateway: selectedGateway.toUpperCase(),
+          amountKobo: Math.round(amountNaira * 100),
+          email: payerEmail || customerEmail,
+          customerName,
+          reference: ref,
+          note: `${itemType} #${referenceNo} — ${title}`,
+        }),
+      });
+      const json = await apiRes.json().catch(() => null);
+      if (apiRes.ok && json?.ok && json?.data) {
+        if (json.data.reference) ref = json.data.reference;
+        const authUrl = json.data.authorizationUrl as string | undefined;
+        // If a live external checkout URL is returned (not local /payments/mock), redirect user there
+        if (authUrl && !authUrl.includes("/payments/mock")) {
+          window.location.href = authUrl;
+          return;
+        }
       }
-    }, 1200);
+    } catch {
+      // Offline / sandbox fallback continues locally
+    }
+
+    setIsProcessing(false);
+    setPaymentComplete(true);
+    const res = {
+      reference: ref,
+      gateway:
+        selectedGateway === "paystack"
+          ? "Paystack"
+          : selectedGateway === "stripe"
+          ? "Stripe"
+          : selectedGateway === "paypal"
+          ? "PayPal"
+          : "Razorpay",
+      paidAt,
+      amount: amountNaira,
+    };
+    setReceiptDetails(res);
+    if (onPaymentSuccess) {
+      onPaymentSuccess({
+        gateway: res.gateway,
+        reference: res.reference,
+        amountNaira: res.amount,
+        paidAt: res.paidAt,
+      });
+    }
   };
 
   return (

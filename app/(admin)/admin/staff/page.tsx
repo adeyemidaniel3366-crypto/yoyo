@@ -53,7 +53,7 @@ export interface StaffMember {
   phone: string;
   role: string;
   department: string;
-  subsidiary: ServiceSlug;
+  subsidiary: ServiceSlug | "ALL";
   branch: string;
   employmentType: "FULL_TIME" | "PART_TIME" | "CONTRACT" | "SHIFT";
   status: "ACTIVE" | "ON_LEAVE" | "OFF_DUTY" | "SUSPENDED";
@@ -229,15 +229,17 @@ export default function StaffManagementPage() {
     email: "",
     phone: "",
     role: "",
-    department: "Retail Operations",
-    subsidiary: ServiceSlug.SPARK,
-    branch: "Computer Village (Medical Rd)",
+    department: "Executive & Operations",
+    subsidiary: "ALL" as ServiceSlug | "ALL",
+    branch: "Zino One Central HQ",
     employmentType: "FULL_TIME" as const,
     pin: "1234",
     loginUsername: "",
     loginPassword: "",
     joinedDate: new Date().toISOString().slice(0, 10),
   });
+
+  const [editLoginSubsidiary, setEditLoginSubsidiary] = useState<ServiceSlug | "ALL">("ALL");
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -252,6 +254,7 @@ export default function StaffManagementPage() {
     const existing = allCreds.find((c) => c.id === staff.id || c.email.toLowerCase() === staff.email.toLowerCase());
     setEditLoginUsername(existing?.username || staff.email);
     setEditLoginPassword(existing?.password || "Staff2026!");
+    setEditLoginSubsidiary(existing?.subsidiary || staff.subsidiary || "ALL");
     setShowEditPassword(false);
     setCopiedLogin(false);
     setIsLoginModalOpen(true);
@@ -274,14 +277,25 @@ export default function StaffManagementPage() {
       password: editLoginPassword.trim(),
       role: selectedStaffForLogin.role,
       department: selectedStaffForLogin.department,
+      subsidiary: editLoginSubsidiary,
       branch: selectedStaffForLogin.branch,
       pin: "1234",
       status: selectedStaffForLogin.status,
       createdAt: new Date().toISOString(),
     });
 
+    setStaffList((prev) =>
+      prev.map((s) =>
+        s.id === selectedStaffForLogin.id ? { ...s, subsidiary: editLoginSubsidiary } : s
+      )
+    );
+
     setIsLoginModalOpen(false);
-    showToast(`Staff portal credentials updated for ${selectedStaffForLogin.name}! Staff can now log in at /staff/login.`);
+    const scopeLabel =
+      editLoginSubsidiary === "ALL"
+        ? "All Companies"
+        : SERVICE_CONFIG[editLoginSubsidiary]?.name || editLoginSubsidiary;
+    showToast(`Portal credentials & ${scopeLabel} access updated for ${selectedStaffForLogin.name}!`);
   };
 
   // Filtered staff list
@@ -366,6 +380,7 @@ export default function StaffManagementPage() {
       password: assignedPassword,
       role: created.role,
       department: created.department,
+      subsidiary: created.subsidiary,
       branch: created.branch,
       pin: newStaff.pin.trim() || "1234",
       status: created.status,
@@ -379,9 +394,9 @@ export default function StaffManagementPage() {
       email: "",
       phone: "",
       role: "",
-      department: "Retail Operations",
-      subsidiary: ServiceSlug.SPARK,
-      branch: "Computer Village (Medical Rd)",
+      department: "Executive & Operations",
+      subsidiary: "ALL",
+      branch: "Zino One Central HQ",
       employmentType: "FULL_TIME",
       pin: "1234",
       loginUsername: "",
@@ -473,7 +488,7 @@ export default function StaffManagementPage() {
       `"${s.phone}"`,
       `"${s.role}"`,
       `"${s.department}"`,
-      `"${SERVICE_CONFIG[s.subsidiary]?.name || s.subsidiary}"`,
+      `"${s.subsidiary === "ALL" ? "All Companies (Full Access)" : SERVICE_CONFIG[s.subsidiary]?.name || s.subsidiary}"`,
       `"${s.branch}"`,
       `"${s.employmentType}"`,
       `"${s.status}"`,
@@ -769,7 +784,14 @@ export default function StaffManagementPage() {
                     {/* Subsidiary & Role */}
                     <td className="py-3.5 px-4">
                       <div className="space-y-1">
-                        <SourceBadge source={staff.subsidiary} size="sm" />
+                        {staff.subsidiary === "ALL" ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold">
+                            <Shield className="w-3 h-3" />
+                            All Companies
+                          </span>
+                        ) : (
+                          <SourceBadge source={staff.subsidiary} size="sm" />
+                        )}
                         <p className="font-semibold text-gray-900 text-xs">{staff.role}</p>
                         <p className="text-[11px] text-gray-500">{staff.department}</p>
                       </div>
@@ -965,11 +987,12 @@ export default function StaffManagementPage() {
                     onChange={(e) =>
                       setNewStaff({
                         ...newStaff,
-                        subsidiary: e.target.value as ServiceSlug,
+                        subsidiary: e.target.value as ServiceSlug | "ALL",
                       })
                     }
                     className="w-full h-9 px-3 rounded-xl border border-gray-200 text-gray-900 bg-white focus:outline-none focus:border-indigo-600"
                   >
+                    <option value="ALL">All Companies (Full Platform Access)</option>
                     <option value={ServiceSlug.SPARK}>Zino Spark (POS Retail)</option>
                     <option value={ServiceSlug.APARTMENTS}>Zino Apartments (Hospitality)</option>
                     <option value={ServiceSlug.BUILDERS}>Top Builders (Materials)</option>
@@ -1259,6 +1282,28 @@ export default function StaffManagementPage() {
                 </p>
                 <p className="text-[10px] text-gray-500">
                   Branch: {selectedStaffForLogin.branch}
+                </p>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-900 mb-1">
+                  Assigned Business Subsidiary / Portal Access Scope<span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={editLoginSubsidiary}
+                  onChange={(e) => setEditLoginSubsidiary(e.target.value as ServiceSlug | "ALL")}
+                  className="w-full h-9 px-3 rounded-xl border border-gray-200 bg-white text-gray-900 text-xs font-semibold focus:outline-none focus:border-indigo-600"
+                >
+                  <option value="ALL">All Companies (Full Platform Access)</option>
+                  <option value={ServiceSlug.SPARK}>Zino Spark (POS Retail Only)</option>
+                  <option value={ServiceSlug.APARTMENTS}>Zino Apartments (Hospitality Only)</option>
+                  <option value={ServiceSlug.BUILDERS}>Top Builders (Materials Only)</option>
+                  <option value={ServiceSlug.GALAXY}>Device Galaxy (E-Commerce Only)</option>
+                  <option value={ServiceSlug.BILLSTACKS}>Billstacks (Accounting Only)</option>
+                  <option value={ServiceSlug.VISITORS}>Visitor Management Only</option>
+                </select>
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Staff will only see data, catalogs, and tools for the selected subsidiary. Select &quot;All Companies&quot; for full access.
                 </p>
               </div>
 

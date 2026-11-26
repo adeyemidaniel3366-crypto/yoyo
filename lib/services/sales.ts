@@ -28,13 +28,26 @@ export function deriveSaleStatus(totalKobo: number, paidKobo: number): SaleStatu
 }
 
 export interface CreateSaleInput {
-  locationId: string;
+  locationId?: string;
+  source?: string;
   contactId?: string | null;
-  items: Array<{ productId: string; qty: number; unitPriceKobo?: number }>;
+  customerName?: string | null;
+  walkInPhone?: string | null;
+  items?: Array<{ productId: string; qty: number; unitPriceKobo?: number }>;
+  lines?: Array<{
+    productId?: string;
+    productCode?: string;
+    productName?: string;
+    qty: number;
+    unitPriceKobo?: number;
+    discountKobo?: number;
+  }>;
+  payments?: Array<{ method: string; amountKobo: number }>;
   discountKobo: number;
-  paidKobo: number;
-  paymentMethod: string;
+  paidKobo?: number;
+  paymentMethod?: string;
   fulfilment?: string | null;
+  fulfilmentStatus?: string | null;
   remarks?: string | null;
   isParked: boolean;
   allowCreditOversell: boolean;
@@ -45,31 +58,85 @@ export async function createSale(
   source: ServiceSlug,
   input: CreateSaleInput
 ) {
-  requireLocation(ctx, input.locationId);
+  let resolvedLocationId = input.locationId;
+  if (resolvedLocationId) {
+    const exactLoc = await prisma.location.findUnique({ where: { id: resolvedLocationId } });
+    if (!exactLoc) {
+      resolvedLocationId = undefined;
+    }
+  }
+  if (!resolvedLocationId) {
+    const fallbackLoc = await prisma.location.findFirst({
+      where: { isActive: true, services: { has: source } },
+    });
+    if (!fallbackLoc) {
+      throw new BusinessError(`No active location found for ${source}`);
+    }
+    resolvedLocationId = fallbackLoc.id;
+  }
+
+  requireLocation(ctx, resolvedLocationId);
+
+  const rawItems =
+    input.items && input.items.length > 0
+      ? input.items
+      : (input.lines ?? []).map((l) => ({
+          productId: l.productId || l.productCode || "",
+          qty: l.qty,
+          unitPriceKobo: l.unitPriceKobo,
+        }));
+
+  const normalizedPaidKobo =
+    typeof input.paidKobo === "number"
+      ? input.paidKobo
+      : (input.payments ?? []).reduce((sum, p) => sum + (p.amountKobo || 0), 0);
+  const normalizedPaymentMethod =
+    input.paymentMethod || input.payments?.[0]?.method || "CASH";
+  const normalizedFulfilment = input.fulfilment ?? input.fulfilmentStatus ?? null;
+  const lineDiscountSum = (input.lines ?? []).reduce(
+    (sum, l) => sum + (l.discountKobo || 0),
+    0
+  );
+  const normalizedDiscountKobo = input.discountKobo || lineDiscountSum;
 
   const canOversell =
     source === ServiceSlug.BUILDERS &&
     input.allowCreditOversell &&
-    input.paidKobo === 0 &&
+    normalizedPaidKobo === 0 &&
     (ctx.user.roles.includes(Role.SERVICE_MANAGER) ||
       ctx.user.roles.includes(Role.SUPER_ADMIN));
 
   const created = await prisma.$transaction(async (tx) => {
-    const productIds = Array.from(new Set(input.items.map((i) => i.productId)));
+    const keys = Array.from(new Set(rawItems.map((i) => i.productId).filter(Boolean)));
     const products = await tx.product.findMany({
-      where: { id: { in: productIds }, status: "ACTIVE" },
+      where: {
+        OR: [{ id: { in: keys } }, { sku: { in: keys } }],
+        status: "ACTIVE",
+      },
     });
-    const productMap = new Map(products.map((p) => [p.id, p]));
+    const productByKey = new Map<string, (typeof products)[number]>();
+    for (const p of products) {
+      productByKey.set(p.id, p);
+      productByKey.set(p.sku, p);
+    }
 
-    for (const item of input.items) {
-      const product = productMap.get(item.productId);
+    const resolvedItems = rawItems.map((item) => {
+      const product = productByKey.get(item.productId);
       if (!product) {
         throw new BusinessError(`Product ${item.productId} not found or inactive`);
       }
       if (item.qty <= 0) {
         throw new BusinessError("Quantity must be greater than 0");
       }
-    }
+      return {
+        productId: product.id,
+        qty: item.qty,
+        unitPriceKobo: item.unitPriceKobo,
+      };
+    });
+
+    const productMap = new Map(products.map((p) => [p.id, p]));
+    const productIds = Array.from(new Set(resolvedItems.map((i) => i.productId)));
 
     // Lock stock rows with SELECT ... FOR UPDATE (parameterised $queryRaw, §9.1)
     if (!input.isParked) {
@@ -77,11 +144,11 @@ export async function createSale(
       for (const pid of sortedIds) {
         const rows = await tx.$queryRaw<Array<{ qty: string }>>`
           SELECT "qty"::text FROM "StockLevel"
-          WHERE "productId" = ${pid} AND "locationId" = ${input.locationId}
+          WHERE "productId" = ${pid} AND "locationId" = ${resolvedLocationId}
           FOR UPDATE
         `;
         const available = rows[0] ? Number(rows[0].qty) : 0;
-        const requested = input.items
+        const requested = resolvedItems
           .filter((i) => i.productId === pid)
           .reduce((acc, i) => acc + i.qty, 0);
         if (requested > available && !canOversell) {
@@ -97,7 +164,7 @@ export async function createSale(
     // Compute line totals & per-line tax in integer kobo (§5.2)
     let subtotalKobo = 0;
     let taxKobo = 0;
-    const saleItemsData = input.items.map((item) => {
+    const saleItemsData = resolvedItems.map((item) => {
       const product = productMap.get(item.productId)!;
       const unitPriceKobo = item.unitPriceKobo ?? product.priceKobo;
       const lineTotal = lineTotalKobo(item.qty, unitPriceKobo);
@@ -112,17 +179,17 @@ export async function createSale(
       };
     });
 
-    if (input.discountKobo > subtotalKobo) {
+    if (normalizedDiscountKobo > subtotalKobo) {
       throw new BusinessError("Discount cannot exceed subtotal");
     }
 
-    const totalKobo = addKobo(subKobo(subtotalKobo, input.discountKobo), taxKobo);
-    const paidKobo = input.isParked ? 0 : Math.min(input.paidKobo, totalKobo);
+    const totalKobo = addKobo(subKobo(subtotalKobo, normalizedDiscountKobo), taxKobo);
+    const paidKobo = input.isParked ? 0 : Math.min(normalizedPaidKobo, totalKobo);
     const status = deriveSaleStatus(totalKobo, paidKobo);
 
     const seqKey =
       source === ServiceSlug.SPARK
-        ? `RCPT-SPARK-${input.locationId}`
+        ? `RCPT-SPARK-${resolvedLocationId}`
         : `RCPT-${source}`;
     const seq = await nextNumber(tx, seqKey);
     const receiptNo = formatSeq(source === ServiceSlug.SPARK ? "SPK" : "BLD", seq, 6);
@@ -130,17 +197,17 @@ export async function createSale(
     const sale = await tx.sale.create({
       data: {
         source,
-        locationId: input.locationId,
+        locationId: resolvedLocationId,
         receiptNo,
         contactId: input.contactId ?? null,
         subtotalKobo,
-        discountKobo: input.discountKobo,
+        discountKobo: normalizedDiscountKobo,
         taxKobo,
         totalKobo,
         paidKobo,
         status,
-        fulfilment: input.fulfilment ?? null,
-        paymentMethod: input.paymentMethod,
+        fulfilment: normalizedFulfilment,
+        paymentMethod: normalizedPaymentMethod,
         soldById: ctx.user.id,
         remarks: input.remarks ?? null,
         isParked: input.isParked,
@@ -154,10 +221,10 @@ export async function createSale(
     });
 
     if (!input.isParked) {
-      for (const item of input.items) {
+      for (const item of resolvedItems) {
         await adjustStock(tx, {
           productId: item.productId,
-          locationId: input.locationId,
+          locationId: resolvedLocationId,
           qtyChange: -item.qty,
           reason: "SALE",
           refType: "Sale",
@@ -173,7 +240,7 @@ export async function createSale(
             source,
             contactId: input.contactId,
             amountKobo: paidKobo,
-            method: input.paymentMethod,
+            method: normalizedPaymentMethod,
             status: "PAID",
             receivedById: ctx.user.id,
             note: `Sale ${receiptNo}`,
@@ -194,7 +261,7 @@ export async function createSale(
 
     await logActivity(tx, {
       source,
-      locationId: input.locationId,
+      locationId: resolvedLocationId,
       actorId: ctx.user.id,
       action: input.isParked ? ActivityAction.SALE_PARKED : ActivityAction.SALE_CREATED,
       entityType: "Sale",

@@ -17,6 +17,7 @@ import { ServiceSlug, SERVICE_CONFIG } from "@/lib/constants";
 import { usePlatformStore } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
 import { NumberInput } from "@/components/ui/number-input";
+import { GALAXY_CATEGORIES } from "@/lib/shop-data";
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -26,7 +27,7 @@ export default function NewProductPage() {
     source: ServiceSlug.GALAXY,
     name: "",
     sku: "",
-    label: "",
+    label: "SSDs & Storage",
     description: "",
     priceNgn: 45000,
     costNgn: 32000,
@@ -171,15 +172,36 @@ export default function NewProductPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-heading block mb-1">
-                  Category / Badge Label
+                  {form.source === ServiceSlug.GALAXY
+                    ? "Shop By Category (Device Galaxy Storefront) *"
+                    : "Category / Classification"}
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. SSDs &amp; Storage, Flagship POS, Top Seller"
-                  value={form.label}
-                  onChange={(e) => setForm({ ...form, label: e.target.value })}
-                  className="w-full h-10 px-3 rounded-xl border border-border text-xs text-heading focus:outline-none focus:border-active"
-                />
+                {form.source === ServiceSlug.GALAXY ? (
+                  <select
+                    value={form.label || "SSDs & Storage"}
+                    onChange={(e) => setForm({ ...form, label: e.target.value })}
+                    className="w-full h-10 px-3 rounded-xl border border-border text-xs text-heading bg-white focus:outline-none focus:border-galaxy font-semibold"
+                  >
+                    {GALAXY_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="e.g. Building Materials, POS Hardware, Suite"
+                    value={form.label}
+                    onChange={(e) => setForm({ ...form, label: e.target.value })}
+                    className="w-full h-10 px-3 rounded-xl border border-border text-xs text-heading focus:outline-none focus:border-active"
+                  />
+                )}
+                {form.source === ServiceSlug.GALAXY && (
+                  <p className="text-[10px] text-muted mt-1">
+                    Selects the catalog category tab &amp; filter in the live shopping storefront.
+                  </p>
+                )}
               </div>
 
               <div>

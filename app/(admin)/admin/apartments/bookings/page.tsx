@@ -39,6 +39,7 @@ export default function ApartmentsBookingsPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [liveBookings, setLiveBookings] = useState<BookingRecord[] | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
   const fetchBookings = () => {
     const customBookings = getApartmentBookings().map((b) => ({
@@ -88,14 +89,26 @@ export default function ApartmentsBookingsPage() {
 
   const handleBookingAction = async (bookingRef: string, action: "check-in" | "check-out" | "cancel") => {
     setActionLoading(bookingRef);
+    setActionFeedback(null);
     try {
+      const payload =
+        action === "cancel"
+          ? { reason: "Cancelled by administrator" }
+          : {};
       const res = await fetch(`/api/apartments/bookings/${bookingRef}/${action}`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
-      if (res.ok) {
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json?.ok) {
         fetchBookings();
+      } else {
+        setActionFeedback(json?.error?.message || `Could not complete ${action} on ${bookingRef}.`);
       }
-    } catch {} finally {
+    } catch {
+      setActionFeedback(`Network error updating booking ${bookingRef}.`);
+    } finally {
       setActionLoading(null);
     }
   };
@@ -278,6 +291,18 @@ export default function ApartmentsBookingsPage() {
 
   return (
     <div className="space-y-6">
+      {actionFeedback && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between">
+          <span>{actionFeedback}</span>
+          <button
+            type="button"
+            onClick={() => setActionFeedback(null)}
+            className="text-rose-500 hover:text-rose-800 font-bold ml-4"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

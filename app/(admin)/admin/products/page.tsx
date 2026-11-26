@@ -28,6 +28,7 @@ import { usePlatformStore } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { NumberInput } from "@/components/ui/number-input";
+import { GALAXY_CATEGORIES } from "@/lib/shop-data";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -37,6 +38,7 @@ interface Product {
   source: ServiceSlug;
   sku: string;
   name: string;
+  label?: string;
   description?: string;
   priceKobo: number;
   costKobo?: number;
@@ -92,6 +94,7 @@ function ProductModal({
     source: ServiceSlug.SPARK,
     sku: "",
     name: "",
+    label: product?.label || (product?.source === ServiceSlug.GALAXY ? "SSDs & Storage" : ""),
     description: "",
     priceKobo: 0,
     costKobo: 0,
@@ -126,6 +129,7 @@ function ProductModal({
       source: form.source ?? ServiceSlug.SPARK,
       sku: form.sku ?? "",
       name: form.name ?? "",
+      label: form.label ?? (form.source === ServiceSlug.GALAXY ? "SSDs & Storage" : "Featured"),
       description: form.description ?? "",
       priceKobo: Math.round((Number(priceNaira) || 0) * 100),
       costKobo: Math.round((Number(costNaira) || 0) * 100),
@@ -202,6 +206,35 @@ function ProductModal({
                 placeholder="e.g. SAM-990PRO-4TB"
                 className="w-full h-9 px-3 rounded-lg border border-border text-sm text-heading focus:outline-none focus:border-active" />
             </div>
+          </div>
+
+          {/* Category / Shop by Category */}
+          <div>
+            <label className="text-xs font-semibold text-heading block mb-1.5">
+              {form.source === ServiceSlug.GALAXY
+                ? "Shop By Category (Device Galaxy Storefront) *"
+                : "Category / Classification"}
+            </label>
+            {form.source === ServiceSlug.GALAXY ? (
+              <select
+                value={form.label || "SSDs & Storage"}
+                onChange={(e) => set("label", e.target.value)}
+                className="w-full h-9 px-3 rounded-lg border border-border text-sm text-gray-900 bg-white focus:outline-none focus:border-galaxy font-semibold"
+              >
+                {GALAXY_CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                value={form.label ?? ""}
+                onChange={(e) => set("label", e.target.value)}
+                placeholder="e.g. POS Hardware, Building Supplies, Suite"
+                className="w-full h-9 px-3 rounded-lg border border-border text-sm text-heading focus:outline-none focus:border-active"
+              />
+            )}
           </div>
 
           {/* Description */}
@@ -365,6 +398,7 @@ export default function ProductsManagerPage() {
         source: sp.source,
         sku: sp.sku,
         name: sp.name,
+        label: sp.label || sp.description,
         description: sp.description || sp.label,
         priceKobo: sp.priceKobo,
         costKobo: sp.costKobo,
@@ -399,7 +433,7 @@ export default function ProductsManagerPage() {
       source: p.source,
       sku: p.sku,
       name: p.name,
-      label: p.description || "Featured",
+      label: p.label || p.description || "Featured",
       description: p.description || "",
       priceKobo: p.priceKobo,
       costKobo: p.costKobo,
@@ -437,7 +471,16 @@ export default function ProductsManagerPage() {
       cell: (row) =>
         row.images[0] ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={row.images[0]} alt={row.name} className="w-10 h-10 rounded-lg object-cover border border-border" />
+          <img
+            src={row.images[0]}
+            alt=""
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+              const nextEl = e.currentTarget.nextElementSibling as HTMLElement;
+              if (nextEl) nextEl.classList.remove("hidden");
+            }}
+            className="w-10 h-10 rounded-lg object-cover border border-border"
+          />
         ) : (
           <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
             <Package className="w-5 h-5 text-gray-300" />
@@ -452,21 +495,28 @@ export default function ProductsManagerPage() {
     },
     {
       key: "name",
-      header: "Name / Label",
+      header: "Name / Category",
       sortable: true,
       cell: (row) => (
         <div>
           <p className="font-semibold text-heading text-sm leading-tight">{row.name}</p>
-          {row.isFeatured && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 font-semibold mt-0.5">
-              <Star className="w-3 h-3 fill-amber-400" /> Featured
-            </span>
-          )}
-          {row.isNew && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 font-semibold ml-2 mt-0.5">
-              <CheckCircle2 className="w-3 h-3" /> New
-            </span>
-          )}
+          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+            {row.label && (
+              <span className="inline-block text-[10px] font-extrabold uppercase tracking-wide text-galaxy bg-galaxy-tint px-2 py-0.5 rounded-md">
+                {row.label}
+              </span>
+            )}
+            {row.isFeatured && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 font-semibold">
+                <Star className="w-3 h-3 fill-amber-400" /> Featured
+              </span>
+            )}
+            {row.isNew && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 font-semibold">
+                <CheckCircle2 className="w-3 h-3" /> New
+              </span>
+            )}
+          </div>
         </div>
       ),
     },

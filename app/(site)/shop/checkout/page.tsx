@@ -74,6 +74,7 @@ export default function ShopCheckoutPage() {
 
     let serverOrderNo: string | null = null;
     let isServerConfirmed = false;
+    let paymentAuthUrl: string | null = null;
 
     try {
       const res = await fetch("/api/galaxy/orders", {
@@ -88,6 +89,12 @@ export default function ShopCheckoutPage() {
             state: formData.state,
             country: "Nigeria",
           },
+          customerEmail: formData.email,
+          items: cartItems.map((c) => ({
+            productId: c.productId,
+            sku: c.productId,
+            qty: c.qty,
+          })),
           couponCode: couponApplied ? couponCode.trim().toUpperCase() : null,
           paymentMethod: paymentMethod === "COD" ? "COD" : "ONLINE",
           notes: formData.notes,
@@ -98,6 +105,7 @@ export default function ShopCheckoutPage() {
         const data = await res.json();
         if (data?.ok && data?.data?.orderNo) {
           serverOrderNo = data.data.orderNo;
+          paymentAuthUrl = data.data.payment?.authorizationUrl ?? null;
           isServerConfirmed = true;
         }
       }
@@ -128,6 +136,7 @@ export default function ShopCheckoutPage() {
       items: [...cartItems],
       totalKobo,
       paymentMethod,
+      paymentAuthUrl,
       isServerConfirmed,
       date: new Date().toLocaleDateString("en-NG", {
         day: "numeric",
@@ -186,6 +195,16 @@ export default function ShopCheckoutPage() {
                   : "Cash / POS on Delivery"}
               </span>
             </div>
+            {completedOrder.paymentAuthUrl && (
+              <div className="pt-3 border-t border-border">
+                <a
+                  href={completedOrder.paymentAuthUrl}
+                  className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center gap-2 transition-colors"
+                >
+                  <span>Proceed to Online Payment Checkout</span>
+                </a>
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">

@@ -10,12 +10,14 @@ function TargetBar({
   target,
   unit = "",
   color = "#4F46E5",
+  hideSensitive = false,
 }: {
   label: string;
   current: number;
   target: number;
   unit?: string;
   color?: string;
+  hideSensitive?: boolean;
 }) {
   const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
   return (
@@ -23,18 +25,24 @@ function TargetBar({
       <div className="flex items-center justify-between text-xs">
         <span className="font-semibold text-gray-900">{label}</span>
         <span className="text-gray-500">
-          <strong className="text-gray-900">
-            {unit}
-            {current.toLocaleString()}
-          </strong>{" "}
-          / {unit}
-          {target.toLocaleString()} ({pct}%)
+          {hideSensitive ? (
+            <strong className="text-gray-900 font-mono">•••••• / ••••••</strong>
+          ) : (
+            <>
+              <strong className="text-gray-900">
+                {unit}
+                {current.toLocaleString()}
+              </strong>{" "}
+              / {unit}
+              {target.toLocaleString()} ({pct}%)
+            </>
+          )}
         </span>
       </div>
       <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${pct}%`, backgroundColor: color }}
+          style={{ width: hideSensitive ? "0%" : `${pct}%`, backgroundColor: color }}
         />
       </div>
     </div>
@@ -48,6 +56,7 @@ export function TargetsProgressSection({
   bookingsCount,
   visitorsCount,
   onEditClick,
+  hideSensitive = false,
 }: {
   targets: UnifiedMonthlyTargets;
   totalRevenueKobo: number;
@@ -55,6 +64,7 @@ export function TargetsProgressSection({
   bookingsCount: number;
   visitorsCount: number;
   onEditClick: () => void;
+  hideSensitive?: boolean;
 }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-2xs">
@@ -81,6 +91,7 @@ export function TargetsProgressSection({
           target={Math.round(targets.salesTargetKobo / 100)}
           unit="₦"
           color="#4F46E5"
+          hideSensitive={hideSensitive}
         />
         <TargetBar
           label="Expense Budget Utilization"
@@ -88,6 +99,7 @@ export function TargetsProgressSection({
           target={Math.round(targets.expenseBudgetKobo / 100)}
           unit="₦"
           color="#E74C3C"
+          hideSensitive={hideSensitive}
         />
         <TargetBar
           label="Apartment Bookings Target"
@@ -95,6 +107,7 @@ export function TargetsProgressSection({
           target={targets.bookingsTarget}
           unit=""
           color="#1E3A5F"
+          hideSensitive={hideSensitive}
         />
         <TargetBar
           label="Visitor Check-In Target"
@@ -102,6 +115,7 @@ export function TargetsProgressSection({
           target={targets.visitorsTarget}
           unit=""
           color="#7C3AED"
+          hideSensitive={hideSensitive}
         />
       </div>
     </div>

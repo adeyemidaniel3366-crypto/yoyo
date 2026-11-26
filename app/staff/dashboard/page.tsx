@@ -19,6 +19,7 @@ import {
   X,
   CheckCircle2,
   Eye,
+  EyeOff,
   Filter,
   Image as ImageIcon,
   Cpu,
@@ -291,11 +292,37 @@ export default function StaffDashboardPage() {
 
   const [activeSection, setActiveSection] = useState<StaffSection>("dashboard");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [staffProfile, setStaffProfile] = useState({
+  const [hideSensitive, setHideSensitive] = useState(false);
+  const [staffProfile, setStaffProfile] = useState<{
+    name: string;
+    role: string;
+    branch: string;
+    subsidiary: ServiceSlug | "ALL";
+  }>({
     name: "Chinedu Eze",
     role: "Operations Staff",
     branch: "Zino One Operations",
+    subsidiary: "ALL",
   });
+
+  const isAllAccess = staffProfile.subsidiary === "ALL";
+  const assignedService: ServiceSlug | null = isAllAccess
+    ? null
+    : (staffProfile.subsidiary as ServiceSlug);
+  const canAccessRooms = isAllAccess || assignedService === ServiceSlug.APARTMENTS;
+  const canAccessVisitors = isAllAccess || assignedService === ServiceSlug.VISITORS;
+
+  const maskAmount = (formatted: string) => (hideSensitive ? "••••••" : formatted);
+
+  const toggleHideSensitive = () => {
+    setHideSensitive((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("zino_hide_sensitive_values_v1", next ? "1" : "0");
+      }
+      return next;
+    });
+  };
 
   // Product CRUD state
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -341,15 +368,23 @@ export default function StaffDashboardPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
+      const hiddenPref = window.localStorage.getItem("zino_hide_sensitive_values_v1");
+      if (hiddenPref === "1") setHideSensitive(true);
+
       const saved = window.localStorage.getItem("zino_staff_profile");
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed?.name) {
+          const sub: ServiceSlug | "ALL" = parsed.subsidiary || "ALL";
           setStaffProfile({
             name: parsed.name,
             role: parsed.role || "Operations Staff",
             branch: parsed.branch || "Zino One Operations",
+            subsidiary: sub,
           });
+          if (sub !== "ALL") {
+            setProductServiceTab(sub);
+          }
         }
       }
     } catch {
@@ -357,9 +392,44 @@ export default function StaffDashboardPage() {
     }
   }, []);
 
+  // Scoped datasets based on assigned Business Subsidiary
+  const scopedProducts = useMemo(
+    () => (assignedService ? products.filter((p) => p.source === assignedService) : products),
+    [products, assignedService]
+  );
+
+  const scopedInvoices = useMemo(
+    () => (assignedService ? invoices.filter((inv) => inv.source === assignedService) : invoices),
+    [invoices, assignedService]
+  );
+
+  const scopedPaymentDues = useMemo(
+    () =>
+      assignedService
+        ? paymentDues.filter((d) => d.source === assignedService)
+        : paymentDues,
+    [paymentDues, assignedService]
+  );
+
+  const scopedNotifications = useMemo(
+    () =>
+      assignedService
+        ? notifications.filter((n) => n.source === assignedService)
+        : notifications,
+    [notifications, assignedService]
+  );
+
+  const scopedVisualServices = useMemo(
+    () =>
+      assignedService
+        ? VISUAL_SERVICES.filter((sec) => sec.slug === assignedService)
+        : VISUAL_SERVICES,
+    [assignedService]
+  );
+
   const unreadCount = useMemo(
-    () => notifications.filter((n) => !n.read).length,
-    [notifications]
+    () => scopedNotifications.filter((n) => !n.read).length,
+    [scopedNotifications]
   );
 
   const handleLogout = () => {
@@ -373,9 +443,13 @@ export default function StaffDashboardPage() {
 
   // Product CRUD Handlers
   const handleOpenAddProduct = (defaultService?: ServiceSlug) => {
+    const resolvedSource =
+      assignedService ||
+      defaultService ||
+      (productServiceTab !== "ALL" ? (productServiceTab as ServiceSlug) : ServiceSlug.SPARK);
     setEditingProduct({
       id: "",
-      source: defaultService || (productServiceTab !== "ALL" ? (productServiceTab as ServiceSlug) : ServiceSlug.SPARK),
+      source: resolvedSource,
       sku: `SKU-${Math.floor(1000 + Math.random() * 9000)}`,
       name: "",
       label: "Featured",
@@ -409,7 +483,7 @@ export default function StaffDashboardPage() {
     const saved = saveProduct({
       ...editingProduct,
       name: editingProduct.name.trim(),
-      source: editingProduct.source || ServiceSlug.SPARK,
+      source: assignedService || editingProduct.source || ServiceSlug.SPARK,
     });
     setProductModalOpen(false);
     setEditingProduct(null);
@@ -437,13 +511,13 @@ export default function StaffDashboardPage() {
   // Low Stock Alerts (Staff Operational Tracking)
   const lowStockRows = useMemo(
     () =>
-      products.filter(
+      scopedProducts.filter(
         (p) =>
           p.status === "LOW_STOCK" ||
           p.status === "OUT_OF_STOCK" ||
           p.totalStock <= p.lowStockAt
       ),
-    [products]
+    [scopedProducts]
   );
 
   const lowStockColumns: ColumnDef<any>[] = [
@@ -482,14 +556,14 @@ export default function StaffDashboardPage() {
 
   // Filtered Invoices (Operational tracking & export)
   const filteredInvoices = useMemo(() => {
-    return invoices.filter((inv) => {
+    return scopedInvoices.filter((inv) => {
       if (invoiceFilter.service && inv.source !== invoiceFilter.service) return false;
       if (invoiceFilter.type && inv.activityType !== invoiceFilter.type) return false;
       if (invoiceFilter.from && inv.createdAt < invoiceFilter.from) return false;
       if (invoiceFilter.to && inv.createdAt > `${invoiceFilter.to}T23:59:59`) return false;
       return true;
     });
-  }, [invoices, invoiceFilter]);
+  }, [scopedInvoices, invoiceFilter]);
 
   const invoiceColumns: ColumnDef<any>[] = [
     {
@@ -529,7 +603,7 @@ export default function StaffDashboardPage() {
       header: "Amount",
       cell: (row) => (
         <span className="font-mono font-bold text-gray-900 text-xs">
-          {row.amountDisplay || formatCurrency(row.amountKobo || 0)}
+          {maskAmount(row.amountDisplay || formatCurrency(row.amountKobo || 0))}
         </span>
       ),
     },
@@ -542,13 +616,13 @@ export default function StaffDashboardPage() {
 
   // Sales Due & Purchase Due (Operational Tracking)
   const salesDueRows = useMemo(
-    () => paymentDues.filter((d) => d.type === "SALES"),
-    [paymentDues]
+    () => scopedPaymentDues.filter((d) => d.type === "SALES"),
+    [scopedPaymentDues]
   );
 
   const purchaseDueRows = useMemo(
-    () => paymentDues.filter((d) => d.type === "PURCHASE"),
-    [paymentDues]
+    () => scopedPaymentDues.filter((d) => d.type === "PURCHASE"),
+    [scopedPaymentDues]
   );
 
   const paymentDueColumns: ColumnDef<any>[] = [
@@ -573,7 +647,7 @@ export default function StaffDashboardPage() {
       header: "Amount Due",
       cell: (row) => (
         <span className="font-mono font-extrabold text-rose-600 text-xs">
-          {formatCurrency(row.dueAmountKobo)}
+          {maskAmount(formatCurrency(row.dueAmountKobo))}
         </span>
       ),
     },
@@ -581,13 +655,13 @@ export default function StaffDashboardPage() {
 
   // Filtered Notifications
   const filteredNotifications = useMemo(() => {
-    return notifications.filter((n) => {
+    return scopedNotifications.filter((n) => {
       if (notifCategoryFilter !== "ALL" && n.category !== notifCategoryFilter) return false;
       if (notifReadFilter === "UNREAD" && n.read) return false;
       if (notifReadFilter === "READ" && !n.read) return false;
       return true;
     });
-  }, [notifications, notifCategoryFilter, notifReadFilter]);
+  }, [scopedNotifications, notifCategoryFilter, notifReadFilter]);
 
   const navItems: {
     id: StaffSection;
@@ -596,14 +670,23 @@ export default function StaffDashboardPage() {
     badge?: number;
   }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "visitors", label: "Visitors List", icon: UserCheck, badge: visitors.filter((v) => v.status === "CHECKED_IN").length },
+    ...(canAccessVisitors
+      ? [
+          {
+            id: "visitors" as StaffSection,
+            label: "Visitors List",
+            icon: UserCheck,
+            badge: visitors.filter((v) => v.status === "CHECKED_IN").length,
+          },
+        ]
+      : []),
     { id: "low-stock", label: "Low Stock Alerts", icon: AlertTriangle, badge: lowStockRows.length },
     { id: "invoices", label: "Invoice Activity", icon: Receipt },
     { id: "products", label: "Products Catalog", icon: Package },
-    { id: "services", label: "Services Overview", icon: Layers },
+    { id: "services", label: isAllAccess ? "Services Overview" : "My Company Overview", icon: Layers },
     { id: "sales-due", label: "Sales Due", icon: Wallet, badge: salesDueRows.length },
     { id: "purchase-due", label: "Purchase Due", icon: ClipboardList, badge: purchaseDueRows.length },
-    { id: "rooms", label: "Room Board", icon: BedDouble },
+    ...(canAccessRooms ? [{ id: "rooms" as StaffSection, label: "Room Board", icon: BedDouble }] : []),
     { id: "notifications", label: "Notifications", icon: Bell, badge: unreadCount },
   ];
 
@@ -778,7 +861,7 @@ export default function StaffDashboardPage() {
                     <span className="truncate">{statusConfig.label}</span>
                   </span>
                   <span className="text-[11px] font-mono font-bold text-gray-900 truncate">
-                    {formatCurrency(room.rateKobo)}/night
+                    {maskAmount(formatCurrency(room.rateKobo))}/night
                   </span>
                 </div>
                 <h3 className="font-bold text-sm text-gray-900 truncate" title={room.title}>
@@ -814,24 +897,28 @@ export default function StaffDashboardPage() {
       <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-gray-200">
         <div>
           <h2 className="text-base font-extrabold text-gray-900">
-            Six Unified Website Sections Overview
+            {isAllAccess
+              ? "Six Unified Website Sections Overview"
+              : `${SERVICE_CONFIG[assignedService!]?.name || assignedService} — Assigned Workspace Overview`}
           </h2>
           <p className="text-xs text-gray-600">
-            Live product and invoice counts across all subsidiaries.
+            {isAllAccess
+              ? "Live product and invoice counts across all subsidiaries."
+              : "Scoped exclusively to your assigned business subsidiary."}
           </p>
         </div>
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-bold">
           <Layers className="w-3.5 h-3.5" />
-          <span>Operational Hub</span>
+          <span>{isAllAccess ? "All Companies Access" : SERVICE_CONFIG[assignedService!]?.name}</span>
         </span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {VISUAL_SERVICES.map((sec) => {
-          const serviceItems = products.filter((p) => p.source === sec.slug);
+        {scopedVisualServices.map((sec) => {
+          const serviceItems = scopedProducts.filter((p) => p.source === sec.slug);
           const activeItemsCount = serviceItems.filter((p) => p.status === "ACTIVE").length;
           const totalItemsCount = serviceItems.length;
-          const serviceInvoicesCount = invoices.filter((i) => i.source === sec.slug).length;
+          const serviceInvoicesCount = scopedInvoices.filter((i) => i.source === sec.slug).length;
           const dynamicTagline =
             serviceItems.length > 0
               ? serviceItems.slice(0, 2).map((p) => p.name).join(" • ")
@@ -881,7 +968,7 @@ export default function StaffDashboardPage() {
                       {serviceItems.slice(0, 2).map((item) => (
                         <div key={item.id} className="flex items-center justify-between bg-white px-2 py-1 rounded border border-gray-200 text-[10px]">
                           <span className="font-bold text-gray-900 truncate max-w-[140px]">{item.name}</span>
-                          <span className="font-mono font-extrabold text-gray-900">{item.priceDisplay}</span>
+                          <span className="font-mono font-extrabold text-gray-900">{maskAmount(item.priceDisplay)}</span>
                         </div>
                       ))}
                       {serviceItems.length > 2 && (
@@ -967,20 +1054,28 @@ export default function StaffDashboardPage() {
       </div>
 
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-        {[
-          { key: "ALL", label: `All (${products.length})` },
-          ...Object.values(ServiceSlug).map((slug) => ({
-            key: slug,
-            label: `${SERVICE_CONFIG[slug].name} (${products.filter((p) => p.source === slug).length})`,
-          })),
-        ].map((tab) => (
+        {(isAllAccess
+          ? [
+              { key: "ALL", label: `All Website Items (${scopedProducts.length})` },
+              ...Object.values(ServiceSlug).map((slug) => ({
+                key: slug,
+                label: `${SERVICE_CONFIG[slug].name} (${scopedProducts.filter((p) => p.source === slug).length})`,
+              })),
+            ]
+          : [
+              {
+                key: assignedService!,
+                label: `${SERVICE_CONFIG[assignedService!]?.name || assignedService} (${scopedProducts.length})`,
+              },
+            ]
+        ).map((tab) => (
           <button
             key={tab.key}
             type="button"
             onClick={() => setProductServiceTab(tab.key)}
             className={cn(
               "px-3 py-1.5 rounded-lg font-bold transition-colors shrink-0 cursor-pointer",
-              productServiceTab === tab.key
+              (isAllAccess ? productServiceTab : assignedService) === tab.key
                 ? "bg-indigo-600 text-white shadow-2xs"
                 : "bg-gray-100 text-gray-700 hover:text-gray-900 hover:bg-gray-200"
             )}
@@ -991,8 +1086,8 @@ export default function StaffDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {products
-          .filter((p) => productServiceTab === "ALL" || p.source === productServiceTab)
+        {scopedProducts
+          .filter((p) => !isAllAccess || productServiceTab === "ALL" || p.source === productServiceTab)
           .map((item) => (
             <div
               key={item.id}
@@ -1029,7 +1124,7 @@ export default function StaffDashboardPage() {
                   </p>
                   <div className="flex items-center justify-between pt-2 mt-2 border-t border-gray-200">
                     <span className="text-sm font-black text-gray-900">
-                      {item.priceDisplay}
+                      {maskAmount(item.priceDisplay)}
                     </span>
                     <span className="text-[10px] font-semibold text-gray-500">
                       Stock: <strong className="text-gray-900">{item.totalStock}</strong>
@@ -1072,22 +1167,24 @@ export default function StaffDashboardPage() {
             <span>Filter Invoice Activity:</span>
           </div>
           <div className="flex flex-wrap items-center gap-2 flex-1">
-            <select
-              aria-label="Filter by website section"
-              value={invoiceFilter.service}
-              onChange={(e) =>
-                setInvoiceFilter((f) => ({ ...f, service: e.target.value }))
-              }
-              className="h-8 px-2.5 rounded-lg border border-gray-200 text-xs text-gray-900 bg-white focus:outline-none focus:border-indigo-600"
-            >
-              <option value="">All Website Sections</option>
-              <option value="SPARK">Zino Spark (POS)</option>
-              <option value="APARTMENTS">Zino Apartments (Bookings)</option>
-              <option value="GALAXY">Device Galaxy (E-Commerce)</option>
-              <option value="BUILDERS">Top Builders (Yard Sales)</option>
-              <option value="BILLSTACKS">Billstacks (Invoicing)</option>
-              <option value="VISITORS">Visitor Management</option>
-            </select>
+            {isAllAccess && (
+              <select
+                aria-label="Filter by website section"
+                value={invoiceFilter.service}
+                onChange={(e) =>
+                  setInvoiceFilter((f) => ({ ...f, service: e.target.value }))
+                }
+                className="h-8 px-2.5 rounded-lg border border-gray-200 text-xs text-gray-900 bg-white focus:outline-none focus:border-indigo-600"
+              >
+                <option value="">All Website Sections</option>
+                <option value="SPARK">Zino Spark (POS)</option>
+                <option value="APARTMENTS">Zino Apartments (Bookings)</option>
+                <option value="GALAXY">Device Galaxy (E-Commerce)</option>
+                <option value="BUILDERS">Top Builders (Yard Sales)</option>
+                <option value="BILLSTACKS">Billstacks (Invoicing)</option>
+                <option value="VISITORS">Visitor Management</option>
+              </select>
+            )}
             <select
               aria-label="Filter by activity type"
               value={invoiceFilter.type}
@@ -1325,6 +1422,16 @@ export default function StaffDashboardPage() {
         <div className="flex items-center gap-3 shrink-0">
           <button
             type="button"
+            onClick={toggleHideSensitive}
+            title={hideSensitive ? "Unhide sensitive amounts" : "Hide sensitive amounts"}
+            className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors cursor-pointer"
+          >
+            {hideSensitive ? <Eye className="w-3.5 h-3.5 text-amber-300" /> : <EyeOff className="w-3.5 h-3.5 text-indigo-300" />}
+            <span className="hidden md:inline">{hideSensitive ? "Show Info" : "Hide Info"}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveSection("notifications")}
             aria-label={`Notifications, ${unreadCount} unread`}
             className="relative p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
@@ -1343,7 +1450,7 @@ export default function StaffDashboardPage() {
                 {staffProfile.name}
               </p>
               <p className="text-[10px] text-emerald-300 font-mono">
-                {staffProfile.role} · Active Access
+                {staffProfile.role} · {isAllAccess ? "All Companies" : SERVICE_CONFIG[assignedService!]?.shortName || assignedService}
               </p>
             </div>
           </div>
@@ -1440,10 +1547,15 @@ export default function StaffDashboardPage() {
                     Welcome, {staffProfile.name}
                   </h1>
                   <p className="text-xs text-gray-600 mt-0.5">
-                    Operational snapshot across Zino One subsidiaries · Staff management console.
+                    {isAllAccess
+                      ? "Operational snapshot across all Zino One subsidiaries · Full platform staff access."
+                      : `Scoped exclusively to ${SERVICE_CONFIG[assignedService!]?.name || assignedService} · Assigned subsidiary access only.`}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-800 border border-slate-200 font-bold">
+                    {isAllAccess ? "Access: All Companies" : `Access: ${SERVICE_CONFIG[assignedService!]?.name}`}
+                  </span>
                   <button
                     type="button"
                     onClick={() => setActiveSection("low-stock")}
@@ -1461,8 +1573,8 @@ export default function StaffDashboardPage() {
                 </div>
               </div>
 
-              {renderRoomBoard()}
-              {renderVisitorsSection()}
+              {canAccessRooms && renderRoomBoard()}
+              {canAccessVisitors && renderVisitorsSection()}
 
               <DataTable
                 title="⚠ Existing Low Stock & Quality Alerts"
@@ -1607,14 +1719,15 @@ export default function StaffDashboardPage() {
                     Website Section / Service *
                   </label>
                   <select
-                    value={editingProduct.source || ServiceSlug.SPARK}
+                    value={assignedService || editingProduct.source || ServiceSlug.SPARK}
+                    disabled={!isAllAccess}
                     onChange={(e) =>
                       setEditingProduct({
                         ...editingProduct,
                         source: e.target.value as ServiceSlug,
                       })
                     }
-                    className="w-full h-9 px-2 rounded-lg border border-gray-200 text-gray-900 bg-white focus:outline-none focus:border-indigo-600"
+                    className="w-full h-9 px-2 rounded-lg border border-gray-200 text-gray-900 bg-white focus:outline-none focus:border-indigo-600 disabled:bg-gray-100 disabled:text-gray-600"
                   >
                     <option value={ServiceSlug.SPARK}>Zino Spark (POS)</option>
                     <option value={ServiceSlug.GALAXY}>Device Galaxy (Shop)</option>

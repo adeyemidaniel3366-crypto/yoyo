@@ -25,17 +25,17 @@ const securityHeaders = [
   {
     // Exceptions documented:
     // - fonts.googleapis.com & fonts.gstatic.com: Google Fonts (Inter, Playfair Display, Poppins)
-    // - api.paystack.co, checkout.paystack.com, api.flutterwave.com, checkout.flutterwave.com: payment gateways
-    // - images.unsplash.com: seeded demo images
+    // - Paystack, Flutterwave, Stripe, PayPal, Razorpay: payment gateways listed on the platform
+    // - https: images from S3/CDN/Unsplash/external product URLs
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.paystack.co https://checkout.flutterwave.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.paystack.co https://checkout.flutterwave.com https://js.stripe.com https://www.paypal.com https://checkout.razorpay.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
-      "img-src 'self' data: blob: https://images.unsplash.com https://via.placeholder.com https://billstacks.com https://zinoapartments.com https://devicegalaxy.com https://dev.topbuildersbest.com",
-      "connect-src 'self' https://api.paystack.co https://api.flutterwave.com",
-      "frame-src 'self' https://checkout.paystack.com https://checkout.flutterwave.com",
+      "img-src 'self' data: blob: https:",
+      "connect-src 'self' https://api.paystack.co https://api.flutterwave.com https://api.stripe.com https://api-m.paypal.com https://api-m.sandbox.paypal.com https://api.razorpay.com https://api.ng.termii.com",
+      "frame-src 'self' https://checkout.paystack.com https://checkout.flutterwave.com https://js.stripe.com https://checkout.stripe.com https://www.paypal.com https://www.sandbox.paypal.com https://api.razorpay.com",
       "frame-ancestors 'none'",
     ].join("; "),
   },

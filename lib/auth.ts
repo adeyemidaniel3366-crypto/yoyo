@@ -258,12 +258,30 @@ export async function getSessionUser(req?: Request): Promise<SessionUser | null>
   if (!rawToken) return null;
 
   if (rawToken.startsWith("demo-")) {
+    const demoAllowed =
+      process.env.DEMO_LOGINS === "true" || process.env.NODE_ENV !== "production";
+    if (!demoAllowed) {
+      return null;
+    }
+
+    const isEmployee = rawToken.startsWith("demo-employee-");
+    const isReception = rawToken.startsWith("demo-reception-");
+    const role = isEmployee
+      ? Role.EMPLOYEE
+      : isReception
+      ? Role.RECEPTION
+      : Role.SUPER_ADMIN;
+
     return {
-      id: "demo-admin",
-      email: "admin@zinoone.local",
-      firstName: "Super",
-      lastName: "Admin",
-      roles: [Role.SUPER_ADMIN],
+      id: isEmployee ? "demo-employee" : isReception ? "demo-reception" : "demo-admin",
+      email: isEmployee
+        ? "employee@zinoone.local"
+        : isReception
+        ? "reception@zinoone.local"
+        : "admin@zinoone.local",
+      firstName: isEmployee ? "John" : isReception ? "Reception" : "Super",
+      lastName: isEmployee ? "Doe" : isReception ? "Desk" : "Admin",
+      roles: [role],
       serviceAccess: [
         ServiceSlug.BILLSTACKS,
         ServiceSlug.BUILDERS,

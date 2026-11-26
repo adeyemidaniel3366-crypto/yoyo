@@ -5,8 +5,8 @@
 // Query: service (comma-sep slugs), type (SALE|BOOKING|ORDER|INVOICE|EXPENSE|VISIT),
 //        from, to (YYYY-MM-DD), page (default 1), perPage (default 25)
 // ---------------------------------------------------------------------------
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { withErrorHandler, ok } from "@/lib/api";
+import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getEffectiveServices } from "@/lib/scope";
 import { lagosStartOfDayUTC, lagosEndOfDayUTC } from "@/lib/dates";
@@ -30,29 +30,22 @@ export interface UnifiedInvoiceRow {
   createdAt: string;
 }
 
-export async function GET(req: NextRequest) {
-  try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-    }
+export const GET = withErrorHandler(async (req, _ctx, requestId) => {
+  const ctx = await requireAuth(req, requestId);
 
-    const { searchParams } = new URL(req.url);
-    const serviceParam = searchParams.get("service");
-    const typeParam = searchParams.get("type") as ActivityType | null;
-    const fromParam = searchParams.get("from");
-    const toParam = searchParams.get("to");
-    const page = Math.max(1, Number(searchParams.get("page") || "1"));
-    const perPage = Math.min(100, Math.max(10, Number(searchParams.get("perPage") || "25")));
+  const { searchParams } = new URL(req.url);
+  const serviceParam = searchParams.get("service");
+  const typeParam = searchParams.get("type") as ActivityType | null;
+  const fromParam = searchParams.get("from");
+  const toParam = searchParams.get("to");
+  const page = Math.max(1, Number(searchParams.get("page") || "1"));
+  const perPage = Math.min(100, Math.max(10, Number(searchParams.get("perPage") || "25")));
 
-    // Service scope
-    const requestedServices = serviceParam
-      ? (serviceParam.split(",").map((s) => s.trim().toUpperCase()) as ServiceSlug[])
-      : undefined;
-    const allowedServices = getEffectiveServices(
-      session.user as any,
-      requestedServices
-    );
+  // Service scope
+  const requestedServices = serviceParam
+    ? (serviceParam.split(",").map((s) => s.trim().toUpperCase()) as ServiceSlug[])
+    : undefined;
+  const allowedServices = getEffectiveServices(ctx.user, requestedServices);
 
     // Date filters
     const fromDate = fromParam ? lagosStartOfDayUTC(fromParam) : undefined;
@@ -217,9 +210,5 @@ export async function GET(req: NextRequest) {
     const total = rows.length;
     const paginated = rows.slice((page - 1) * perPage, page * perPage);
 
-    return NextResponse.json({ ok: true, data: { rows: paginated, total, page, perPage } });
-  } catch (err: any) {
-    console.error("[/api/dashboard/invoices]", err);
-    return NextResponse.json({ ok: false, error: err?.message ?? "Internal error" }, { status: 500 });
-  }
-}
+    return ok({ rows: paginated, total, page, perPage }, 200, requestId);
+});

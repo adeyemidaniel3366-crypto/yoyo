@@ -97,15 +97,24 @@ export function computeCouponDiscount(
   return { valid: true, discountKobo };
 }
 
-export async function getOrCreateCustomerContact(ctx: ServiceContext) {
+export async function getOrCreateCustomerContact(
+  ctx: ServiceContext,
+  phone?: string
+) {
   let contact = await prisma.contact.findFirst({
-    where: { email: { equals: ctx.user.email, mode: "insensitive" } },
+    where: {
+      OR: [
+        { email: { equals: ctx.user.email, mode: "insensitive" } },
+        ...(phone ? [{ phone }] : []),
+      ],
+    },
   });
   if (!contact) {
     contact = await prisma.contact.create({
       data: {
         name: `${ctx.user.firstName} ${ctx.user.lastName}`,
         email: ctx.user.email,
+        phone: phone ?? null,
         types: [ContactType.CUSTOMER],
         sources: [ServiceSlug.GALAXY],
       },
@@ -224,13 +233,24 @@ export async function createOrder(
   input: {
     shippingAddress: Record<string, unknown>;
     billingAddress?: Record<string, unknown>;
+    customerEmail?: string | null;
     couponCode?: string | null;
     paymentMethod: "ONLINE" | "COD";
     gateway?: PaymentGateway;
     notes?: string | null;
+    items?: Array<{
+      productId: string;
+      sku?: string;
+      variantId?: string | null;
+      qty: number;
+    }>;
   }
 ) {
-  const contact = await getOrCreateCustomerContact(ctx);
+  const phoneStr =
+    typeof input.shippingAddress?.phone === "string"
+      ? input.shippingAddress.phone
+      : undefined;
+  const contact = await getOrCreateCustomerContact(ctx, phoneStr);
   const galaxyLocId = await getGalaxyLocationId();
 
   // Read shipping settings (defaults: ₦3,500 flat, free above ₦100,000)
@@ -243,10 +263,44 @@ export async function createOrder(
   const defaultTaxPct = getEnv().DEFAULT_TAX_PCT;
 
   const order = await prisma.$transaction(async (tx) => {
-    const cartItems = await tx.cartItem.findMany({
+    let cartItems = await tx.cartItem.findMany({
       where: { contactId: contact.id },
       include: { product: true, variant: true },
     });
+
+    // If DB cart is empty and client submitted inline cart items (e.g. guest checkout from localStorage)
+    if (cartItems.length === 0 && input.items && input.items.length > 0) {
+      const resolvedItems: typeof cartItems = [];
+      for (const reqItem of input.items) {
+        const product = await tx.product.findFirst({
+          where: {
+            OR: [
+              { id: reqItem.productId },
+              ...(reqItem.sku ? [{ sku: reqItem.sku }] : []),
+            ],
+          },
+        });
+        if (!product) {
+          throw new BusinessError(`Product ${reqItem.sku || reqItem.productId} not found`);
+        }
+        const variant = reqItem.variantId
+          ? await tx.productVariant.findUnique({ where: { id: reqItem.variantId } })
+          : null;
+        resolvedItems.push({
+          id: `inline_${product.id}`,
+          contactId: contact.id,
+          productId: product.id,
+          variantId: variant?.id ?? null,
+          qty: reqItem.qty,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          product,
+          variant,
+        });
+      }
+      cartItems = resolvedItems;
+    }
+
     if (cartItems.length === 0) {
       throw new BusinessError("Your cart is empty");
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Smartphone,
@@ -11,26 +11,37 @@ import {
   Eye,
   Trash2,
   ExternalLink,
+  Filter,
 } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { usePlatformStore } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
+import { GALAXY_CATEGORIES } from "@/lib/shop-data";
 
 export default function GalaxyProductsPage() {
   const { products: storeProducts, deleteProduct } = usePlatformStore();
   const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("ALL");
 
-  const galaxyProducts = storeProducts.filter(
-    (p) => p.source === ServiceSlug.GALAXY
+  const galaxyProducts = useMemo(
+    () => storeProducts.filter((p) => p.source === ServiceSlug.GALAXY && p.status !== "ARCHIVED"),
+    [storeProducts]
   );
 
-  const filtered = galaxyProducts.filter(
-    (p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    return galaxyProducts.filter((p) => {
+      const matchSearch =
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        p.sku.toLowerCase().includes(search.toLowerCase()) ||
+        (p.label && p.label.toLowerCase().includes(search.toLowerCase()));
+
+      if (!matchSearch) return false;
+      if (selectedCategory !== "ALL" && p.label !== selectedCategory) return false;
+      return true;
+    });
+  }, [galaxyProducts, search, selectedCategory]);
 
   return (
     <div className="space-y-6">
@@ -61,7 +72,7 @@ export default function GalaxyProductsPage() {
             <ExternalLink className="w-3.5 h-3.5 text-muted" />
           </Link>
           <Link
-            href="/admin/products/new"
+            href="/admin/products/new?service=galaxy"
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-galaxy hover:bg-galaxy-dark text-white text-xs font-bold transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4" />
@@ -72,17 +83,37 @@ export default function GalaxyProductsPage() {
 
       {/* Catalog Table Card */}
       <div className="bg-white rounded-2xl border border-border p-5 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="relative max-w-sm w-full">
-            <Search className="w-3.5 h-3.5 text-muted absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search gadgets, SSDs, models..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-9 pl-9 pr-3 rounded-xl border border-border text-xs text-heading focus:outline-none focus:border-galaxy"
-            />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1 max-w-lg">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="w-3.5 h-3.5 text-muted absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search gadgets, SSDs, models..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full h-9 pl-9 pr-3 rounded-xl border border-border text-xs text-heading focus:outline-none focus:border-galaxy"
+              />
+            </div>
+
+            {/* Category Dropdown Filter */}
+            <div className="flex items-center gap-1.5 border border-border rounded-xl px-2.5 h-9 bg-white">
+              <Filter className="w-3.5 h-3.5 text-muted" />
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="bg-transparent font-semibold text-xs text-heading focus:outline-none cursor-pointer"
+              >
+                <option value="ALL">All Categories</option>
+                {GALAXY_CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+
           <span className="text-xs text-muted font-medium">
             Showing {filtered.length} of {galaxyProducts.length} items
           </span>
@@ -111,7 +142,10 @@ export default function GalaxyProductsPage() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={p.imageUrl}
-                          alt={p.name}
+                          alt=""
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
                           className="max-h-full max-w-full object-contain"
                         />
                       ) : (
@@ -128,7 +162,11 @@ export default function GalaxyProductsPage() {
                       </span>
                     )}
                   </td>
-                  <td className="py-3 text-muted">{p.label || "Electronics"}</td>
+                  <td className="py-3">
+                    <span className="px-2.5 py-1 rounded-md bg-galaxy-tint text-galaxy font-extrabold text-[10px] uppercase whitespace-nowrap">
+                      {p.label || "Electronics"}
+                    </span>
+                  </td>
                   <td className="py-3 text-right font-black text-heading">
                     {formatCurrency(p.priceKobo)}
                   </td>

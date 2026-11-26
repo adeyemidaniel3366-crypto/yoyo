@@ -66,6 +66,7 @@ export default function StaffLoginPage() {
             email: matched.email || matched.username,
             role: matched.role || "Operations Staff",
             department: matched.department || "Operations",
+            subsidiary: matched.subsidiary || "ALL",
             branch: matched.branch || "Zino One Central Hub",
             accessLevel: "STAFF",
             signedInAt: new Date().toISOString(),

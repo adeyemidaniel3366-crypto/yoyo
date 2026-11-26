@@ -114,7 +114,7 @@ export function AdminTopbar({
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/signout", { method: "POST" });
+      await fetch("/api/auth/logout", { method: "POST" });
     } catch {}
     document.cookie = "authjs.session-token=; path=/; max-age=0; SameSite=Lax";
     document.cookie = "__Secure-authjs.session-token=; path=/; max-age=0; SameSite=Lax";

@@ -75,10 +75,14 @@ export default function LoginPage() {
   // Action Handlers
   // ---------------------------------------------------------------------------
 
-  const handleAdminSuccess = (adminName: string) => {
+  const handleAdminSuccess = (adminName: string, hasBackendCookie = false) => {
     setStatusMessage(`Welcome, ${adminName}! Redirecting to Admin Dashboard...`);
-    document.cookie =
-      "authjs.session-token=admin-active; path=/; max-age=2592000; SameSite=Lax";
+    // Preserve real DB-backed httpOnly session cookie if /api/auth/login issued one;
+    // only set local fallback cookie when operating in local-only offline mode.
+    if (!hasBackendCookie && !document.cookie.includes("authjs.session-token=")) {
+      document.cookie =
+        "authjs.session-token=admin-active; path=/; max-age=2592000; SameSite=Lax";
+    }
     setTimeout(() => {
       router.push("/admin");
       router.refresh();
@@ -93,9 +97,13 @@ export default function LoginPage() {
       window.localStorage.setItem(
         "zino_staff_profile",
         JSON.stringify({
+          id: staff.id,
+          staffCode: staff.staffCode,
           email: staff.email || staff.username,
           name: staff.name,
           role: staff.role || "Operations Staff",
+          department: staff.department || "Operations",
+          subsidiary: staff.subsidiary || "ALL",
           branch: staff.branch || "Zino One Central Hub",
           accessLevel: "STAFF",
           signedInAt: new Date().toISOString(),
@@ -147,14 +155,7 @@ export default function LoginPage() {
         return;
       }
 
-      // 3. Super Admin verification against local account store
-      const adminMatch = verifyAdminLogin(cleanId, cleanPass);
-      if (adminMatch) {
-        handleAdminSuccess(adminMatch.name);
-        return;
-      }
-
-      // 4. Try API auth endpoint as backup
+      // 3. Try API auth endpoint first so a real DB-backed session cookie is issued
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -163,7 +164,14 @@ export default function LoginPage() {
       const data = await res.json().catch(() => ({}));
 
       if (res.ok && data?.ok) {
-        handleAdminSuccess(data.user?.firstName || "Admin");
+        handleAdminSuccess(data.data?.firstName || "Admin", true);
+        return;
+      }
+
+      // 4. Fallback to local admin account store when offline/unseeded
+      const adminMatch = verifyAdminLogin(cleanId, cleanPass);
+      if (adminMatch) {
+        handleAdminSuccess(adminMatch.name, false);
         return;
       }
 

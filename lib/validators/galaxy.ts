@@ -51,10 +51,23 @@ export const createOrderSchema = z
   .object({
     shippingAddress: addressSchema,
     billingAddress: addressSchema.optional(),
+    customerEmail: z.string().email().optional().nullable(),
     couponCode: z.string().trim().max(40).optional().nullable(),
     paymentMethod: z.enum(["ONLINE", "COD"]).default("ONLINE"),
     gateway: z.enum(["PAYSTACK", "FLUTTERWAVE"]).optional(),
     notes: z.string().trim().max(500).optional().nullable(),
+    items: z
+      .array(
+        z
+          .object({
+            productId: z.string().min(1),
+            sku: z.string().optional(),
+            variantId: z.string().optional().nullable(),
+            qty: z.number().int().min(1).max(99),
+          })
+          .strict()
+      )
+      .optional(),
   })
   .strict();
 

@@ -49,6 +49,8 @@ import {
   Check,
   Server,
   PlayCircle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   LineChart,
@@ -76,6 +78,7 @@ import {
 import { formatCurrency } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { NumberInput, formatNumbersInText } from "@/components/ui/number-input";
+import { GALAXY_CATEGORIES } from "@/lib/shop-data";
 import { computeStoreFinancialTotals, probeBackendHealth, type BackendHealthStatus } from "@/lib/api-sync";
 import { FinancialSummarySection } from "@/components/admin/dashboard/FinancialSummarySection";
 import { TargetsProgressSection } from "@/components/admin/dashboard/TargetsProgressSection";
@@ -426,6 +429,31 @@ export default function UnifiedAdminDashboard() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  // ── Privacy / Hide Sensitive Figures Toggle ──
+  const [hideSensitive, setHideSensitive] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (window.localStorage.getItem("zino_hide_sensitive_values_v1") === "1") {
+        setHideSensitive(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleHideSensitive = () => {
+    setHideSensitive((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("zino_hide_sensitive_values_v1", next ? "1" : "0");
+      }
+      showToast(next ? "Sensitive dashboard figures hidden" : "Sensitive dashboard figures visible");
+      return next;
+    });
+  };
+
   // ── Currency Multi-Switch State & Logic ──
   const [activeCurrency, setActiveCurrency] = useState<"NGN" | "USD" | "GBP" | "EUR">("NGN");
 
@@ -440,6 +468,9 @@ export default function UnifiedAdminDashboard() {
   };
 
   const formatMoney = (kobo: number) => {
+    if (hideSensitive) {
+      return "••••••";
+    }
     if (activeCurrency === "NGN") {
       return formatCurrency(kobo);
     }
@@ -838,7 +869,7 @@ export default function UnifiedAdminDashboard() {
     },
     {
       title: "Active Bookings",
-      value: String(getCard("activeBookings")?.valueKobo ?? financialTotals.bookingsCount),
+      value: hideSensitive ? "•••" : String(getCard("activeBookings")?.valueKobo ?? financialTotals.bookingsCount),
       icon: Building2,
       iconColor: "#1E3A5F",
       iconBg: "#E8EEF5",
@@ -847,7 +878,7 @@ export default function UnifiedAdminDashboard() {
     },
     {
       title: "Visitors Today",
-      value: String(getCard("visitorsToday")?.valueKobo ?? financialTotals.visitorsCount),
+      value: hideSensitive ? "•••" : String(getCard("visitorsToday")?.valueKobo ?? financialTotals.visitorsCount),
       icon: Users,
       iconColor: "#7C3AED",
       iconBg: "#F3EFFF",
@@ -1095,12 +1126,13 @@ export default function UnifiedAdminDashboard() {
 
   // ── Handlers for Product Modal ────────────────────────────────────────
   const handleOpenAddProduct = (defaultService?: ServiceSlug) => {
+    const isGalaxy = defaultService === ServiceSlug.GALAXY;
     setEditingProduct({
       id: "",
       source: defaultService || ServiceSlug.SPARK,
       sku: `SKU-${Math.floor(1000 + Math.random() * 9000)}`,
       name: "",
-      label: "Featured",
+      label: isGalaxy ? GALAXY_CATEGORIES[0] : "Featured",
       description: "",
       priceDisplay: "₦0",
       priceKobo: 0,
@@ -1227,6 +1259,22 @@ export default function UnifiedAdminDashboard() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Hide / Unhide Sensitive Financial Figures Toggle */}
+          <button
+            type="button"
+            onClick={toggleHideSensitive}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border font-bold text-xs transition-colors shadow-2xs cursor-pointer",
+              hideSensitive
+                ? "bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100"
+                : "bg-white border-gray-200 text-gray-800 hover:bg-gray-50"
+            )}
+            title={hideSensitive ? "Unhide revenue & sensitive dashboard figures" : "Hide revenue & sensitive dashboard figures"}
+          >
+            {hideSensitive ? <Eye className="w-3.5 h-3.5 text-amber-600" /> : <EyeOff className="w-3.5 h-3.5 text-indigo-600" />}
+            <span>{hideSensitive ? "Show Info" : "Hide Info"}</span>
+          </button>
+
           {/* Multi-Currency Switcher */}
           <div className="inline-flex items-center p-1 rounded-xl bg-gray-100 border border-gray-200 text-xs font-mono font-bold">
             {(["NGN", "USD", "GBP", "EUR"] as const).map((curr) => (
@@ -1427,6 +1475,7 @@ export default function UnifiedAdminDashboard() {
         totalExpenseKobo={financialTotals.totalExpenseKobo}
         bookingsCount={financialTotals.bookingsCount}
         visitorsCount={financialTotals.visitorsCount}
+        hideSensitive={hideSensitive}
         onEditClick={() => {
           setTargetForm({
             salesNaira: Math.round(targets.salesTargetKobo / 100),
@@ -1749,7 +1798,29 @@ export default function UnifiedAdminDashboard() {
       </div>
 
       {/* ── Row 2: Interactive Charts ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
+      <div className="relative min-w-0">
+        {hideSensitive && (
+          <div className="absolute inset-0 z-10 rounded-2xl bg-white/80 backdrop-blur-md border border-gray-200 flex flex-col items-center justify-center gap-2.5 p-6 text-center">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center">
+              <EyeOff className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-extrabold text-gray-900">Revenue Charts Hidden</p>
+              <p className="text-xs text-gray-600 mt-0.5">
+                Privacy mode is active. Click &quot;Show Info&quot; to reveal financial charts and figures.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={toggleHideSensitive}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>Show Info</span>
+            </button>
+          </div>
+        )}
+      <div className={cn("grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0", hideSensitive && "select-none opacity-25 pointer-events-none")}>
         <ChartCard
           title="Sales — Last 30 Days"
           subtitle={
@@ -1898,6 +1969,7 @@ export default function UnifiedAdminDashboard() {
             </ResponsiveContainer>
           </div>
         </ChartCard>
+      </div>
       </div>
 
       {/* ── Row 3: Needs Attention + Live Recent Activity ── */}
@@ -2245,19 +2317,28 @@ export default function UnifiedAdminDashboard() {
               >
                 <div>
                   {/* Product Visual Image Header */}
-                  <div className="relative h-36 w-full bg-gray-100 overflow-hidden">
+                  <div className="relative h-36 w-full bg-slate-100 overflow-hidden flex items-center justify-center">
                     {item.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={item.imageUrl}
-                        alt={item.name}
+                        alt=""
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                          const fallback = e.currentTarget.parentElement?.querySelector(".img-fallback");
+                          if (fallback) fallback.classList.remove("hidden");
+                        }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-500">
-                        <ImageIcon className="w-8 h-8" />
-                      </div>
-                    )}
+                    ) : null}
+                    <div
+                      className={cn(
+                        "w-full h-full flex items-center justify-center text-gray-400 bg-slate-100 img-fallback",
+                        item.imageUrl ? "hidden" : ""
+                      )}
+                    >
+                      <ImageIcon className="w-8 h-8 opacity-60" />
+                    </div>
                     <div className="absolute top-2.5 left-2.5">
                       <SourceBadge source={item.source} size="sm" />
                     </div>
@@ -2376,12 +2457,18 @@ export default function UnifiedAdminDashboard() {
                   </label>
                   <select
                     value={editingProduct.source || ServiceSlug.SPARK}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const newSource = e.target.value as ServiceSlug;
+                      const isGalaxy = newSource === ServiceSlug.GALAXY;
+                      const hasValidGalaxyCat = GALAXY_CATEGORIES.includes(editingProduct.label as any);
                       setEditingProduct({
                         ...editingProduct,
-                        source: e.target.value as ServiceSlug,
-                      })
-                    }
+                        source: newSource,
+                        label: isGalaxy
+                          ? (hasValidGalaxyCat ? editingProduct.label : GALAXY_CATEGORIES[0])
+                          : (editingProduct.label || "Featured"),
+                      });
+                    }}
                     className="w-full h-9 px-2 rounded-lg border border-gray-200 text-gray-900 bg-white focus:outline-none focus:border-active"
                   >
                     <option value={ServiceSlug.SPARK}>Zino Spark (POS)</option>
@@ -2394,17 +2481,35 @@ export default function UnifiedAdminDashboard() {
                 </div>
                 <div>
                   <label className="block font-semibold text-gray-900 mb-1">
-                    Name Label / Tag Badge *
+                    {editingProduct.source === ServiceSlug.GALAXY
+                      ? "Shop By Category *"
+                      : "Name Label / Tag Badge *"}
                   </label>
-                  <input
-                    type="text"
-                    value={editingProduct.label || ""}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, label: e.target.value })
-                    }
-                    placeholder="e.g. Best Seller, Hot Deal, VIP Suite"
-                    className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-active"
-                  />
+                  {editingProduct.source === ServiceSlug.GALAXY ? (
+                    <select
+                      value={editingProduct.label || GALAXY_CATEGORIES[0]}
+                      onChange={(e) =>
+                        setEditingProduct({ ...editingProduct, label: e.target.value })
+                      }
+                      className="w-full h-9 px-2 rounded-lg border border-gray-200 text-gray-900 bg-white font-semibold focus:outline-none focus:border-galaxy"
+                    >
+                      {GALAXY_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={editingProduct.label || ""}
+                      onChange={(e) =>
+                        setEditingProduct({ ...editingProduct, label: e.target.value })
+                      }
+                      placeholder="e.g. Best Seller, Hot Deal, VIP Suite"
+                      className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-active"
+                    />
+                  )}
                 </div>
               </div>
 

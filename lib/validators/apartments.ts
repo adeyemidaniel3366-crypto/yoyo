@@ -27,6 +27,7 @@ export const updateRoomTypeSchema = createRoomTypeSchema.partial().strict();
 export const createBookingSchema = z
   .object({
     roomTypeId: z.string().min(1),
+    roomTypeSlug: z.string().optional().nullable(),
     checkIn: z.string().regex(/^\d{4}-\d{2}-\d{2}/, "checkIn must be YYYY-MM-DD"),
     checkOut: z.string().regex(/^\d{4}-\d{2}-\d{2}/, "checkOut must be YYYY-MM-DD"),
     adults: z.number().int().min(1).max(20),

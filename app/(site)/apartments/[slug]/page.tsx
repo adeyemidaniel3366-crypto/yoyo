@@ -58,17 +58,27 @@ export default function ApartmentDetailsPage() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const loadedSuites = getApartmentSuites();
-    setSuites(loadedSuites);
-    const found = loadedSuites.find(
-      (s) => s.slug === slug || s.id === slug || s.id === `apt_${slug}`
-    );
-    if (found) {
-      setSuite(found);
-    } else {
-      // Fallback to first suite or default
-      setSuite(loadedSuites[0] || DEFAULT_APARTMENT_SUITES[0]);
-    }
+    const loadSuite = () => {
+      const loadedSuites = getApartmentSuites();
+      setSuites(loadedSuites);
+      const found = loadedSuites.find(
+        (s) => s.slug === slug || s.id === slug || s.id === `apt_${slug}`
+      );
+      if (found) {
+        setSuite(found);
+      } else {
+        // Fallback to first suite or default
+        setSuite(loadedSuites[0] || DEFAULT_APARTMENT_SUITES[0]);
+      }
+    };
+
+    loadSuite();
+    window.addEventListener("zino-platform-store-sync", loadSuite);
+    window.addEventListener("storage", loadSuite);
+    return () => {
+      window.removeEventListener("zino-platform-store-sync", loadSuite);
+      window.removeEventListener("storage", loadSuite);
+    };
   }, [slug]);
 
   if (!suite) {

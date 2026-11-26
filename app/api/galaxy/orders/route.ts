@@ -1,6 +1,7 @@
 import { OrderStatus, Role, ServiceSlug } from "@prisma/client";
 import { withErrorHandler, ok, okList, buildPaginationMeta, parseBody, parseQuery, withIdempotency, hashPayload } from "@/lib/api";
-import { requireAuth } from "@/lib/auth";
+import { getSessionUser, requireAuth } from "@/lib/auth";
+import { enforceRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 import { listQuerySchema } from "@/lib/validators/common";
 import { createOrderSchema } from "@/lib/validators/galaxy";
 import { createOrder, getOrCreateCustomerContact } from "@/lib/services/orders";
@@ -54,8 +55,25 @@ export const GET = withErrorHandler(async (req, _ctx, requestId) => {
 });
 
 export const POST = withErrorHandler(async (req, _ctx, requestId) => {
-  const ctx = await requireAuth(req, requestId);
+  await enforceRateLimit(RATE_LIMITS.PUBLIC_FORM, getClientIp(req));
+  const sessionUser = await getSessionUser(req);
   const body = await parseBody(req, createOrderSchema);
+
+  const guestName = String(body.shippingAddress.fullName || "Galaxy Guest").trim();
+  const [firstName, ...restName] = guestName.split(/\s+/);
+  const ctx = {
+    user: sessionUser ?? {
+      id: "GUEST",
+      email: body.customerEmail || `guest-${body.shippingAddress.phone}@zinoone.local`,
+      firstName: firstName || "Guest",
+      lastName: restName.join(" ") || "Shopper",
+      roles: [Role.CUSTOMER],
+      serviceAccess: [ServiceSlug.GALAXY],
+      locationIds: [],
+      isActive: true,
+    },
+    requestId,
+  };
 
   const result = await withIdempotency(req, hashPayload(body), async () => {
     const order = await createOrder(ctx, body);

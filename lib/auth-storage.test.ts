@@ -161,5 +161,43 @@ describe("auth-storage security questions and auth flows", () => {
       expect(updatedLogin).not.toBeNull();
       expect(updatedLogin?.username).toBe("amaka.finance");
     });
+
+    it("persists assigned subsidiary access scope including ALL", () => {
+      saveStaffCredential({
+        staffCode: "STF-BS-01",
+        name: "Bola Billstacks",
+        username: "bola.billstacks",
+        email: "bola@zinogroup.com",
+        password: "BillPass2026!",
+        role: "Billing Officer",
+        department: "Finance",
+        subsidiary: "BILLSTACKS" as any,
+        branch: "HQ",
+        status: "ACTIVE",
+        pin: "1234",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+
+      const billstacksStaff = verifyStaffLogin("bola.billstacks", "BillPass2026!");
+      expect(billstacksStaff?.subsidiary).toBe("BILLSTACKS");
+
+      saveStaffCredential({
+        staffCode: "STF-ALL-01",
+        name: "Global Manager",
+        username: "global.manager",
+        email: "global@zinogroup.com",
+        password: "AllPass2026!",
+        role: "General Manager",
+        department: "Executive",
+        subsidiary: "ALL",
+        branch: "HQ",
+        status: "ACTIVE",
+        pin: "1234",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+
+      const allStaff = verifyStaffLogin("global.manager", "AllPass2026!");
+      expect(allStaff?.subsidiary).toBe("ALL");
+    });
   });
 });

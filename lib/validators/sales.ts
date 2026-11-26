@@ -1,30 +1,54 @@
 import { z } from "zod";
 import { koboSchema, positiveKoboSchema, positiveQtySchema } from "./common";
 
+const rawSaleItemSchema = z
+  .object({
+    productId: z.string().min(1),
+    qty: positiveQtySchema,
+    unitPriceKobo: positiveKoboSchema.optional(),
+  })
+  .strict();
+
+const uiSaleLineSchema = z
+  .object({
+    productId: z.string().optional(),
+    productCode: z.string().optional(),
+    productName: z.string().optional(),
+    qty: positiveQtySchema,
+    unitPriceKobo: positiveKoboSchema.optional(),
+    discountKobo: koboSchema.optional(),
+  })
+  .strict();
+
 export const createSaleSchema = z
   .object({
-    locationId: z.string().min(1, "Location is required"),
+    locationId: z.string().optional(),
+    source: z.string().optional(),
     contactId: z.string().optional().nullable(),
-    items: z
+    customerName: z.string().trim().max(150).optional().nullable(),
+    walkInPhone: z.string().trim().max(30).optional().nullable(),
+    items: z.array(rawSaleItemSchema).min(1).optional(),
+    lines: z.array(uiSaleLineSchema).min(1).optional(),
+    payments: z
       .array(
-        z
-          .object({
-            productId: z.string().min(1),
-            qty: positiveQtySchema,
-            unitPriceKobo: positiveKoboSchema.optional(),
-          })
-          .strict()
+        z.object({
+          method: z.string().trim().max(40),
+          amountKobo: koboSchema,
+        })
       )
-      .min(1, "At least one item is required"),
+      .optional(),
     discountKobo: koboSchema.default(0),
-    paidKobo: koboSchema.default(0),
-    paymentMethod: z.string().trim().max(40).default("CASH"),
+    paidKobo: koboSchema.optional(),
+    paymentMethod: z.string().trim().max(40).optional(),
     fulfilment: z.string().trim().max(40).optional().nullable(),
+    fulfilmentStatus: z.string().trim().max(40).optional().nullable(),
     remarks: z.string().trim().max(500).optional().nullable(),
     isParked: z.boolean().default(false),
     allowCreditOversell: z.boolean().default(false),
   })
-  .strict();
+  .refine((data) => (data.items && data.items.length > 0) || (data.lines && data.lines.length > 0), {
+    message: "At least one item is required",
+  });
 
 export const voidSaleSchema = z
   .object({

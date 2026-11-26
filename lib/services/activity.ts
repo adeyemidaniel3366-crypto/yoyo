@@ -18,12 +18,22 @@ export interface LogActivityInput {
   amountKobo?: number | null;
 }
 
+const SYNTHETIC_ACTOR_IDS = new Set(["KIOSK", "GUEST", "SYSTEM"]);
+
+export function sanitizeActorId(actorId?: string | null): string | null {
+  if (!actorId) return null;
+  if (actorId.startsWith("demo-") || SYNTHETIC_ACTOR_IDS.has(actorId)) {
+    return null;
+  }
+  return actorId;
+}
+
 export async function logActivity(tx: DbClient, input: LogActivityInput) {
   return tx.activityLog.create({
     data: {
       source: input.source,
       locationId: input.locationId ?? null,
-      actorId: input.actorId ?? null,
+      actorId: sanitizeActorId(input.actorId),
       action: input.action,
       entityType: input.entityType,
       entityId: input.entityId,
