@@ -14,11 +14,7 @@ interface Article {
   views: number;
 }
 
-const ARTICLES: Article[] = [
-  { id: "1", title: "Kingston KC3000 vs Samsung 990 Pro: Real World 4K Video Benchmarks", category: "Hardware Review", date: "16 Nov 2026", views: 1420 },
-  { id: "2", title: "Why Your Small Business Needs a Synology NAS in 2026", category: "IT Infrastructure", date: "09 Nov 2026", views: 890 },
-  { id: "3", title: "Apple M3 Max in 2026: Still the King of Mobile Workstations?", category: "Analysis", date: "02 Nov 2026", views: 2150 },
-];
+const ARTICLES: Article[] = [];
 
 export default function GalaxyBlogPage() {
   const [articles, setArticles] = useState<Article[]>(ARTICLES);

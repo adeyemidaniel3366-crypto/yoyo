@@ -12,14 +12,7 @@ interface RoleItem {
   code: string;
 }
 
-const ROLES: RoleItem[] = [
-  { title: "Managing Director / CEO", level: "Executive Level", code: "EXEC-01" },
-  { title: "Financial Controller", level: "Senior Management", code: "MGT-02" },
-  { title: "Senior Software Engineer", level: "Engineering", code: "ENG-03" },
-  { title: "Front Desk & Concierge Officer", level: "Frontline Hospitality", code: "OPS-04" },
-  { title: "Yard Inventory Supervisor", level: "Supply Logistics", code: "LOG-05" },
-  { title: "Retail Store Cashier", level: "Retail Point of Sale", code: "RET-06" },
-];
+const ROLES: RoleItem[] = [];
 
 export default function VisitorsDesignationsPage() {
   const [roles, setRoles] = useState<RoleItem[]>(ROLES);

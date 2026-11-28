@@ -14,14 +14,7 @@ interface BrandItem {
   productsCount: number;
 }
 
-const BRANDS: BrandItem[] = [
-  { id: "b1", name: "Samsung Electronics", origin: "South Korea", warrantyPolicy: "2-Year Samsung Global Care", productsCount: 24 },
-  { id: "b2", name: "Kingston Technology", origin: "USA", warrantyPolicy: "5-Year Manufacturer Warranty", productsCount: 18 },
-  { id: "b3", name: "Lexar", origin: "USA", warrantyPolicy: "3-Year Lexar Limited Warranty", productsCount: 10 },
-  { id: "b4", name: "Synology", origin: "Taiwan", warrantyPolicy: "3-Year Enterprise Replacement", productsCount: 5 },
-  { id: "b5", name: "JBL by Harman", origin: "USA", warrantyPolicy: "1-Year Harman Warranty", productsCount: 12 },
-  { id: "b6", name: "Zealot Audio", origin: "China", warrantyPolicy: "6-Month Fast Replacement", productsCount: 15 },
-];
+const BRANDS: BrandItem[] = [];
 
 export default function GalaxyBrandsPage() {
   const [brands, setBrands] = useState<BrandItem[]>(BRANDS);

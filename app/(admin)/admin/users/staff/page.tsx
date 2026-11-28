@@ -14,12 +14,7 @@ interface StaffAccess {
   issuedDate?: string;
 }
 
-const STAFF: StaffAccess[] = [
-  { id: "1", name: "Femi Adeleke", position: "Financial Controller", branch: "HQ Victoria Island", accessCardId: "CRD-8821", pinSet: true, issuedDate: "2026-01-15" },
-  { id: "2", name: "Chinedu Eze", position: "Store Manager", branch: "Computer Village (Medical Rd)", accessCardId: "CRD-8822", pinSet: true, issuedDate: "2026-03-10" },
-  { id: "3", name: "Adaeze Okafor", position: "Front Desk Concierge", branch: "Zino Apartments Lekki", accessCardId: "CRD-8823", pinSet: true, issuedDate: "2026-06-01" },
-  { id: "4", name: "Tunde Bakare", position: "Yard Supervisor", branch: "Top Builders Supply Yard", accessCardId: "CRD-8824", pinSet: true, issuedDate: "2026-02-12" },
-];
+const STAFF: StaffAccess[] = [];
 
 export default function StaffAccessPage() {
   const [staff, setStaff] = useState<StaffAccess[]>(STAFF);

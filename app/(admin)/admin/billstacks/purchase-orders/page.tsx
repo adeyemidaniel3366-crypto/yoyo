@@ -20,10 +20,7 @@ interface PurchaseOrder {
   status: "PAID" | "PENDING" | "RECEIVED";
 }
 
-const ORDERS: PurchaseOrder[] = [
-  { id: "po1", poNo: "PO-2026-081", vendor: "Dangote Cement PLC", itemsSummary: "1,200 Bags Grade 42.5R Cement", amountKobo: 960000000, deliveryDate: "24 Nov 2026", status: "PENDING" },
-  { id: "po2", poNo: "PO-2026-080", vendor: "Schneider Electric West Africa", itemsSummary: "48x 3-Phase Smart Circuit Breakers", amountKobo: 340000000, deliveryDate: "21 Nov 2026", status: "RECEIVED" },
-];
+const ORDERS: PurchaseOrder[] = [];
 
 export default function BillstacksPurchaseOrdersPage() {
   const { recordTransaction } = usePlatformStore();

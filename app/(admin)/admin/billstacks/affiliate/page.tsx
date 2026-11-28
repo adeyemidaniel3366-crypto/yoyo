@@ -16,10 +16,7 @@ interface PartnerRow {
   commissionKobo: number;
 }
 
-const PARTNERS: PartnerRow[] = [
-  { id: "p1", partner: "TechPoint Media Hub", code: "TECHPOINT", referrals: 24, revenueKobo: 480000000, commissionKobo: 48000000 },
-  { id: "p2", partner: "Lagos Innovates Alliance", code: "LAGOSINN", referrals: 15, revenueKobo: 300000000, commissionKobo: 30000000 },
-];
+const PARTNERS: PartnerRow[] = [];
 
 export default function BillstacksAffiliatePage() {
   const [partners] = useState<PartnerRow[]>(PARTNERS);

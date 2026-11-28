@@ -17,10 +17,7 @@ interface StockAdjustment {
   date: string;
 }
 
-const ADJUSTMENTS: StockAdjustment[] = [
-  { id: "1", item: "Lexar SL500 Portable SSD 2TB", location: "Medical Road", type: "DEMO_DISPLAY", qtyChange: -1, reason: "Transferred to customer demo testing station", date: "17 Nov 2026" },
-  { id: "2", item: "Zealot S69M Bluetooth Speaker", location: "Adepele Shop", type: "DAMAGED", qtyChange: -1, reason: "Factory sound distortion; returned to distributor", date: "14 Nov 2026" },
-];
+const ADJUSTMENTS: StockAdjustment[] = [];
 
 export default function SparkAdjustmentsPage() {
   const [adjustments, setAdjustments] = useState<StockAdjustment[]>(ADJUSTMENTS);

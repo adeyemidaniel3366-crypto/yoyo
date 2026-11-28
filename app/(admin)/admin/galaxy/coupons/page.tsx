@@ -18,11 +18,7 @@ interface CouponRow {
   active: boolean;
 }
 
-const COUPONS: CouponRow[] = [
-  { id: "1", code: "ZINO2026", discount: "10% Discount", minSpend: "₦50,000", usedCount: 18, maxUses: 100, expiry: "31 Dec 2026", active: true },
-  { id: "2", code: "WELCOME10", discount: "10% Discount", minSpend: "₦20,000", usedCount: 42, maxUses: 200, expiry: "31 Dec 2026", active: true },
-  { id: "3", code: "BLACKFRIDAY", discount: "15% Flash Deal", minSpend: "₦100,000", usedCount: 88, maxUses: 100, expiry: "30 Nov 2026", active: true },
-];
+const COUPONS: CouponRow[] = [];
 
 export default function GalaxyCouponsPage() {
   const [coupons, setCoupons] = useState<CouponRow[]>(COUPONS);

@@ -28,12 +28,7 @@ interface Guest {
   supportStatus?: "OPEN" | "RESOLVED";
 }
 
-const GUESTS: Guest[] = [
-  { id: "g1", name: "Adaeze Okafor", phone: "+234 803 123 4567", email: "adaeze.o@gmail.com", totalStays: 3, lastStay: "19 Nov 2026", supportTicket: "Extra room card key request", supportStatus: "OPEN" },
-  { id: "g2", name: "Engr. Tunde Bakare", phone: "+234 802 987 6543", email: "tunde.bakare@vertex.ng", totalStays: 5, lastStay: "18 Nov 2026" },
-  { id: "g3", name: "Chief Okonkwo", phone: "+234 805 555 1234", email: "okonkwo.builders@yahoo.com", totalStays: 2, lastStay: "17 Nov 2026" },
-  { id: "g4", name: "Dr. Babatunde Alabi", phone: "+234 810 444 8899", email: "dr.alabi@unilag.edu.ng", totalStays: 1, lastStay: "10 Nov 2026" },
-];
+const GUESTS: Guest[] = [];
 
 export default function ApartmentGuestsPage() {
   const [guests, setGuests] = useState<Guest[]>(GUESTS);

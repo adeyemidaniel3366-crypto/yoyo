@@ -18,11 +18,7 @@ interface SparkExpense {
   date: string;
 }
 
-const EXPENSES: SparkExpense[] = [
-  { id: "1", category: "Power & Fuel", title: "Diesel generator supply for Computer Village complex", location: "Medical Road", amountKobo: 8500000, date: "18 Nov 2026" },
-  { id: "2", category: "Security & Association", title: "CAPDAN Computer Village Security & Cleanliness Levy", location: "Adepele Shop", amountKobo: 2500000, date: "15 Nov 2026" },
-  { id: "3", category: "Logistics", title: "Dispatch bike transport to Ikeja Post Office", location: "Olayeni Office", amountKobo: 1200000, date: "14 Nov 2026" },
-];
+const EXPENSES: SparkExpense[] = [];
 
 export default function SparkExpensesPage() {
   const { recordTransaction } = usePlatformStore();

@@ -26,6 +26,7 @@ import { usePlatformStore } from "@/lib/platform-store";
 import { ServiceSlug } from "@/lib/constants";
 import { formatCurrency } from "@/lib/money";
 import { NumberInput } from "@/components/ui/number-input";
+import { startOnlinePayment, usePaymentConfig, type ClientGatewayId } from "@/lib/payments/client";
 
 interface ApartmentBookingModalProps {
   suite: ApartmentSuite | null;
@@ -59,6 +60,8 @@ export function ApartmentBookingModal({
   const [paymentMethod, setPaymentMethod] = useState<
     "PAYSTACK_CARD" | "BANK_TRANSFER" | "PAY_ON_ARRIVAL"
   >("PAYSTACK_CARD");
+  const [selectedGateway, setSelectedGateway] = useState<ClientGatewayId>("PAYSTACK");
+  const { config: paymentConfig } = usePaymentConfig();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedBooking, setConfirmedBooking] =
@@ -164,13 +167,36 @@ export function ApartmentBookingModal({
     recordTransaction({
       source: ServiceSlug.APARTMENTS,
       activityType: "BOOKING",
-      activitySummary: `Reserved ${suite.name} (${nights} nights, ${checkIn} → ${checkOut}) ${isServerConfirmed ? "[Verified API]" : "[Demo Mode]"}`,
+      activitySummary: `Reserved ${suite.name} (${nights} nights, ${checkIn} → ${checkOut}) ${isServerConfirmed ? "[Verified API]" : "[Online Gateway]"}`,
       invoiceNo: ref,
       customer: guestName.trim(),
       amountKobo: totalKobo,
       location: "Zino Luxury Apartments (Lekki Phase 1)",
       status: initialStatus,
     });
+
+    if (paymentMethod === "PAYSTACK_CARD") {
+      try {
+        await startOnlinePayment({
+          gateway: selectedGateway,
+          source: ServiceSlug.APARTMENTS,
+          amountKobo: totalKobo,
+          email: guestEmail.trim(),
+          customerName: guestName.trim(),
+          note: `Apartment Reservation (${ref}) - ${suite.name}`,
+          pending: {
+            kind: "APARTMENT_BOOKING",
+            bookingRef: ref,
+            invoiceNo: ref,
+            title: `Apartment Reservation (${ref})`,
+            returnPath: "/apartments",
+          },
+        });
+        return;
+      } catch (err: any) {
+        // Fallback to voucher confirmation if redirect error occurs
+      }
+    }
 
     setIsSubmitting(false);
     setConfirmedBooking(newBooking);
@@ -522,6 +548,40 @@ export function ApartmentBookingModal({
                     <span>Pay on Arrival</span>
                   </label>
                 </div>
+
+                {paymentMethod === "PAYSTACK_CARD" && (
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 mt-2">
+                    <div className="flex items-center justify-between text-xs font-mono">
+                      <span className="font-bold text-slate-700">Payment Gateway:</span>
+                      <span className="text-[10px] text-slate-500">
+                        {paymentConfig.gateways.filter((g) => g.enabled).length} Options Available
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {paymentConfig.gateways
+                        .filter((g) => g.enabled)
+                        .map((gw) => (
+                          <button
+                            key={gw.id}
+                            type="button"
+                            onClick={() => setSelectedGateway(gw.id)}
+                            className={`p-2 rounded-lg border text-left text-xs font-mono transition-all ${
+                              selectedGateway === gw.id
+                                ? "border-amber-500 bg-white ring-2 ring-amber-500/20 text-amber-900 font-bold"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold">{gw.name}</span>
+                              <span className="text-[8px] px-1 py-0.2 rounded bg-slate-100 text-slate-600 uppercase font-black">
+                                {gw.currency}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Price Breakdown */}

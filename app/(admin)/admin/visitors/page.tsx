@@ -39,10 +39,10 @@ export default function VisitorManagementDashboardPage() {
     todayAttendance: number;
     totalEmployees: number;
   }>({
-    totalVisitors: 5,
-    totalPreRegisters: 5,
+    totalVisitors: 0,
+    totalPreRegisters: 0,
     todayAttendance: 0,
-    totalEmployees: 5,
+    totalEmployees: 0,
   });
 
   React.useEffect(() => {

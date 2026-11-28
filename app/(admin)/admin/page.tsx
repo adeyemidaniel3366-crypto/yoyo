@@ -348,48 +348,16 @@ export default function UnifiedAdminDashboard() {
   });
 
   // Urgent attention items (interactive — can be resolved)
-  const [attentionItems, setAttentionItems] = useState([
-    {
-      id: "att_1",
-      source: ServiceSlug.SPARK,
-      severity: "high",
-      title: "Out of Stock: Zealot S69M (13360)",
-      detail: "Warehouse — Asset Corps Plaza (0.0 Pc remaining)",
-      href: "/admin/spark/stock-alert",
-    },
-    {
-      id: "att_2",
-      source: ServiceSlug.BUILDERS,
-      severity: "high",
-      title: "Debtor Overdue: Mama Bose Ventures",
-      detail: "₦281,300 overdue by 128 days (Invoice INV-000104)",
-      href: "/admin/builders/debtors",
-    },
-    {
-      id: "att_3",
-      source: ServiceSlug.APARTMENTS,
-      severity: "medium",
-      title: "Pending Booking Confirmation",
-      detail: "Booking ref #ZINO-482091 for Deluxe Studio Suite",
-      href: "/admin/apartments/bookings",
-    },
-    {
-      id: "att_4",
-      source: ServiceSlug.GALAXY,
-      severity: "medium",
-      title: "Product Review Pending Approval",
-      detail: 'MacBook Pro 16" review by Chinedu O. (5 stars)',
-      href: "/admin/galaxy",
-    },
-    {
-      id: "att_5",
-      source: ServiceSlug.VISITORS,
-      severity: "low",
-      title: "Expected Visitor Waiting",
-      detail: "Adaeze Okafor arrived for meeting with Accounts Dept",
-      href: "/admin/visitors",
-    },
-  ]);
+  const [attentionItems, setAttentionItems] = useState<
+    Array<{
+      id: string;
+      source: ServiceSlug;
+      severity: string;
+      title: string;
+      detail: string;
+      href: string;
+    }>
+  >([]);
 
   // Modals state
   const [productServiceTab, setProductServiceTab] = useState<string>("ALL");
@@ -493,45 +461,13 @@ export default function UnifiedAdminDashboard() {
     const storeApartments = products.filter(
       (p) => p.source === ServiceSlug.APARTMENTS && p.status !== "INACTIVE" && p.status !== "ARCHIVED"
     );
-    if (storeApartments.length > 0) {
-      return storeApartments.map((p, idx) => ({
-        id: p.id,
-        title: p.name,
-        rateKobo: p.priceKobo || 5000000,
-        features: p.label || p.description || "Luxury Serviced Suite",
-        floor: p.sku ? `Suite Ref: ${p.sku}` : `Floor ${idx + 1}`,
-      }));
-    }
-    return [
-      {
-        id: "suite_101",
-        title: "Deluxe Studio Suite",
-        rateKobo: 5000000,
-        features: "1 Bed · 1 Bath · 45 sqm",
-        floor: "1st Floor, East Wing",
-      },
-      {
-        id: "suite_102",
-        title: "Executive 1-Bedroom",
-        rateKobo: 7500000,
-        features: "1 Bed · Lounge · 75 sqm",
-        floor: "2nd Floor, Ocean View",
-      },
-      {
-        id: "suite_201",
-        title: "Luxury 2-Bedroom Suite",
-        rateKobo: 11000000,
-        features: "2 Bed · Kitchen · 115 sqm",
-        floor: "3rd Floor, West Wing",
-      },
-      {
-        id: "suite_301",
-        title: "Presidential Penthouse",
-        rateKobo: 18000000,
-        features: "3 Bed · Private Terrace · 210 sqm",
-        floor: "Top Penthouse Floor",
-      },
-    ];
+    return storeApartments.map((p, idx) => ({
+      id: p.id,
+      title: p.name,
+      rateKobo: p.priceKobo || 5000000,
+      features: p.label || p.description || "Luxury Serviced Suite",
+      floor: p.sku ? `Suite Ref: ${p.sku}` : `Floor ${idx + 1}`,
+    }));
   }, [products]);
 
   const handleToggleRoomStatus = (suiteKey: string, suiteTitle: string) => {
@@ -539,82 +475,68 @@ export default function UnifiedAdminDashboard() {
     showToast(`${suiteTitle} status changed to ${next}`);
   };
 
-  // ── Quick Operations Simulator Handlers ──
+  // ── Quick Operations Real Handlers (Operates on user catalog) ──
   const handleSimulateBooking = () => {
+    const apts = products.filter((p) => p.source === ServiceSlug.APARTMENTS && p.status !== "ARCHIVED");
+    const chosenApt = apts[0];
+    const suiteName = chosenApt ? chosenApt.name : "Deluxe Suite";
+    const priceKobo = chosenApt ? chosenApt.priceKobo : 5500000;
     const bookingRef = `ZINO-${Math.floor(100000 + Math.random() * 900000)}`;
-    const guestPool = [
-      "Dr. Folashade Adeleke",
-      "Engr. Tunde Bakare",
-      "Mrs. Amaka Williams",
-      "Mr. Chukwuemeka Eze",
-      "Barrister Funke Oladipo",
-    ];
-    const guest = guestPool[Math.floor(Math.random() * guestPool.length)];
-    const suites = ["Deluxe Studio Suite", "Executive 1-Bedroom", "Luxury 2-Bedroom Suite"];
-    const suite = suites[Math.floor(Math.random() * suites.length)];
-    const priceKobo = 5500000; // ₦55,000
 
     recordTransaction({
       source: ServiceSlug.APARTMENTS,
       activityType: "BOOKING",
-      activitySummary: `Instant Guest Reservation · ${suite} (${bookingRef})`,
-      customer: guest,
+      activitySummary: `Instant Reservation · ${suiteName} (${bookingRef})`,
+      customer: "Apartment Guest",
       amountKobo: priceKobo,
       location: "Lekki Phase 1",
       status: "PAID",
-      actor: "Online Guest Engine",
+      actor: "Front Desk Reception",
     });
 
-    showToast(`⚡ Simulated Reservation: ${guest} booked ${suite} for ₦55,000!`);
+    showToast(`Reservation logged: ${suiteName} (${bookingRef})`);
   };
 
   const handleSimulatePosSale = () => {
+    const sparkItems = products.filter((p) => p.source === ServiceSlug.SPARK && p.status !== "ARCHIVED");
+    const chosen = sparkItems[0];
+    const itemName = chosen ? chosen.name : "Electronics Item";
+    const priceKobo = chosen ? chosen.priceKobo : 2500000;
     const saleId = `POS-${Math.floor(10000 + Math.random() * 90000)}`;
-    const items = [
-      { name: "Samsung 990 PRO 2TB NVMe SSD", priceKobo: 28000000 },
-      { name: "Lexar SL500 Portable SSD 1TB", priceKobo: 12500000 },
-      { name: "Zealot S69M 50W Bluetooth Speaker", priceKobo: 6500000 },
-      { name: "UGREEN 100W GaN Fast Charger", priceKobo: 4200000 },
-    ];
-    const item = items[Math.floor(Math.random() * items.length)];
 
     recordTransaction({
       source: ServiceSlug.SPARK,
       activityType: "SALE",
-      activitySummary: `Retail POS Sale · ${item.name} (${saleId})`,
+      activitySummary: `Retail POS Sale · ${itemName} (${saleId})`,
       customer: "Walk-in Retail Buyer",
-      amountKobo: item.priceKobo,
-      location: "Adepele St, Ikeja",
+      amountKobo: priceKobo,
+      location: "Zino Spark Medical Road",
       status: "PAID",
       actor: "Register #01 Cashier",
     });
 
-    showToast(`⚡ Simulated POS Sale: ${item.name} recorded on Computer Village register!`);
+    showToast(`POS Sale recorded: ${itemName} (${saleId})`);
   };
 
   const handleSimulateDispatch = () => {
-    const waybillNo = `WB-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-    const contractors = [
-      "Julius Construction Ltd",
-      "Lekki Heights Developers",
-      "Eko Atlantic Villa Projects",
-      "Apex Civil Engineering",
-    ];
-    const contractor = contractors[Math.floor(Math.random() * contractors.length)];
-    const amountKobo = 98000000; // ₦980,000 for 100 bags
+    const bldItems = products.filter((p) => p.source === ServiceSlug.BUILDERS && p.status !== "ARCHIVED");
+    const chosen = bldItems[0];
+    const itemName = chosen ? chosen.name : "Building Supplies";
+    const priceKobo = chosen ? chosen.priceKobo : 98000000;
+    const waybillNo = `WB-${Math.floor(1000 + Math.random() * 9000)}`;
 
     recordTransaction({
       source: ServiceSlug.BUILDERS,
       activityType: "ORDER",
-      activitySummary: `Direct Depot Dispatch · 100 Bags Dangote 42.5R Cement (${waybillNo})`,
-      customer: contractor,
-      amountKobo,
-      location: "Alaba Rago Depot",
+      activitySummary: `Depot Dispatch · ${itemName} (${waybillNo})`,
+      customer: "Building Contractor",
+      amountKobo: priceKobo,
+      location: "Builders Depot Yard",
       status: "PAID",
       actor: "Depot Supervisor",
     });
 
-    showToast(`⚡ Simulated Dispatch: 100 Bags Cement dispatched to ${contractor}!`);
+    showToast(`Dispatch order recorded: ${itemName} (${waybillNo})`);
   };
 
   // ── CSV Export Handler ──
@@ -888,43 +810,9 @@ export default function UnifiedAdminDashboard() {
   ];
 
   // 30 Days Chart Data (Supports BOTH "By service" and "By location")
-  const sales30DaysByLocation = [
-    { date: "20 Oct", Adepele: 800000, MedicalRoad: 5200000, Olayeni: 1000000, AllLocations: 7000000 },
-    { date: "24 Oct", Adepele: 2000000, MedicalRoad: 6100000, Olayeni: 1200000, AllLocations: 9300000 },
-    { date: "28 Oct", Adepele: 1500000, MedicalRoad: 5000000, Olayeni: 3500000, AllLocations: 10000000 },
-    { date: "02 Nov", Adepele: 4200000, MedicalRoad: 8400000, Olayeni: 1900000, AllLocations: 14500000 },
-    { date: "06 Nov", Adepele: 2500000, MedicalRoad: 7200000, Olayeni: 1400000, AllLocations: 11100000 },
-    { date: "10 Nov", Adepele: 3100000, MedicalRoad: 6800000, Olayeni: 2100000, AllLocations: 12000000 },
-    { date: "14 Nov", Adepele: 2800000, MedicalRoad: 7400000, Olayeni: 1600000, AllLocations: 11800000 },
-    { date: "18 Nov", Adepele: 3400000, MedicalRoad: 9200000, Olayeni: 2300000, AllLocations: 14900000 },
-    { date: "20 Nov", Adepele: 3900000, MedicalRoad: 10500000, Olayeni: 2800000, AllLocations: 17200000 },
-  ];
-
-  const sales30DaysByService = [
-    { date: "20 Oct", Spark: 4200000, Builders: 1800000, Galaxy: 650000, Apartments: 350000, Billstacks: 120000 },
-    { date: "24 Oct", Spark: 5100000, Builders: 2400000, Galaxy: 1100000, Apartments: 520000, Billstacks: 180000 },
-    { date: "28 Oct", Spark: 5800000, Builders: 2100000, Galaxy: 1300000, Apartments: 600000, Billstacks: 200000 },
-    { date: "02 Nov", Spark: 7900000, Builders: 3800000, Galaxy: 1750000, Apartments: 750000, Billstacks: 300000 },
-    { date: "06 Nov", Spark: 6100000, Builders: 2900000, Galaxy: 1200000, Apartments: 650000, Billstacks: 250000 },
-    { date: "10 Nov", Spark: 6800000, Builders: 3100000, Galaxy: 1350000, Apartments: 500000, Billstacks: 250000 },
-    { date: "14 Nov", Spark: 6400000, Builders: 3300000, Galaxy: 1250000, Apartments: 600000, Billstacks: 250000 },
-    { date: "18 Nov", Spark: 8200000, Builders: 4100000, Galaxy: 1600000, Apartments: 700000, Billstacks: 300000 },
-    { date: "20 Nov", Spark: 9400000, Builders: 4600000, Galaxy: 1950000, Apartments: 850000, Billstacks: 400000 },
-  ];
-
-  const financialYearData = [
-    { month: "Jan", Spark: 95000000, Builders: 30000000, Galaxy: 12000000, Apartments: 8000000 },
-    { month: "Feb", Spark: 103000000, Builders: 28000000, Galaxy: 14000000, Apartments: 7500000 },
-    { month: "Mar", Spark: 114000000, Builders: 45000000, Galaxy: 19000000, Apartments: 9200000 },
-    { month: "Apr", Spark: 140000000, Builders: 48000000, Galaxy: 22000000, Apartments: 11000000 },
-    { month: "May", Spark: 204000000, Builders: 130000000, Galaxy: 35000000, Apartments: 14500000 },
-    { month: "Jun", Spark: 150000000, Builders: 40000000, Galaxy: 28000000, Apartments: 12000000 },
-    { month: "Jul", Spark: 115000000, Builders: 38000000, Galaxy: 24000000, Apartments: 10500000 },
-    { month: "Aug", Spark: 97000000, Builders: 36000000, Galaxy: 18000000, Apartments: 9000000 },
-    { month: "Sep", Spark: 157000000, Builders: 64000000, Galaxy: 29000000, Apartments: 13000000 },
-    { month: "Oct", Spark: 144000000, Builders: 82000000, Galaxy: 31000000, Apartments: 15000000 },
-    { month: "Nov", Spark: 146000000, Builders: 112000000, Galaxy: 34000000, Apartments: 16500000 },
-  ];
+  const sales30DaysByLocation: Array<Record<string, string | number>> = [];
+  const sales30DaysByService: Array<Record<string, string | number>> = [];
+  const financialYearData: Array<Record<string, string | number>> = [];
 
   const serviceKeyBySlug: Record<string, string> = {
     [ServiceSlug.SPARK]: "Spark",

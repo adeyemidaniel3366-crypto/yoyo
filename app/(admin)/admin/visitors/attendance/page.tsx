@@ -16,12 +16,7 @@ interface AttendanceRecord {
   status: "PRESENT" | "LATE";
 }
 
-const ATTENDANCE: AttendanceRecord[] = [
-  { id: "1", employee: "Femi Adeleke", department: "Finance & Accounting", clockIn: "07:55 AM", clockOut: null, workMode: "ON_SITE", status: "PRESENT" },
-  { id: "2", employee: "Amina Yusuf", department: "Billing Operations", clockIn: "08:02 AM", clockOut: null, workMode: "ON_SITE", status: "PRESENT" },
-  { id: "3", employee: "Emeka Okonkwo", department: "Yard Supervision", clockIn: "07:45 AM", clockOut: null, workMode: "ON_SITE", status: "PRESENT" },
-  { id: "4", employee: "Chinedu Eze", department: "Computer Village Retail", clockIn: "08:42 AM", clockOut: null, workMode: "ON_SITE", status: "LATE" },
-];
+const ATTENDANCE: AttendanceRecord[] = [];
 
 export default function VisitorsAttendancePage() {
   const [records] = useState<AttendanceRecord[]>(ATTENDANCE);

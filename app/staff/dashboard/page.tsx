@@ -72,58 +72,7 @@ interface StaffNotification {
   targetSection: StaffSection;
 }
 
-const INITIAL_NOTIFICATIONS: StaffNotification[] = [
-  {
-    id: "ntf_1",
-    category: "BOOKING_REQUEST",
-    title: "New Apartment Booking Inquiry — Presidential Penthouse",
-    detail: "Guest requested 3 nights check-in at Lekki Phase 1. Pending front-desk verification.",
-    source: ServiceSlug.APARTMENTS,
-    timestamp: "5 mins ago",
-    read: false,
-    targetSection: "rooms",
-  },
-  {
-    id: "ntf_2",
-    category: "LOW_STOCK",
-    title: "Low Stock Alert: Samsung 990 PRO 4TB NVMe SSD",
-    detail: "Remaining quantity dropped to 2 units (reorder threshold: 5).",
-    source: ServiceSlug.SPARK,
-    timestamp: "18 mins ago",
-    read: false,
-    targetSection: "low-stock",
-  },
-  {
-    id: "ntf_3",
-    category: "VISITOR_ARRIVAL",
-    title: "VIP Visitor Checked In at HQ Reception",
-    detail: "Engr. Babatunde Adeyemi arrived for a scheduled meeting with Operations.",
-    source: ServiceSlug.VISITORS,
-    timestamp: "42 mins ago",
-    read: false,
-    targetSection: "invoices",
-  },
-  {
-    id: "ntf_4",
-    category: "PAYMENT_DUE",
-    title: "Sales Payment Due Reminder — Chief Okonkwo",
-    detail: "Outstanding balance on Top Builders yard invoice requires follow-up.",
-    source: ServiceSlug.BUILDERS,
-    timestamp: "2 hours ago",
-    read: true,
-    targetSection: "sales-due",
-  },
-  {
-    id: "ntf_5",
-    category: "SYSTEM_ALERT",
-    title: "All 6 Subsidiary Catalogs Synchronized",
-    detail: "Product inventory and invoice ledgers are up to date across all branches.",
-    source: ServiceSlug.BILLSTACKS,
-    timestamp: "Today, 08:00 AM",
-    read: true,
-    targetSection: "services",
-  },
-];
+const INITIAL_NOTIFICATIONS: StaffNotification[] = [];
 
 const VISUAL_SERVICES = [
   {
@@ -194,40 +143,14 @@ const VISUAL_SERVICES = [
   },
 ];
 
-const APARTMENT_ROOMS = [
-  {
-    id: "suite_101",
-    title: "Deluxe Studio Suite",
-    rateKobo: 5000000,
-    features: "1 Bed · 1 Bath · 45 sqm",
-    floor: "1st Floor, East Wing",
-    status: "AVAILABLE" as const,
-  },
-  {
-    id: "suite_102",
-    title: "Executive 1-Bedroom",
-    rateKobo: 7500000,
-    features: "1 Bed · Lounge · 75 sqm",
-    floor: "2nd Floor, Ocean View",
-    status: "OCCUPIED" as const,
-  },
-  {
-    id: "suite_201",
-    title: "Luxury 2-Bedroom Suite",
-    rateKobo: 11000000,
-    features: "2 Bed · Kitchen · 115 sqm",
-    floor: "3rd Floor, West Wing",
-    status: "CLEANING" as const,
-  },
-  {
-    id: "suite_301",
-    title: "Presidential Penthouse",
-    rateKobo: 18000000,
-    features: "3 Bed · Private Terrace · 210 sqm",
-    floor: "Top Penthouse Floor",
-    status: "AVAILABLE" as const,
-  },
-];
+const APARTMENT_ROOMS: Array<{
+  id: string;
+  title: string;
+  rateKobo: number;
+  features: string;
+  floor: string;
+  status: "AVAILABLE" | "OCCUPIED" | "CLEANING";
+}> = [];
 
 export default function StaffDashboardPage() {
   const router = useRouter();
@@ -249,45 +172,13 @@ export default function StaffDashboardPage() {
     const storeApartments = products.filter(
       (p) => p.source === ServiceSlug.APARTMENTS && p.status !== "INACTIVE" && p.status !== "ARCHIVED"
     );
-    if (storeApartments.length > 0) {
-      return storeApartments.map((p, idx) => ({
-        id: p.id,
-        title: p.name,
-        rateKobo: p.priceKobo || 5000000,
-        features: p.label || p.description || "Luxury Serviced Suite",
-        floor: p.sku ? `Suite Ref: ${p.sku}` : `Floor ${idx + 1}`,
-      }));
-    }
-    return [
-      {
-        id: "suite_101",
-        title: "Deluxe Studio Suite",
-        rateKobo: 5000000,
-        features: "1 Bed · 1 Bath · 45 sqm",
-        floor: "1st Floor, East Wing",
-      },
-      {
-        id: "suite_102",
-        title: "Executive 1-Bedroom",
-        rateKobo: 7500000,
-        features: "1 Bed · Lounge · 75 sqm",
-        floor: "2nd Floor, Ocean View",
-      },
-      {
-        id: "suite_201",
-        title: "Luxury 2-Bedroom Suite",
-        rateKobo: 11000000,
-        features: "2 Bed · Kitchen · 115 sqm",
-        floor: "3rd Floor, West Wing",
-      },
-      {
-        id: "suite_301",
-        title: "Presidential Penthouse",
-        rateKobo: 18000000,
-        features: "3 Bed · Private Terrace · 210 sqm",
-        floor: "Top Penthouse Floor",
-      },
-    ];
+    return storeApartments.map((p, idx) => ({
+      id: p.id,
+      title: p.name,
+      rateKobo: p.priceKobo || 5000000,
+      features: p.label || p.description || "Luxury Serviced Suite",
+      floor: p.sku ? `Suite Ref: ${p.sku}` : `Floor ${idx + 1}`,
+    }));
   }, [products]);
 
   const [activeSection, setActiveSection] = useState<StaffSection>("dashboard");
@@ -299,7 +190,7 @@ export default function StaffDashboardPage() {
     branch: string;
     subsidiary: ServiceSlug | "ALL";
   }>({
-    name: "Chinedu Eze",
+    name: "Staff Member",
     role: "Operations Staff",
     branch: "Zino One Operations",
     subsidiary: "ALL",

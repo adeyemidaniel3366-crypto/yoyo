@@ -30,12 +30,7 @@ interface InvoiceRow {
   status: "PAID" | "UNPAID" | "OVERDUE" | "PARTIAL";
 }
 
-const INVOICES: InvoiceRow[] = [
-  { id: "inv1", invoiceNo: "INV-000084", client: "Prime Technologies PLC", amountKobo: 145000000, issueDate: "18 Nov 2026", dueDate: "25 Nov 2026", status: "PAID" },
-  { id: "inv2", invoiceNo: "INV-000085", client: "Apex Logistics Nigeria", amountKobo: 85000000, issueDate: "19 Nov 2026", dueDate: "26 Nov 2026", status: "UNPAID" },
-  { id: "inv3", invoiceNo: "INV-000086", client: "Zenith Global Partners", amountKobo: 220000000, issueDate: "15 Nov 2026", dueDate: "22 Nov 2026", status: "PAID" },
-  { id: "inv4", invoiceNo: "INV-000087", client: "Konga Logistics Hub", amountKobo: 64000000, issueDate: "10 Nov 2026", dueDate: "17 Nov 2026", status: "OVERDUE" },
-];
+const INVOICES: InvoiceRow[] = [];
 
 export default function BillstacksInvoicesPage() {
   const { recordTransaction } = usePlatformStore();

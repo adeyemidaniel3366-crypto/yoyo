@@ -16,11 +16,7 @@ interface PreRegisterRow {
   status: "APPROVED" | "PENDING_ARRIVAL" | "CHECKED_IN";
 }
 
-const PRE_REGISTERS: PreRegisterRow[] = [
-  { id: "1", passCode: "PASS-7721", guestName: "Dr. Oladipo Johnson", email: "dr.johnson@apexhealth.ng", expectedDate: "20 Nov 2026, 02:00 PM", host: "Chief Operating Officer", status: "PENDING_ARRIVAL" },
-  { id: "2", passCode: "PASS-7720", guestName: "Sarah Alabi", email: "s.alabi@kpmg.com", expectedDate: "20 Nov 2026, 04:30 PM", host: "Head of Internal Audit", status: "APPROVED" },
-  { id: "3", passCode: "PASS-7719", guestName: "Emeka Okoye", email: "emeka@dangote.com", expectedDate: "21 Nov 2026, 10:00 AM", host: "Procurement Director", status: "APPROVED" },
-];
+const PRE_REGISTERS: PreRegisterRow[] = [];
 
 export default function VisitorsPreRegistersPage() {
   const [list, setList] = useState<PreRegisterRow[]>(PRE_REGISTERS);

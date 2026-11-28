@@ -18,11 +18,7 @@ interface RecurringProfile {
   isActive: boolean;
 }
 
-const PROFILES: RecurringProfile[] = [
-  { id: "rp1", profileName: "Managed Cloud Accounting Retainer", client: "Prime Technologies", amountKobo: 145000000, frequency: "MONTHLY", nextRun: "01 Dec 2026", isActive: true },
-  { id: "rp2", profileName: "Dedicated FinTech Support & SLA", client: "Apex Logistics Nigeria", amountKobo: 85000000, frequency: "MONTHLY", nextRun: "01 Dec 2026", isActive: true },
-  { id: "rp3", profileName: "Annual Statutory Audit & Tax Prep", client: "Zenith Global Partners", amountKobo: 650000000, frequency: "ANNUALLY", nextRun: "15 Jan 2027", isActive: false },
-];
+const PROFILES: RecurringProfile[] = [];
 
 export default function BillstacksRecurringPage() {
   const [profiles, setProfiles] = useState<RecurringProfile[]>(PROFILES);

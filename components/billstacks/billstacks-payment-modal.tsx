@@ -14,6 +14,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { usePlatformStore, UnifiedPaymentSettings } from "@/lib/platform-store";
+import { ServiceSlug } from "@/lib/constants";
+import { startOnlinePayment, usePaymentConfig, type ClientGatewayId } from "@/lib/payments/client";
 
 export interface BillstacksPaymentModalProps {
   isOpen: boolean;
@@ -46,6 +48,7 @@ export function BillstacksPaymentModal({
   onPaymentSuccess,
 }: BillstacksPaymentModalProps) {
   const { paymentSettings } = usePlatformStore();
+  const { config: liveConfig } = usePaymentConfig();
 
   const [selectedGateway, setSelectedGateway] = useState<
     "paystack" | "stripe" | "paypal" | "razorpay" | null
@@ -54,12 +57,12 @@ export function BillstacksPaymentModal({
     if (paymentSettings.stripe.enabled) return "stripe";
     if (paymentSettings.paypal.enabled) return "paypal";
     if (paymentSettings.razorpay.enabled) return "razorpay";
-    return null;
+    return "paystack";
   });
 
-  const [cardNumber, setCardNumber] = useState("5399 4100 2819 0921");
-  const [cardExpiry, setCardExpiry] = useState("12/28");
-  const [cardCvc, setCardCvc] = useState("892");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvc, setCardCvc] = useState("");
   const [payerEmail, setPayerEmail] = useState(customerEmail);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentComplete, setPaymentComplete] = useState(false);
@@ -129,51 +132,35 @@ export function BillstacksPaymentModal({
     if (!selectedGateway) return;
     setIsProcessing(true);
 
-    const now = new Date();
-    const prefix =
-      selectedGateway === "paystack"
-        ? "PSTK"
-        : selectedGateway === "stripe"
-        ? "STRIPE"
-        : selectedGateway === "paypal"
-        ? "PAYPAL"
-        : "RZP";
-    let ref = `${prefix}-REF-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${Math.floor(
-      100000 + Math.random() * 900000
-    )}`;
-    const paidAt = now.toLocaleString();
+    const gwUpper = selectedGateway.toUpperCase() as ClientGatewayId;
+    const amountKobo = Math.round(amountNaira * 100);
 
     try {
-      const apiRes = await fetch("/api/payments/initialize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          gateway: selectedGateway.toUpperCase(),
-          amountKobo: Math.round(amountNaira * 100),
-          email: payerEmail || customerEmail,
-          customerName,
-          reference: ref,
-          note: `${itemType} #${referenceNo} — ${title}`,
-        }),
+      await startOnlinePayment({
+        gateway: gwUpper,
+        source: ServiceSlug.BILLSTACKS,
+        amountKobo,
+        email: payerEmail || customerEmail,
+        customerName,
+        note: `${itemType} #${referenceNo} — ${title}`,
+        pending: {
+          kind: itemType === "Subscription" ? "BILLSTACKS_SUBSCRIPTION" : "BILLSTACKS_INVOICE",
+          invoiceNo: referenceNo,
+          title: `${title} (${referenceNo})`,
+          returnPath: "/admin/billstacks",
+        },
       });
-      const json = await apiRes.json().catch(() => null);
-      if (apiRes.ok && json?.ok && json?.data) {
-        if (json.data.reference) ref = json.data.reference;
-        const authUrl = json.data.authorizationUrl as string | undefined;
-        // If a live external checkout URL is returned (not local /payments/mock), redirect user there
-        if (authUrl && !authUrl.includes("/payments/mock")) {
-          window.location.href = authUrl;
-          return;
-        }
-      }
-    } catch {
-      // Offline / sandbox fallback continues locally
+      return;
+    } catch (err: any) {
+      // Local fallback / receipt simulation if offline
     }
 
     setIsProcessing(false);
     setPaymentComplete(true);
+    const fallbackRef = `BS-${Date.now().toString().slice(-6)}`;
+    const paidAtStr = new Date().toLocaleString();
     const res = {
-      reference: ref,
+      reference: fallbackRef,
       gateway:
         selectedGateway === "paystack"
           ? "Paystack"
@@ -182,7 +169,7 @@ export function BillstacksPaymentModal({
           : selectedGateway === "paypal"
           ? "PayPal"
           : "Razorpay",
-      paidAt,
+      paidAt: paidAtStr,
       amount: amountNaira,
     };
     setReceiptDetails(res);

@@ -240,24 +240,7 @@ export function BillstacksApp() {
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  const [teamUsers, setTeamUsers] = useState<BillstacksTeamUser[]>([
-    {
-      id: "usr_owner",
-      name: "Daniel Adeyemi",
-      email: "adeyemidaniel3366@gmail.com",
-      position: "Business Partner/Co-owner",
-      role: "Admin",
-      permissions: {
-        Customers: "Full Access",
-        Products: "Full Access",
-        Estimates: "Full Access",
-        Invoices: "Full Access",
-        Expenses: "Full Access",
-        Bills: "Full Access",
-        Reports: "Full Access",
-      },
-    },
-  ]);
+  const [teamUsers, setTeamUsers] = useState<BillstacksTeamUser[]>([]);
 
   const [invoiceCustomization, setInvoiceCustomization] = useState<BillstacksInvoiceCustomization>(
     DEFAULT_INVOICE_CUSTOMIZATION
@@ -316,13 +299,13 @@ export function BillstacksApp() {
     "general" | "password" | "business" | "customization" | "permissions" | "roles" | "email"
   >("general");
   const [profileForm, setProfileForm] = useState({
-    name: "Daniel Adeyemi",
-    email: "adeyemidaniel3366@gmail.com",
+    name: "",
+    email: "",
     country: "Nigeria",
-    city: "Lagos",
-    state: "Lagos State",
-    postcode: "100001",
-    address: "Adeyemi Crescent, Lekki Phase 1, Lagos",
+    city: "",
+    state: "",
+    postcode: "",
+    address: "",
   });
 
   // Restore Billstacks workspace session from localStorage

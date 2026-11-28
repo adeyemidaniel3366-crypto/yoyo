@@ -17,11 +17,7 @@ interface EmployeePayroll {
   status: "ACTIVE" | "ON_LEAVE";
 }
 
-const EMPLOYEES: EmployeePayroll[] = [
-  { id: "e1", name: "Femi Adeleke", role: "Financial Controller", department: "Finance", salaryKobo: 65000000, status: "ACTIVE" },
-  { id: "e2", name: "Chinedu Eze", role: "Senior Accountant", department: "Finance", salaryKobo: 45000000, status: "ACTIVE" },
-  { id: "e3", name: "Amina Yusuf", role: "Billing Specialist", department: "Operations", salaryKobo: 32000000, status: "ACTIVE" },
-];
+const EMPLOYEES: EmployeePayroll[] = [];
 
 export default function BillstacksHrmPage() {
   const { recordTransaction } = usePlatformStore();

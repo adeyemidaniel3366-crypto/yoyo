@@ -46,74 +46,7 @@ interface DaySheet {
   sales: DaySaleRecord[];
 }
 
-const DEFAULT_DAYS: DaySheet[] = [
-  {
-    date: "Wed, 18 Nov 2026",
-    salesCount: 1,
-    income: 392000,
-    expenses: 0,
-    cashReceived: 392000,
-    transferred: 0,
-    balance: 392000,
-    isClosed: false,
-    sales: [
-      {
-        id: "s106",
-        invoiceNo: "INV-000106",
-        time: "10:45 AM",
-        customer: "Adewumi Builders",
-        items: [{ name: "Dangote Cement 50kg", qty: 40, unit: "bag", total: 392000 }],
-        total: 392000,
-        paid: 392000,
-        outstanding: 0,
-        status: "PAID",
-        paymentMethod: "CASH",
-        remarks: "Delivered to Okokomaiko site",
-        signedBy: "Cashier CE",
-      },
-    ],
-  },
-  {
-    date: "Tue, 17 Nov 2026",
-    salesCount: 2,
-    income: 480000,
-    expenses: 25000,
-    cashReceived: 285000,
-    transferred: 195000,
-    balance: 260000,
-    isClosed: true,
-    sales: [
-      {
-        id: "s105",
-        invoiceNo: "INV-000105",
-        time: "02:15 PM",
-        customer: "Chief Okonkwo",
-        items: [
-          { name: "Iron Rod 16mm", qty: 10, unit: "lgth", total: 215000 },
-          { name: "Binding Wire", qty: 15, unit: "kg", total: 24000 },
-        ],
-        total: 239000,
-        paid: 100000,
-        outstanding: 139000,
-        status: "PART_PAID",
-        paymentMethod: "MONIEPOINT_POS",
-        remarks: "Balance promised on Friday",
-        signedBy: "Cashier CE",
-      },
-    ],
-  },
-  {
-    date: "Mon, 16 Nov 2026",
-    salesCount: 3,
-    income: 750000,
-    expenses: 12000,
-    cashReceived: 500000,
-    transferred: 250000,
-    balance: 488000,
-    isClosed: true,
-    sales: [],
-  },
-];
+const DEFAULT_DAYS: DaySheet[] = [];
 
 export default function DailySalesBookPage() {
   const [viewMode, setViewMode] = useState<"cards" | "ledger">("cards");

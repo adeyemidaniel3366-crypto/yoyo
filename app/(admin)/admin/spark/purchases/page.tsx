@@ -20,11 +20,7 @@ interface SparkPurchase {
   location: string;
 }
 
-const PURCHASES: SparkPurchase[] = [
-  { id: "1", poNo: "SPK-PO-1092", supplier: "Samsung Official West Africa", item: "Samsung 990 PRO 4TB NVMe SSD", qty: 20, costKobo: 760000000, date: "18 Nov 2026", location: "Medical Road" },
-  { id: "2", poNo: "SPK-PO-1091", supplier: "Apple Authorized Importer", item: "MacBook Pro 16\" M3 Max", qty: 5, costKobo: 2100000000, date: "15 Nov 2026", location: "Medical Road" },
-  { id: "3", poNo: "SPK-PO-1090", supplier: "Zealot Direct Shenzhen", item: "Zealot S69M Bluetooth Speaker", qty: 50, costKobo: 425000000, date: "10 Nov 2026", location: "Adepele Shop" },
-];
+const PURCHASES: SparkPurchase[] = [];
 
 export default function SparkPurchasesPage() {
   const { recordTransaction } = usePlatformStore();

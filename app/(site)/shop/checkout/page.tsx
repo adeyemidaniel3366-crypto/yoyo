@@ -19,6 +19,7 @@ import {
 import { ServiceSlug } from "@/lib/constants";
 import { usePlatformStore } from "@/lib/platform-store";
 import { formatCurrency } from "@/lib/money";
+import { startOnlinePayment, usePaymentConfig, type ClientGatewayId } from "@/lib/payments/client";
 
 export default function ShopCheckoutPage() {
   const router = useRouter();
@@ -36,6 +37,8 @@ export default function ShopCheckoutPage() {
 
   const [shippingMethod, setShippingMethod] = useState<"STANDARD" | "EXPRESS">("EXPRESS");
   const [paymentMethod, setPaymentMethod] = useState<"CARD" | "TRANSFER" | "COD">("CARD");
+  const [selectedGateway, setSelectedGateway] = useState<ClientGatewayId>("PAYSTACK");
+  const { config: paymentConfig } = usePaymentConfig();
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState<string | null>(null);
   const [discountKobo, setDiscountKobo] = useState(0);
@@ -114,6 +117,32 @@ export default function ShopCheckoutPage() {
     }
 
     const orderRef = serverOrderNo || `DG-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    // If customer selected Card/Online payment, direct them immediately to the gateway
+    if (paymentMethod === "CARD") {
+      try {
+        await startOnlinePayment({
+          gateway: selectedGateway,
+          source: ServiceSlug.GALAXY,
+          amountKobo: totalKobo,
+          email: formData.email,
+          customerName: formData.fullName,
+          note: `Device Galaxy Order (${orderRef})`,
+          pending: {
+            kind: "GALAXY_ORDER",
+            invoiceNo: orderRef,
+            title: `Device Galaxy Order (${orderRef})`,
+            returnPath: "/shop",
+          },
+        });
+        clearCart();
+        return;
+      } catch (err: any) {
+        setOrderError(err.message || "Failed to initialize online payment.");
+        setIsSubmitting(false);
+        return;
+      }
+    }
 
     // Record to platform store
     const inv = recordTransaction({
@@ -468,12 +497,44 @@ export default function ShopCheckoutPage() {
                 </button>
               </div>
 
-              {paymentMethod === "TRANSFER" && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs space-y-1 text-blue-900">
-                  <p className="font-bold">Official Bank Account for Transfers:</p>
-                  <p>Bank: <strong>Zenith Bank PLC</strong></p>
-                  <p>Account Name: <strong>Zino Group Holdings Ltd</strong></p>
-                  <p>Account Number: <strong>1014892019</strong></p>
+              {paymentMethod === "CARD" && (
+                <div className="bg-gray-50 border border-border rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-heading">Select Payment Gateway:</span>
+                    <span className="text-[11px] text-muted font-mono">
+                      {paymentConfig.gateways.filter((g) => g.enabled).length} Online Options Available
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {paymentConfig.gateways
+                      .filter((g) => g.enabled)
+                      .map((gw) => (
+                        <button
+                          key={gw.id}
+                          type="button"
+                          onClick={() => setSelectedGateway(gw.id)}
+                          className={`p-2.5 rounded-lg border text-left text-xs transition-all ${
+                            selectedGateway === gw.id
+                              ? "border-galaxy bg-white ring-2 ring-galaxy text-galaxy font-bold"
+                              : "border-border bg-white text-heading hover:border-gray-300"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold">{gw.name}</span>
+                            {gw.live ? (
+                              <span className="text-[9px] px-1 py-0.2 bg-emerald-100 text-emerald-700 font-black rounded">
+                                Live
+                              </span>
+                            ) : (
+                              <span className="text-[9px] px-1 py-0.2 bg-amber-100 text-amber-700 font-bold rounded">
+                                Sandbox
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-muted truncate mt-0.5">{gw.methods}</p>
+                        </button>
+                      ))}
+                  </div>
                 </div>
               )}
             </div>

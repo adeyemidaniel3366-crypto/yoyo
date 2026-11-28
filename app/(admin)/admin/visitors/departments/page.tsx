@@ -14,13 +14,7 @@ interface DeptItem {
   floor: string;
 }
 
-const DEPARTMENTS: DeptItem[] = [
-  { name: "Executive Suite & Board", head: "Chairman / CEO", staffCount: 4, floor: "Penthouse / 4th Floor" },
-  { name: "Finance & Accounting", head: "Femi Adeleke", staffCount: 8, floor: "3rd Floor" },
-  { name: "Retail Operations & E-Commerce", head: "Chinedu Eze", staffCount: 16, floor: "1st & 2nd Floor" },
-  { name: "Hospitality & Guest Relations", head: "Adaeze Okafor", staffCount: 12, floor: "Reception / Suites" },
-  { name: "Logistics & Material Yard", head: "Tunde Bakare", staffCount: 22, floor: "Builders Yard Annex" },
-];
+const DEPARTMENTS: DeptItem[] = [];
 
 export default function VisitorsDepartmentsPage() {
   const [departments, setDepartments] = useState<DeptItem[]>(DEPARTMENTS);

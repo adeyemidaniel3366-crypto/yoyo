@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminTopbar } from "./admin-topbar";
 import { usePlatformStore } from "@/lib/platform-store";
+import { getApartmentBookings } from "@/lib/apartments-data";
 
 interface AdminLayoutShellProps {
   children: React.ReactNode;
@@ -13,7 +14,8 @@ export function AdminLayoutShell({ children }: AdminLayoutShellProps) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { globalServiceFilter, updateGlobalServiceFilter, globalLocationFilter, updateGlobalLocationFilter } = usePlatformStore();
   const [user, setUser] = useState<{ name: string; role: string } | null>(null);
-  const [bookingRequestsCount, setBookingRequestsCount] = useState<number>(2);
+  const [bookingRequestsCount, setBookingRequestsCount] = useState<number>(0);
+  const [guestSupportCount, setGuestSupportCount] = useState<number>(0);
 
   useEffect(() => {
     // Load current authenticated user session
@@ -31,15 +33,46 @@ export function AdminLayoutShell({ children }: AdminLayoutShellProps) {
       })
       .catch(() => {});
 
-    // Fetch live pending booking requests count
+    // Compute live pending bookings from real stored bookings
+    const computeLiveCounts = () => {
+      const allBookings = getApartmentBookings();
+      const pending = allBookings.filter(
+        (b) => b.paymentStatus === "PENDING_ARRIVAL" || b.paymentStatus === "PENDING_PAYMENT"
+      ).length;
+      setBookingRequestsCount(pending);
+    };
+
+    computeLiveCounts();
+    window.addEventListener("zino_apartments_bookings_update", computeLiveCounts);
+
+    // Fetch live pending booking requests count from backend if available
     fetch("/api/apartments/front-desk/today")
       .then((r) => (r.ok ? r.json() : null))
       .then((res) => {
         if (res?.ok && res?.data?.stats) {
-          setBookingRequestsCount(res.data.stats.arrivalsCount || 0);
+          const count = res.data.stats.arrivalsCount ?? 0;
+          setBookingRequestsCount((prev) => Math.max(prev, count));
         }
       })
       .catch(() => {});
+
+    // Fetch live guest support messages/requests count
+    fetch("/api/apartments/contact")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (res?.ok && Array.isArray(res?.data)) {
+          setGuestSupportCount(res.data.filter((m: any) => !m.resolved).length);
+        } else {
+          setGuestSupportCount(0);
+        }
+      })
+      .catch(() => {
+        setGuestSupportCount(0);
+      });
+
+    return () => {
+      window.removeEventListener("zino_apartments_bookings_update", computeLiveCounts);
+    };
   }, []);
 
   return (
@@ -49,7 +82,7 @@ export function AdminLayoutShell({ children }: AdminLayoutShellProps) {
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
         bookingRequestsCount={bookingRequestsCount}
-        guestSupportCount={1}
+        guestSupportCount={guestSupportCount}
       />
 
       {/* Main Content Area */}

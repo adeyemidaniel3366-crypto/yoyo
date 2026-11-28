@@ -28,14 +28,7 @@ interface FrontDeskRoom {
   dailyRateKobo: number;
 }
 
-const INITIAL_ROOMS: FrontDeskRoom[] = [
-  { roomNo: "RM-101", type: "Classic Studio", guestName: "Engr. Tunde Bakare", status: "OCCUPIED", checkIn: "18 Nov 2026", checkOut: "22 Nov 2026", dailyRateKobo: 1000000 },
-  { roomNo: "RM-102", type: "Classic Studio", guestName: null, status: "AVAILABLE", checkIn: null, checkOut: null, dailyRateKobo: 1000000 },
-  { roomNo: "RM-201", type: "Deluxe Studio Suite", guestName: "Adaeze Okafor", status: "OCCUPIED", checkIn: "19 Nov 2026", checkOut: "23 Nov 2026", dailyRateKobo: 3000000 },
-  { roomNo: "RM-202", type: "Deluxe Studio Suite", guestName: null, status: "CLEANING", checkIn: null, checkOut: null, dailyRateKobo: 3000000 },
-  { roomNo: "RM-301", type: "Executive 2BR Luxury", guestName: "Chief Okonkwo", status: "OCCUPIED", checkIn: "17 Nov 2026", checkOut: "24 Nov 2026", dailyRateKobo: 5000000 },
-  { roomNo: "RM-302", type: "Executive 2BR Luxury", guestName: null, status: "RESERVED", checkIn: "Tomorrow", checkOut: "25 Nov 2026", dailyRateKobo: 5000000 },
-];
+const INITIAL_ROOMS: FrontDeskRoom[] = [];
 
 export default function ApartmentsFrontDeskPage() {
   const [rooms, setRooms] = useState<FrontDeskRoom[]>(INITIAL_ROOMS);

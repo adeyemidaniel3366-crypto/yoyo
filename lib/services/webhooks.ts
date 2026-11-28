@@ -21,7 +21,8 @@ import { ActivityAction } from "../activity-actions";
 import { notify } from "./notifications";
 import { sendEmail } from "../email/transporter";
 import { renderEmailTemplate } from "../email/templates";
-import { verifyPayment, type PaymentGateway } from "../payments";
+import { normalizeGateway, verifyPayment, type PaymentGateway } from "../payments";
+import { isGatewayConfigured, isSandboxAllowed } from "../payments/config";
 import { logger } from "../logger";
 
 export async function settlePaymentByReference(params: {
@@ -248,14 +249,11 @@ export async function verifyAndSettlePayment(
     };
   }
 
-  const gateway = (payment.gateway as PaymentGateway) || "PAYSTACK";
-  const hasGatewayKey =
-    gateway === "FLUTTERWAVE"
-      ? Boolean(process.env.FLUTTERWAVE_SECRET_KEY)
-      : Boolean(process.env.PAYSTACK_SECRET_KEY);
+  const gateway = normalizeGateway(payment.gateway);
+  const hasGatewayKey = isGatewayConfigured(gateway);
 
   // Allow sandbox mock settlement ONLY when not in production and keys aren't configured
-  if (!hasGatewayKey && process.env.NODE_ENV !== "production" && mockStatus === "PAID") {
+  if (!hasGatewayKey && isSandboxAllowed() && mockStatus === "PAID") {
     const res = await settlePaymentByReference({
       reference,
       paidAmountKobo: payment.amountKobo,
@@ -272,7 +270,30 @@ export async function verifyAndSettlePayment(
     };
   }
 
-  const verification = await verifyPayment(reference, gateway);
+  if (!hasGatewayKey) {
+    // Live keys missing and sandbox not requested/allowed: nothing can be verified.
+    return {
+      reference,
+      status: payment.status,
+      amountKobo: payment.amountKobo,
+      amountDisplay: formatNGN(payment.amountKobo),
+    };
+  }
+
+  const verification = await verifyPayment(reference, gateway, {
+    gatewayRef: payment.gatewayRef,
+    expectedKobo: payment.amountKobo,
+  });
+
+  if (verification.status === "FAILED") {
+    await settlePaymentByReference({
+      reference,
+      paidAmountKobo: verification.amountKobo,
+      gateway,
+      gatewayRef: verification.gatewayRef,
+      eventStatus: "FAILED",
+    });
+  }
 
   if (verification.status === "PAID") {
     const res = await settlePaymentByReference({

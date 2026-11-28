@@ -258,8 +258,7 @@ export async function getSessionUser(req?: Request): Promise<SessionUser | null>
   if (!rawToken) return null;
 
   if (rawToken.startsWith("demo-")) {
-    const demoAllowed =
-      process.env.DEMO_LOGINS === "true" || process.env.NODE_ENV !== "production";
+    const demoAllowed = process.env.DEMO_LOGINS === "true";
     if (!demoAllowed) {
       return null;
     }

@@ -18,11 +18,7 @@ interface EstimateRow {
   status: "ACCEPTED" | "PENDING" | "DECLINED";
 }
 
-const ESTIMATES: EstimateRow[] = [
-  { id: "est1", estimateNo: "EST-00041", client: "Dangote Refinery Tech Unit", amountKobo: 350000000, validUntil: "30 Nov 2026", status: "PENDING" },
-  { id: "est2", estimateNo: "EST-00040", client: "Flutterwave Engineering", amountKobo: 120000000, validUntil: "28 Nov 2026", status: "ACCEPTED" },
-  { id: "est3", estimateNo: "EST-00039", client: "Interswitch HQ", amountKobo: 480000000, validUntil: "15 Nov 2026", status: "ACCEPTED" },
-];
+const ESTIMATES: EstimateRow[] = [];
 
 export default function BillstacksEstimatesPage() {
   const { recordTransaction } = usePlatformStore();

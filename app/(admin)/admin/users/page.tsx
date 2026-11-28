@@ -17,13 +17,7 @@ interface PlatformUser {
   createdAt?: string;
 }
 
-const USERS: PlatformUser[] = [
-  { id: "u1", name: "Super Administrator", email: "admin@zinoone.com", role: "SUPER_ADMIN", services: ["ALL_SERVICES"], status: "ACTIVE", lastLogin: "Just now", createdAt: "2026-01-01" },
-  { id: "u2", name: "Femi Adeleke", email: "femi.adeleke@zinoone.com", role: "ACCOUNTANT", services: ["BILLSTACKS", "APARTMENTS"], status: "ACTIVE", lastLogin: "Today, 08:30", createdAt: "2026-01-15" },
-  { id: "u3", name: "Adaeze Okafor", email: "adaeze.o@zinoapartments.com", role: "FRONT_DESK", services: ["APARTMENTS"], status: "ACTIVE", lastLogin: "Today, 07:45", createdAt: "2026-06-01" },
-  { id: "u4", name: "Chinedu Eze", email: "chinedu@devicegalaxy.com", role: "STORE_MANAGER", services: ["GALAXY", "SPARK"], status: "ACTIVE", lastLogin: "Yesterday", createdAt: "2026-03-10" },
-  { id: "u5", name: "Tunde Bakare", email: "tunde@topbuilders.ng", role: "YARD_SUPERVISOR", services: ["BUILDERS"], status: "ACTIVE", lastLogin: "18 Nov 2026", createdAt: "2026-02-12" },
-];
+const USERS: PlatformUser[] = [];
 
 export default function UsersManagementPage() {
   const [users, setUsers] = useState<PlatformUser[]>(USERS);

@@ -53,16 +53,7 @@ interface Product {
 // ---------------------------------------------------------------------------
 // Mock initial data
 // ---------------------------------------------------------------------------
-const INITIAL_PRODUCTS: Product[] = [
-  { id: "p1", source: ServiceSlug.SPARK, sku: "SAM-990PRO-4TB", name: "Samsung 990 PRO 4TB NVMe SSD", priceKobo: 4800000, costKobo: 3800000, images: ["https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=200"], status: "ACTIVE", totalStock: 3, isFeatured: true, isNew: false },
-  { id: "p2", source: ServiceSlug.SPARK, sku: "APPLE-MBP16-M3MAX", name: "Apple MacBook Pro 16\" M3 Max", priceKobo: 48500000, costKobo: 42000000, images: ["https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=200"], status: "ACTIVE", totalStock: 1, isFeatured: true, isNew: true },
-  { id: "p3", source: ServiceSlug.SPARK, sku: "ZLT-S69M-13360", name: "Zealot S69M Speaker", priceKobo: 120000, costKobo: 80000, images: [], status: "OUT_OF_STOCK", totalStock: 0, isFeatured: false, isNew: false },
-  { id: "p4", source: ServiceSlug.GALAXY, sku: "LXR-SL500-2TB", name: "Lexar SL500 Portable SSD 2TB", priceKobo: 2200000, costKobo: 1700000, images: ["https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=200"], status: "ACTIVE", totalStock: 8, isFeatured: false, isNew: true },
-  { id: "p5", source: ServiceSlug.GALAXY, sku: "SYN-RS1221RP", name: "Synology 8 Bay Rackstation RS1221RP+", priceKobo: 24500000, costKobo: 20000000, images: ["https://images.unsplash.com/photo-1544652478-6653e09f18a2?w=200"], status: "ACTIVE", totalStock: 2, isFeatured: true, isNew: false },
-  { id: "p6", source: ServiceSlug.BUILDERS, sku: "DAN-CEM-50KG", name: "Dangote Cement 50kg", priceKobo: 980000, costKobo: 820000, images: [], status: "ACTIVE", totalStock: 240, isFeatured: false, isNew: false },
-  { id: "p7", source: ServiceSlug.BUILDERS, sku: "IRON-ROD-16MM", name: "Iron Rod 16mm (per length)", priceKobo: 180000, costKobo: 140000, images: [], status: "LOW_STOCK", totalStock: 2, isFeatured: false, isNew: false },
-  { id: "p8", source: ServiceSlug.BUILDERS, sku: "BUA-CEM-50KG", name: "BUA Cement 50kg", priceKobo: 950000, costKobo: 790000, images: [], status: "OUT_OF_STOCK", totalStock: 0, isFeatured: false, isNew: false },
-];
+const INITIAL_PRODUCTS: Product[] = [];
 
 // ---------------------------------------------------------------------------
 // Tab definitions

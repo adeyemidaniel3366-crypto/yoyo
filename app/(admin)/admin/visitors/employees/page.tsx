@@ -16,12 +16,7 @@ interface Employee {
   extension: string;
 }
 
-const EMPLOYEES: Employee[] = [
-  { id: "1", name: "Femi Adeleke", department: "Finance", designation: "Financial Controller", phone: "+234 802 333 4455", email: "femi.adeleke@zinoone.com", extension: "Ext. 201" },
-  { id: "2", name: "Adaeze Okafor", department: "Hospitality", designation: "Front Office Lead", phone: "+234 803 123 4567", email: "adaeze.o@zinoapartments.com", extension: "Ext. 101" },
-  { id: "3", name: "Chinedu Eze", department: "Retail & Electronics", designation: "Branch Manager (Medical Road)", phone: "+234 805 777 8899", email: "chinedu@devicegalaxy.com", extension: "Ext. 301" },
-  { id: "4", name: "Tunde Bakare", department: "Supply Yard", designation: "Yard Inventory Supervisor", phone: "+234 809 111 2233", email: "tunde@topbuilders.ng", extension: "Ext. 401" },
-];
+const EMPLOYEES: Employee[] = [];
 
 export default function VisitorsEmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>(EMPLOYEES);

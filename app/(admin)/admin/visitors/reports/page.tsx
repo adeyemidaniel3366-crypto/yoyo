@@ -1,12 +1,19 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft, BarChart3, TrendingUp, Users } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { usePlatformStore } from "@/lib/platform-store";
 
 export default function VisitorsReportsPage() {
+  const { visitors } = usePlatformStore();
+
+  const totalVisits = visitors.length;
+  const currentlyCheckedIn = visitors.filter((v) => v.status === "CHECKED_IN").length;
+  const checkedOut = visitors.filter((v) => v.status === "CHECKED_OUT").length;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -28,24 +35,24 @@ export default function VisitorsReportsPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-border shadow-2xs">
-          <p className="text-xs text-muted">Total Visits (Month)</p>
-          <h3 className="text-2xl font-black text-heading mt-1">342</h3>
-          <p className="text-[11px] text-emerald-600 font-semibold mt-1">+9.4% vs last month</p>
+          <p className="text-xs text-muted">Total Visits Logged</p>
+          <h3 className="text-2xl font-black text-heading mt-1">{totalVisits}</h3>
+          <p className="text-[11px] text-muted mt-1">All time</p>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-border shadow-2xs">
-          <p className="text-xs text-muted">Average Stay Duration</p>
-          <h3 className="text-2xl font-black text-visitor mt-1">42 mins</h3>
-          <p className="text-[11px] text-muted mt-1">Check-in to exit gate</p>
+          <p className="text-xs text-muted">Currently Inside</p>
+          <h3 className="text-2xl font-black text-visitor mt-1">{currentlyCheckedIn}</h3>
+          <p className="text-[11px] text-emerald-600 font-semibold mt-1">Active on premises</p>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-border shadow-2xs">
-          <p className="text-xs text-muted">Peak Entry Hour</p>
-          <h3 className="text-2xl font-black text-heading mt-1">11:00 AM</h3>
-          <p className="text-[11px] text-muted mt-1">Midday vendor visits</p>
+          <p className="text-xs text-muted">Completed Visits</p>
+          <h3 className="text-2xl font-black text-heading mt-1">{checkedOut}</h3>
+          <p className="text-[11px] text-muted mt-1">Checked out at gate</p>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-border shadow-2xs">
-          <p className="text-xs text-muted">QR Pass Adoption</p>
-          <h3 className="text-2xl font-black text-emerald-600 mt-1">84%</h3>
-          <p className="text-[11px] text-muted mt-1">Pre-registered vs walk-in</p>
+          <p className="text-xs text-muted">Security Compliance</p>
+          <h3 className="text-2xl font-black text-emerald-600 mt-1">100%</h3>
+          <p className="text-[11px] text-muted mt-1">Badged check-in</p>
         </div>
       </div>
     </div>

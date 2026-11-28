@@ -6,6 +6,7 @@
 import crypto from "crypto";
 import { getEnv } from "../env";
 import { PaymentError } from "../errors";
+import { assertGatewayAvailable, buildCallbackUrl, buildSandboxUrl } from "./config";
 
 export interface InitPaymentParams {
   amountKobo: number;
@@ -33,9 +34,10 @@ export async function initializePaystackPayment(
 ): Promise<InitPaymentResult> {
   const env = getEnv();
   if (!env.PAYSTACK_SECRET_KEY) {
-    // Sandbox stub when key is not configured in local dev
+    // Sandbox checkout is only permitted outside production; production throws.
+    assertGatewayAvailable("PAYSTACK");
     return {
-      authorizationUrl: `${env.NEXTAUTH_URL}/payments/mock?gateway=PAYSTACK&reference=${encodeURIComponent(params.reference)}`,
+      authorizationUrl: buildSandboxUrl("PAYSTACK", params.reference, params.amountKobo),
       reference: params.reference,
       gateway: "PAYSTACK",
     };
@@ -51,7 +53,7 @@ export async function initializePaystackPayment(
       email: params.email,
       amount: params.amountKobo, // Paystack uses integer kobo directly
       reference: params.reference,
-      callback_url: params.callbackUrl,
+      callback_url: params.callbackUrl ?? buildCallbackUrl("PAYSTACK", params.reference),
       metadata: params.metadata ?? {},
     }),
   });

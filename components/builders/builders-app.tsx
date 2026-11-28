@@ -76,8 +76,8 @@ import {
   AuditLogView,
 } from "./builders-finance-settings-views";
 
-const BUILDERS_STORAGE_KEY = "zino_top_builders_workspace_v1";
-const TODAY_ISO = "2026-11-23";
+const BUILDERS_STORAGE_KEY = "zino_top_builders_workspace_prod_v1";
+const TODAY_ISO = new Date().toISOString().slice(0, 10);
 
 export function TopBuildersApp({ initialLoggedIn = false }: { initialLoggedIn?: boolean }) {
   const {
@@ -116,9 +116,9 @@ export function TopBuildersApp({ initialLoggedIn = false }: { initialLoggedIn?: 
   const [showNewPassword, setShowNewPassword] = useState(false);
 
   const [currentUser, setCurrentUser] = useState({
-    name: "Chima Ezenwa",
-    username: "@chimatop",
-    initials: "CE",
+    name: "Workspace User",
+    username: "",
+    initials: "TB",
     role: "Owner",
   });
 

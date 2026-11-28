@@ -16,11 +16,7 @@ interface ProductReview {
   approved: boolean;
 }
 
-const REVIEWS: ProductReview[] = [
-  { id: "r1", product: "Samsung 990 PRO 4TB NVMe SSD", customer: "Dr. Babatunde A. (Lekki Phase 1)", rating: 5, comment: "Delivered same day in Lagos. Authentic sealed box, serial number verified online. Highly recommended!", date: "18 Nov 2026", approved: true },
-  { id: "r2", product: "Apple MacBook Pro 16\" M3 Max", customer: "Emeka O. (Victoria Island)", rating: 5, comment: "Monster performance. Battery lasts full 18 hours of coding and video editing.", date: "16 Nov 2026", approved: true },
-  { id: "r3", product: "Lexar SL500 Portable SSD 2TB", customer: "Kazeem B. (Ikeja)", rating: 5, comment: "Small as a credit card and fast transfer speed. Works seamlessly with my iPhone 15 Pro.", date: "Yesterday", approved: false },
-];
+const REVIEWS: ProductReview[] = [];
 
 export default function GalaxyReviewsPage() {
   const [reviews, setReviews] = useState<ProductReview[]>(REVIEWS);

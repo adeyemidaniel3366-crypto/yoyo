@@ -30,12 +30,7 @@ interface Order {
   date: string;
 }
 
-const ORDERS: Order[] = [
-  { id: "1", orderNo: "DG-892104", customer: "Chief Babatunde Balogun", phone: "+234 803 456 7890", itemsSummary: "Samsung 990 PRO 4TB + Lexar SL500 2TB", amountKobo: 70000000, deliveryMethod: "Same-Day Express Lagos", status: "PROCESSING", paymentStatus: "PAID", date: "Today, 11:45 AM" },
-  { id: "2", orderNo: "DG-892103", customer: "Amaka Nwachukwu", phone: "+234 802 111 2233", itemsSummary: "Samsung 990 PRO 4TB NVMe SSD", amountKobo: 48000000, deliveryMethod: "Standard Nationwide", status: "SHIPPED", paymentStatus: "PAID", date: "Yesterday" },
-  { id: "3", orderNo: "DG-892102", customer: "TechHub Lagos", phone: "+234 809 999 8877", itemsSummary: "Apple MacBook Pro 16\" M3 Max", amountKobo: 485000000, deliveryMethod: "Doorstep Delivery Lekki", status: "DELIVERED", paymentStatus: "PAID", date: "16 Nov 2026" },
-  { id: "4", orderNo: "DG-892101", customer: "Kazeem Bello", phone: "+234 818 777 6655", itemsSummary: "Lexar SL500 Portable SSD 2TB", amountKobo: 22000000, deliveryMethod: "Cash on Delivery", status: "PENDING", paymentStatus: "PENDING", date: "15 Nov 2026" },
-];
+const ORDERS: Order[] = [];
 
 export default function GalaxyOrdersPage() {
   const [orders, setOrders] = useState<Order[]>(ORDERS);

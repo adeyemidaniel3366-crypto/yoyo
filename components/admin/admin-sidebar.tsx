@@ -46,7 +46,7 @@ export function AdminSidebar({
   isOpenMobile,
   onCloseMobile,
   bookingRequestsCount = 0,
-  guestSupportCount = 1,
+  guestSupportCount = 0,
 }: AdminSidebarProps) {
   const pathname = usePathname();
 

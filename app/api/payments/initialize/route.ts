@@ -6,14 +6,12 @@ import { prisma } from "@/lib/prisma";
 import {
   generatePaymentReference,
   initializePayment,
+  normalizeGateway,
 } from "@/lib/payments";
-import {
-  initializePayPalPayment,
-  initializeRazorpayPayment,
-  initializeStripePayment,
-  type ExtendedPaymentGateway,
-} from "@/lib/payments/gateways";
+import { getAppBaseUrl } from "@/lib/payments/config";
 import { enforceRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const POST = withErrorHandler(async (req, _ctx, requestId) => {
   await enforceRateLimit(RATE_LIMITS.PUBLIC_FORM, getClientIp(req));
@@ -29,59 +27,41 @@ export const POST = withErrorHandler(async (req, _ctx, requestId) => {
     throw new ValidationError("Positive amountKobo is required");
   }
 
-  const email = String(body.email || user?.email || "client@zinoone.com")
+  const email = String(body.email || user?.email || "")
     .trim()
     .toLowerCase();
-  const gateway = String(body.gateway || "PAYSTACK").toUpperCase() as ExtendedPaymentGateway;
+  if (!EMAIL_RE.test(email)) {
+    throw new ValidationError("A valid email address is required for online payment receipts");
+  }
+
+  const gateway = normalizeGateway(body.gateway);
   const source = Object.values(ServiceSlug).includes(body.source)
     ? (body.source as ServiceSlug)
     : ServiceSlug.BILLSTACKS;
-  const reference = String(body.reference || generatePaymentReference(source));
+  const reference = generatePaymentReference(source);
+
+  // Only allow redirects back to this application (prevents open-redirect abuse).
+  const base = getAppBaseUrl();
   const callbackUrl =
-    typeof body.callbackUrl === "string" && body.callbackUrl.trim()
+    typeof body.callbackUrl === "string" && body.callbackUrl.trim().startsWith(base)
       ? body.callbackUrl.trim()
       : undefined;
 
-  let result: { authorizationUrl: string; reference: string; gateway: string };
-
-  if (gateway === "STRIPE") {
-    result = await initializeStripePayment({
+  const result = await initializePayment(
+    {
       amountKobo,
       email,
       reference,
       callbackUrl,
-      metadata: body.metadata,
-    });
-  } else if (gateway === "PAYPAL") {
-    result = await initializePayPalPayment({
-      amountKobo,
-      email,
-      reference,
-      callbackUrl,
-      metadata: body.metadata,
-    });
-  } else if (gateway === "RAZORPAY") {
-    result = await initializeRazorpayPayment({
-      amountKobo,
-      email,
-      reference,
-      callbackUrl,
-      metadata: body.metadata,
-    });
-  } else {
-    result = await initializePayment(
-      {
-        amountKobo,
-        email,
-        reference,
-        callbackUrl,
-        metadata: body.metadata,
+      metadata: {
+        ...(body.metadata && typeof body.metadata === "object" ? body.metadata : {}),
+        source,
       },
-      gateway === "FLUTTERWAVE" ? "FLUTTERWAVE" : "PAYSTACK"
-    );
-  }
+    },
+    gateway
+  );
 
-  // Optimistically record pending Payment row if DB is reachable
+  // Record the pending Payment row so the callback/webhook can verify & settle it.
   try {
     let contact = await prisma.contact.findFirst({
       where: { email: { equals: email, mode: "insensitive" } },
@@ -89,7 +69,7 @@ export const POST = withErrorHandler(async (req, _ctx, requestId) => {
     if (!contact) {
       contact = await prisma.contact.create({
         data: {
-          name: String(body.customerName || "Online Customer"),
+          name: String(body.customerName || "Online Customer").slice(0, 120),
           email,
           sources: [source],
         },
@@ -97,22 +77,26 @@ export const POST = withErrorHandler(async (req, _ctx, requestId) => {
     }
 
     await prisma.payment.upsert({
-      where: { reference },
-      update: { gateway: result.gateway },
+      where: { reference: result.reference },
+      update: { gateway: result.gateway, gatewayRef: result.gatewayRef ?? undefined },
       create: {
         source,
         contactId: contact.id,
         amountKobo,
         method: "ONLINE",
-        reference,
+        reference: result.reference,
         gateway: result.gateway,
+        gatewayRef: result.gatewayRef ?? null,
         status: PaymentStatus.PENDING,
         receivedById: user?.id ?? "ONLINE",
-        note: body.note || `Online ${result.gateway} checkout`,
+        note: String(body.note || `Online ${result.gateway} checkout`).slice(0, 500),
       },
     });
-  } catch {
-    // DB offline / unseeded fallback — gateway initialization still succeeds
+  } catch (err) {
+    // Without a Payment row the transaction can never be verified — refuse in production.
+    if (process.env.NODE_ENV === "production") {
+      throw err;
+    }
   }
 
   return ok(result, 200, requestId);

@@ -14,13 +14,7 @@ interface CategoryItem {
   featured: boolean;
 }
 
-const INITIAL_CATEGORIES: CategoryItem[] = [
-  { id: "c1", name: "SSDs & High-Speed Storage", slug: "ssds-storage", productsCount: 12, featured: true },
-  { id: "c2", name: "Laptops & Mobile Workstations", slug: "laptops", productsCount: 8, featured: true },
-  { id: "c3", name: "NAS & Enterprise Servers", slug: "nas-servers", productsCount: 4, featured: true },
-  { id: "c4", name: "Portable Audio & Bluetooth Speakers", slug: "audio", productsCount: 15, featured: false },
-  { id: "c5", name: "Docking Stations & Hubs", slug: "hubs", productsCount: 9, featured: false },
-];
+const INITIAL_CATEGORIES: CategoryItem[] = [];
 
 export default function GalaxyCategoriesPage() {
   const [categories, setCategories] = useState<CategoryItem[]>(INITIAL_CATEGORIES);

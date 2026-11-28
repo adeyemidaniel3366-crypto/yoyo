@@ -86,50 +86,18 @@ export default function DeviceGalaxyDashboardPage() {
       .catch(() => {});
   }, []);
 
-  const defaultOrders = [
-    {
-      id: "ord_1",
-      orderNo: "DG-892104",
-      customer: "Engr. Tunde Bakare",
-      itemsCount: 3,
-      amountKobo: 24500000,
-      status: "PROCESSING",
-      paymentStatus: "PAID",
-      date: "Today, 11:45 AM",
-    },
-    {
-      id: "ord_2",
-      orderNo: "DG-892103",
-      customer: "Amaka Nwachukwu",
-      itemsCount: 1,
-      amountKobo: 48000000,
-      status: "SHIPPED",
-      paymentStatus: "PAID",
-      date: "Yesterday",
-    },
-    {
-      id: "ord_3",
-      orderNo: "DG-892102",
-      customer: "Chief Okonkwo",
-      itemsCount: 2,
-      amountKobo: 485000000,
-      status: "DELIVERED",
-      paymentStatus: "PAID",
-      date: "16 Nov 2026",
-    },
-    {
-      id: "ord_4",
-      orderNo: "DG-892101",
-      customer: "Kazeem Bello",
-      itemsCount: 1,
-      amountKobo: 22000000,
-      status: "PENDING",
-      paymentStatus: "PENDING",
-      date: "15 Nov 2026",
-    },
-  ];
+  const defaultOrders: Array<{
+    id: string;
+    orderNo: string;
+    customer: string;
+    itemsCount: number;
+    amountKobo: number;
+    status: string;
+    paymentStatus: string;
+    date: string;
+  }> = [];
 
-  const galaxyOrders = liveOrders && liveOrders.length > 0 ? liveOrders : defaultOrders;
+  const galaxyOrders = liveOrders ?? defaultOrders;
 
   return (
     <div className="space-y-6">
@@ -185,7 +153,7 @@ export default function DeviceGalaxyDashboardPage() {
         <div className="bg-white p-5 rounded-2xl border border-border shadow-2xs">
           <p className="text-xs text-muted font-medium">Online Storefront Revenue</p>
           <h3 className="text-2xl font-black text-heading mt-1">
-            {formatCurrency(totalRevenueKobo > 0 ? totalRevenueKobo : 509500000)}
+            {formatCurrency(totalRevenueKobo)}
           </h3>
           <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
             <TrendingUp className="w-3.5 h-3.5" />

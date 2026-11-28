@@ -32,74 +32,7 @@ interface DebtorCustomer {
   unpaidCount: number;
 }
 
-const SEED_DEBTORS: DebtorCustomer[] = [
-  {
-    id: "deb_4",
-    name: "Mama Bose Ventures",
-    phone: "08000000104",
-    address: "Iba Market, Lane 3",
-    initial: "M",
-    totalOwedKobo: 28130000,
-    oldestInvoiceDate: "13/07/2026",
-    daysAgo: 128,
-    unpaidCount: 2,
-  },
-  {
-    id: "deb_5",
-    name: "Chief Okonkwo",
-    phone: "08000000105",
-    address: "Lekki Phase 1 (site)",
-    initial: "C",
-    totalOwedKobo: 19500000,
-    oldestInvoiceDate: "15/08/2026",
-    daysAgo: 95,
-    unpaidCount: 1,
-  },
-  {
-    id: "deb_1",
-    name: "Adewumi Builders",
-    phone: "08000000101",
-    address: "Plot 14, Okokomaiko, Ojo",
-    initial: "A",
-    totalOwedKobo: 14000000,
-    oldestInvoiceDate: "02/09/2026",
-    daysAgo: 77,
-    unpaidCount: 1,
-  },
-  {
-    id: "deb_2",
-    name: "Ibrahim & Sons Construction",
-    phone: "08000000102",
-    address: "Alaba Rago Road, Ojo",
-    initial: "I",
-    totalOwedKobo: 12500000,
-    oldestInvoiceDate: "20/09/2026",
-    daysAgo: 59,
-    unpaidCount: 1,
-  },
-  {
-    id: "deb_3",
-    name: "Pastor Femi Adebayo",
-    phone: "08000000103",
-    address: "Christ Grace Church site, Iba",
-    initial: "P",
-    totalOwedKobo: 7200000,
-    oldestInvoiceDate: "12/10/2026",
-    daysAgo: 37,
-    unpaidCount: 1,
-  },
-  {
-    id: "deb_6",
-    name: "Kelechi & Co. Plumbing",
-    phone: "08000000106",
-    address: "LASU Gate, Ojo",
-    initial: "K",
-    totalOwedKobo: 2120000,
-    oldestInvoiceDate: "28/10/2026",
-    daysAgo: 21,
-    unpaidCount: 1,
-  },
-];
+const SEED_DEBTORS: DebtorCustomer[] = [];
 
 export default function TopBuildersDebtorsPage() {
   const { recordTransaction } = usePlatformStore();

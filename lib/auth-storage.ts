@@ -37,34 +37,9 @@ export interface SuperAdminAccount {
   createdAt: string;
 }
 
-const DEFAULT_ADMIN_ACCOUNTS: SuperAdminAccount[] = [
-  {
-    id: "adm_001",
-    name: "Super Admin",
-    username: "admin@zinoone.com",
-    email: "admin@zinoone.com",
-    password: "Admin2026!",
-    role: "SUPER_ADMIN",
-    securityQuestion: "What is your mother's maiden name?",
-    securityAnswer: "adeleke",
-    pin: "1234",
-    createdAt: "2026-01-01T00:00:00.000Z",
-  },
-  {
-    id: "adm_002",
-    name: "Operations Admin",
-    username: "admin",
-    email: "admin@zinoone.local",
-    password: "Admin2026!",
-    role: "ADMIN",
-    securityQuestion: "What was a special moment in your life?",
-    securityAnswer: "founding zino one",
-    pin: "1234",
-    createdAt: "2026-01-01T00:00:00.000Z",
-  },
-];
+const DEFAULT_ADMIN_ACCOUNTS: SuperAdminAccount[] = [];
 
-const ADMIN_STORAGE_KEY = "zino_admin_accounts_v1";
+const ADMIN_STORAGE_KEY = "zino_admin_accounts_prod_v1";
 let memoryAdminAccounts: SuperAdminAccount[] = [...DEFAULT_ADMIN_ACCOUNTS];
 
 export function getAdminAccounts(): SuperAdminAccount[] {
@@ -74,12 +49,10 @@ export function getAdminAccounts(): SuperAdminAccount[] {
   try {
     const raw = window.localStorage.getItem(ADMIN_STORAGE_KEY);
     if (!raw) {
-      window.localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(DEFAULT_ADMIN_ACCOUNTS));
-      memoryAdminAccounts = [...DEFAULT_ADMIN_ACCOUNTS];
-      return DEFAULT_ADMIN_ACCOUNTS;
+      return memoryAdminAccounts;
     }
     const parsed = JSON.parse(raw);
-    const list = Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_ADMIN_ACCOUNTS;
+    const list = Array.isArray(parsed) ? parsed : [];
     memoryAdminAccounts = list;
     return list;
   } catch {
@@ -193,43 +166,9 @@ export interface BuilderUserAccount {
   createdAt: string;
 }
 
-const DEFAULT_BUILDER_ACCOUNTS: BuilderUserAccount[] = [
-  {
-    id: "b_usr_1",
-    name: "Chima Ezenwa",
-    username: "chimatop",
-    password: "password123",
-    role: "Owner",
-    securityQuestion: "What is your mother's maiden name?",
-    securityAnswer: "ezenwa",
-    pin: "1234",
-    createdAt: "2026-01-01T00:00:00.000Z",
-  },
-  {
-    id: "b_usr_2",
-    name: "Blessing Okafor",
-    username: "blessing",
-    password: "password123",
-    role: "Manager",
-    securityQuestion: "What was a special moment in your life?",
-    securityAnswer: "university graduation",
-    pin: "4321",
-    createdAt: "2026-02-01T00:00:00.000Z",
-  },
-  {
-    id: "b_usr_3",
-    name: "Emeka Nnamdi",
-    username: "emeka",
-    password: "password123",
-    role: "Sales Rep",
-    securityQuestion: "What city were you born in?",
-    securityAnswer: "lagos",
-    pin: "9999",
-    createdAt: "2026-03-01T00:00:00.000Z",
-  },
-];
+const DEFAULT_BUILDER_ACCOUNTS: BuilderUserAccount[] = [];
 
-const BUILDERS_STORAGE_KEY = "zino_top_builders_accounts_v1";
+const BUILDERS_STORAGE_KEY = "zino_top_builders_accounts_prod_v1";
 let memoryBuilderAccounts: BuilderUserAccount[] = [...DEFAULT_BUILDER_ACCOUNTS];
 
 export function getBuilderAccounts(): BuilderUserAccount[] {
@@ -239,12 +178,10 @@ export function getBuilderAccounts(): BuilderUserAccount[] {
   try {
     const raw = window.localStorage.getItem(BUILDERS_STORAGE_KEY);
     if (!raw) {
-      window.localStorage.setItem(BUILDERS_STORAGE_KEY, JSON.stringify(DEFAULT_BUILDER_ACCOUNTS));
-      memoryBuilderAccounts = [...DEFAULT_BUILDER_ACCOUNTS];
-      return DEFAULT_BUILDER_ACCOUNTS;
+      return memoryBuilderAccounts;
     }
     const parsed = JSON.parse(raw);
-    const list = Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_BUILDER_ACCOUNTS;
+    const list = Array.isArray(parsed) ? parsed : [];
     memoryBuilderAccounts = list;
     return list;
   } catch {
@@ -354,85 +291,9 @@ export interface StaffCredential {
   createdAt: string;
 }
 
-const DEFAULT_STAFF_CREDENTIALS: StaffCredential[] = [
-  {
-    id: "stf_1",
-    staffCode: "ZNO-1001",
-    name: "Femi Adeleke",
-    username: "femi.adeleke@zinogroup.com",
-    email: "femi.adeleke@zinogroup.com",
-    password: "Staff2026!",
-    role: "Chief Financial Officer & Controller",
-    department: "Executive & Finance",
-    subsidiary: ServiceSlug.BILLSTACKS,
-    branch: "HQ Victoria Island, Lagos",
-    pin: "1234",
-    status: "ACTIVE",
-    createdAt: "2024-01-15T00:00:00.000Z",
-  },
-  {
-    id: "stf_2",
-    staffCode: "ZNO-1002",
-    name: "Chinedu Eze",
-    username: "chinedu.eze@zinogroup.com",
-    email: "chinedu.eze@zinogroup.com",
-    password: "Staff2026!",
-    role: "Lead POS Store Manager",
-    department: "Retail Operations",
-    subsidiary: ServiceSlug.SPARK,
-    branch: "Computer Village (Medical Rd)",
-    pin: "1234",
-    status: "ACTIVE",
-    createdAt: "2024-03-10T00:00:00.000Z",
-  },
-  {
-    id: "stf_3",
-    staffCode: "ZNO-1003",
-    name: "Adaeze Okafor",
-    username: "adaeze.okafor@zinogroup.com",
-    email: "adaeze.okafor@zinogroup.com",
-    password: "Staff2026!",
-    role: "Front Desk & Guest Concierge Lead",
-    department: "Hospitality Management",
-    subsidiary: ServiceSlug.APARTMENTS,
-    branch: "Zino Luxury Apartments (Lekki Phase 1)",
-    pin: "1234",
-    status: "ACTIVE",
-    createdAt: "2024-06-01T00:00:00.000Z",
-  },
-  {
-    id: "stf_4",
-    staffCode: "ZNO-1004",
-    name: "Tunde Bakare",
-    username: "tunde.bakare@zinogroup.com",
-    email: "tunde.bakare@zinogroup.com",
-    password: "Staff2026!",
-    role: "Yard Logistics & Dispatch Supervisor",
-    department: "Yard & Logistics",
-    subsidiary: ServiceSlug.BUILDERS,
-    branch: "Top Builders Main Supply Yard",
-    pin: "1234",
-    status: "ACTIVE",
-    createdAt: "2024-02-12T00:00:00.000Z",
-  },
-  {
-    id: "stf_legacy_staff",
-    staffCode: "ZNO-STAFF",
-    name: "Operations Staff",
-    username: "staff@zinoone.com",
-    email: "staff@zinoone.com",
-    password: "Staff2026!",
-    role: "Operations Specialist",
-    department: "Zino Operations",
-    subsidiary: "ALL",
-    branch: "Zino One Central Hub",
-    pin: "1234",
-    status: "ACTIVE",
-    createdAt: "2026-01-01T00:00:00.000Z",
-  },
-];
+const DEFAULT_STAFF_CREDENTIALS: StaffCredential[] = [];
 
-const STAFF_CREDENTIALS_KEY = "zino_staff_credentials_v1";
+const STAFF_CREDENTIALS_KEY = "zino_staff_credentials_prod_v1";
 let memoryStaffCredentials: StaffCredential[] = [...DEFAULT_STAFF_CREDENTIALS];
 
 export function getStaffCredentials(): StaffCredential[] {
@@ -442,12 +303,10 @@ export function getStaffCredentials(): StaffCredential[] {
   try {
     const raw = window.localStorage.getItem(STAFF_CREDENTIALS_KEY);
     if (!raw) {
-      window.localStorage.setItem(STAFF_CREDENTIALS_KEY, JSON.stringify(DEFAULT_STAFF_CREDENTIALS));
-      memoryStaffCredentials = [...DEFAULT_STAFF_CREDENTIALS];
-      return DEFAULT_STAFF_CREDENTIALS;
+      return memoryStaffCredentials;
     }
     const parsed = JSON.parse(raw);
-    const list = Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_STAFF_CREDENTIALS;
+    const list = Array.isArray(parsed) ? parsed : [];
     memoryStaffCredentials = list;
     return list;
   } catch {

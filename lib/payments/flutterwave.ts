@@ -7,6 +7,7 @@ import crypto from "crypto";
 import { getEnv } from "../env";
 import { fromKoboToString, toKobo } from "../money";
 import { PaymentError } from "../errors";
+import { assertGatewayAvailable, buildCallbackUrl, buildSandboxUrl } from "./config";
 import type { InitPaymentParams, VerifyPaymentResult } from "./paystack";
 
 export interface FlwInitPaymentResult {
@@ -20,8 +21,10 @@ export async function initializeFlutterwavePayment(
 ): Promise<FlwInitPaymentResult> {
   const env = getEnv();
   if (!env.FLUTTERWAVE_SECRET_KEY) {
+    // Sandbox checkout is only permitted outside production; production throws.
+    assertGatewayAvailable("FLUTTERWAVE");
     return {
-      authorizationUrl: `${env.NEXTAUTH_URL}/payments/mock?gateway=FLUTTERWAVE&reference=${encodeURIComponent(params.reference)}`,
+      authorizationUrl: buildSandboxUrl("FLUTTERWAVE", params.reference, params.amountKobo),
       reference: params.reference,
       gateway: "FLUTTERWAVE",
     };
@@ -37,7 +40,7 @@ export async function initializeFlutterwavePayment(
       tx_ref: params.reference,
       amount: fromKoboToString(params.amountKobo),
       currency: "NGN",
-      redirect_url: params.callbackUrl ?? `${env.NEXTAUTH_URL}/payments/callback`,
+      redirect_url: params.callbackUrl ?? buildCallbackUrl("FLUTTERWAVE", params.reference),
       customer: { email: params.email },
       meta: params.metadata ?? {},
     }),

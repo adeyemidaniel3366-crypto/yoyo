@@ -18,10 +18,7 @@ interface StockTransfer {
   status: "COMPLETED" | "IN_TRANSIT";
 }
 
-const TRANSFERS: StockTransfer[] = [
-  { id: "1", transferNo: "TRF-901", fromLocation: "Medical Road Shop", toLocation: "Adepele Shop", item: "Samsung 990 PRO 4TB NVMe SSD", qty: 4, date: "19 Nov 2026", status: "COMPLETED" },
-  { id: "2", transferNo: "TRF-902", fromLocation: "Medical Road Shop", toLocation: "Galaxy Online Warehouse", item: "Lexar SL500 Portable SSD 2TB", qty: 6, date: "18 Nov 2026", status: "COMPLETED" },
-];
+const TRANSFERS: StockTransfer[] = [];
 
 export default function SparkTransfersPage() {
   const [transfers, setTransfers] = useState<StockTransfer[]>(TRANSFERS);

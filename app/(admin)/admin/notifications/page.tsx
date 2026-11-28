@@ -27,13 +27,7 @@ interface NotificationItem {
   type: "ORDER" | "BOOKING" | "ALERT" | "PAYMENT" | "VISITOR";
 }
 
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  { id: "n1", source: ServiceSlug.GALAXY, title: "New Online Order Placed", message: "Order DG-892104 (₦700,000) placed by Chief Babatunde Balogun for same-day Lagos dispatch.", time: "10 mins ago", read: false, type: "ORDER" },
-  { id: "n2", source: ServiceSlug.APARTMENTS, title: "Room Booking Check-In", message: "Guest Adaeze Okafor checked in to Deluxe Studio Suite (RM-201).", time: "25 mins ago", read: false, type: "BOOKING" },
-  { id: "n3", source: ServiceSlug.SPARK, title: "Low Stock Warning — Lexar SL500", message: "Stock level at Medical Road shop dropped to 2 units (threshold is 5).", time: "1 hour ago", read: false, type: "ALERT" },
-  { id: "n4", source: ServiceSlug.VISITORS, title: "VIP Visitor Arrived at Reception", message: "Engr. Tunde Bakare has checked in to see Mr. Femi Adeleke.", time: "2 hours ago", read: true, type: "VISITOR" },
-  { id: "n5", source: ServiceSlug.BILLSTACKS, title: "Retainer Payment Received", message: "Prime Technologies PLC paid Invoice INV-000084 (₦1,450,000) via Paystack.", time: "4 hours ago", read: true, type: "PAYMENT" },
-];
+const INITIAL_NOTIFICATIONS: NotificationItem[] = [];
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);

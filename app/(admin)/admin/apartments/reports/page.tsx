@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
 import {
   BarChart3,
@@ -13,8 +13,47 @@ import {
 } from "lucide-react";
 import { ServiceSlug } from "@/lib/constants";
 import { SourceBadge } from "@/components/ui/source-badge";
+import { formatCurrency } from "@/lib/money";
+import { usePlatformStore } from "@/lib/platform-store";
+import { getApartmentBookings, getApartmentSuites } from "@/lib/apartments-data";
 
 export default function ApartmentReportsPage() {
+  const { products: storeProducts, invoices } = usePlatformStore();
+
+  const suites = useMemo(() => {
+    const storeApts = storeProducts.filter((p) => p.source === ServiceSlug.APARTMENTS && p.status !== "ARCHIVED");
+    if (storeApts.length > 0) return storeApts;
+    return getApartmentSuites();
+  }, [storeProducts]);
+
+  const bookings = useMemo(() => getApartmentBookings(), []);
+
+  const totalRevenueKobo = useMemo(() => {
+    const fromInvoices = invoices
+      .filter((i) => i.source === ServiceSlug.APARTMENTS && (i.status === "PAID" || i.status === "CONFIRMED"))
+      .reduce((sum, i) => sum + (i.amountKobo || 0), 0);
+    const fromBookings = bookings
+      .filter((b) => b.paymentStatus === "PAID" || b.paymentStatus === "CONFIRMED")
+      .reduce((sum, b) => sum + (b.totalKobo || 0), 0);
+    return Math.max(fromInvoices, fromBookings);
+  }, [invoices, bookings]);
+
+  const activeUnitsCount = suites.length;
+  const bookedUnitsCount = bookings.filter((b) => b.paymentStatus === "PAID" || b.paymentStatus === "CONFIRMED").length;
+  const occupancyPct = activeUnitsCount > 0 ? Math.min(100, Math.round((bookedUnitsCount / activeUnitsCount) * 100)) : 0;
+  const adrKobo =
+    bookedUnitsCount > 0
+      ? Math.round(totalRevenueKobo / bookedUnitsCount)
+      : suites.length > 0
+      ? Math.round(
+          suites.reduce(
+            (s, p) => s + ("priceKobo" in p ? p.priceKobo : "basePriceKobo" in p ? p.basePriceKobo : 0),
+            0
+          ) / suites.length
+        )
+      : 0;
+  const revParKobo = activeUnitsCount > 0 ? Math.round(totalRevenueKobo / activeUnitsCount) : 0;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -37,23 +76,23 @@ export default function ApartmentReportsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-border shadow-2xs">
           <p className="text-xs text-muted">Average Occupancy Rate</p>
-          <h3 className="text-2xl font-black text-heading mt-1">78.5%</h3>
-          <p className="text-[11px] text-emerald-600 font-semibold mt-1">+12% vs last month</p>
+          <h3 className="text-2xl font-black text-heading mt-1">{occupancyPct}%</h3>
+          <p className="text-[11px] text-muted mt-1">{bookedUnitsCount} of {activeUnitsCount} suites active</p>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-border shadow-2xs">
           <p className="text-xs text-muted">Average Daily Rate (ADR)</p>
-          <h3 className="text-2xl font-black text-heading mt-1">₦35,000</h3>
-          <p className="text-[11px] text-muted mt-1">Across 12 suites</p>
+          <h3 className="text-2xl font-black text-heading mt-1">{formatCurrency(adrKobo)}</h3>
+          <p className="text-[11px] text-muted mt-1">Across {activeUnitsCount} suites</p>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-border shadow-2xs">
           <p className="text-xs text-muted">RevPAR (Rev per Available Room)</p>
-          <h3 className="text-2xl font-black text-apartment mt-1">₦27,475</h3>
-          <p className="text-[11px] text-emerald-600 font-semibold mt-1">Optimal profitability</p>
+          <h3 className="text-2xl font-black text-apartment mt-1">{formatCurrency(revParKobo)}</h3>
+          <p className="text-[11px] text-muted mt-1">Gross / Capacity</p>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-border shadow-2xs">
-          <p className="text-xs text-muted">Monthly Gross Revenue</p>
-          <h3 className="text-2xl font-black text-heading mt-1">₦9,890,000</h3>
-          <p className="text-[11px] text-muted mt-1">November 2026</p>
+          <p className="text-xs text-muted">Total Gross Bookings Revenue</p>
+          <h3 className="text-2xl font-black text-heading mt-1">{formatCurrency(totalRevenueKobo)}</h3>
+          <p className="text-[11px] text-emerald-600 font-semibold mt-1">Live synchronized</p>
         </div>
       </div>
 
